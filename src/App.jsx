@@ -11,6 +11,8 @@ import {
   Home,
   Info,
   Landmark,
+  PlusCircle,
+  QrCode,
   RotateCcw,
   ShieldCheck,
   Sparkles,
@@ -18,6 +20,8 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
+import { DepositModal } from './components/DepositModal'
+
 
 const ROUND_SECONDS = 45
 const LOCK_SECONDS = 8
@@ -170,6 +174,14 @@ function App() {
   const [activeView, setActiveView] = useState('play')
   const [balance, setBalance] = useState(session.balance)
   const [activity, setActivity] = useState(session.activity)
+  const [depositModalOpen, setDepositModalOpen] = useState(false)
+  const [userId] = useState(() => {
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('prince_user_id') : null
+    if (saved) return saved
+    const newId = 'usr_' + Math.random().toString(36).substring(2, 10)
+    if (typeof window !== 'undefined') window.localStorage.setItem('prince_user_id', newId)
+    return newId
+  })
   const [roundNumber, setRoundNumber] = useState(842176)
   const [seconds, setSeconds] = useState(34)
   const [phase, setPhase] = useState('open')
@@ -591,13 +603,18 @@ function App() {
 
         <section className="wallet-stage">
           <div>
-            <p>Available practice credits</p>
-            <strong>{formatCredits(balance)}</strong>
-            <span>Virtual credits reset anytime.</span>
+            <p>Available wallet balance</p>
+            <strong>₹{formatCredits(balance)}</strong>
+            <span>Verified with Supabase & UPI ledger</span>
           </div>
-          <div className="wallet-stage__mark" aria-hidden="true">
-            <Wallet size={42} strokeWidth={1.6} />
-          </div>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={() => setDepositModalOpen(true)}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', background: '#2563eb', color: '#fff', border: 'none', fontWeight: '700' }}
+          >
+            <QrCode size={18} /> Deposit via UPI
+          </button>
         </section>
 
         <div className="wallet-grid">
@@ -613,7 +630,7 @@ function App() {
                 <dd>{formatCredits(totalReturned)}</dd>
               </div>
               <div>
-                <dt>Practice net</dt>
+                <dt>Net profit / loss</dt>
                 <dd className={netPractice >= 0 ? 'value-positive' : 'value-negative'}>{netPractice >= 0 ? '+' : ''}{formatCredits(netPractice)}</dd>
               </div>
             </dl>
@@ -621,20 +638,32 @@ function App() {
 
           <section className="wallet-panel wallet-panel--action">
             <div>
-              <p className="eyebrow">Fresh start</p>
-              <h2>Reset your balance</h2>
-              <p>Restores the default virtual-credit amount. Activity stays visible for this browser session.</p>
+              <p className="eyebrow">UPI Instant Deposit</p>
+              <h2>Add Funds via UPI QR</h2>
+              <p>Recharge with PhonePe, Google Pay, or Paytm and submit your 12-digit UTR for automatic verification.</p>
             </div>
-            <button className="secondary-button" type="button" onClick={resetCredits}>
-              <RotateCcw size={17} /> Reset credits
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => setDepositModalOpen(true)}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 18px', borderRadius: '8px', cursor: 'pointer', background: '#10b981', color: '#fff', border: 'none', fontWeight: '700' }}
+            >
+              <PlusCircle size={18} /> Add Cash / Deposit
             </button>
           </section>
         </div>
 
         <section className="practice-notice">
           <Info size={20} aria-hidden="true" />
-          <p>Prism Play is a front-end practice simulator. It does not accept deposits, offer withdrawals, or create a real-money account.</p>
+          <p>Prince Club uses Supabase for database persistence and a 12-digit UTR verification system for secure UPI transactions.</p>
         </section>
+
+        <DepositModal
+          isOpen={depositModalOpen}
+          onClose={() => setDepositModalOpen(false)}
+          userId={userId}
+          onBalanceUpdated={(newBal) => setBalance(newBal)}
+        />
       </>
     )
   }

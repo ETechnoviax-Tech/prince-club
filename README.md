@@ -1,33 +1,48 @@
 # Prince Club
 
-A real-time color prediction and trading simulator built with React and Vite. Designed for strategy testing and practice using virtual credits.
+Real-time color prediction and trading platform built with React, Vite, Express.js, and Supabase. Features live rounds, wallet ledger tracking, and UPI payment integration with 12-digit UTR verification.
 
 ## Features
 
-- **Real-Time Round Timer**: 30-second countdown rounds with automatic resolution.
-- **Color & Number Prediction**: Place virtual bets on Green, Violet, Red, or individual numbers (0–9).
-- **Dynamic Odds & Multipliers**: Accurate payout multipliers reflecting classic probability tables.
-- **Balance & History Tracking**: Live transaction logs, round history, and real-time wallet updates.
-- **Responsive Interface**: Mobile-first design styled with custom responsive CSS.
+- **Authoritative Game Engine**: 45-second round cycles with automatic 8-second betting locks and deterministic outcomes.
+- **Color & Number Predictions**: Supports Red, Green, Violet, and individual digits (0–9) with standard payout multipliers.
+- **Supabase Persistence**: Relational PostgreSQL schema tracking profiles, balances, round results, bets, and transaction ledgers.
+- **UPI Payments & UTR Verification**:
+  - Dynamic QR code generation for PhonePe, Google Pay, Paytm, and BHIM.
+  - 12-digit UTR submission with deduplication checks to prevent duplicate claims.
+  - Atomic database stored procedures to credit balances safely upon verification.
+- **Responsive Interface**: Mobile-first dark UI built with vanilla CSS.
 
 ## Architecture
 
 ```
-├── index.html        # Entry HTML template
-├── package.json      # Dependencies and scripts
+├── index.html                  # Entry template
+├── package.json                # Dependencies and run scripts
+├── server/
+│   ├── config/supabase.js      # Supabase database client
+│   ├── controllers/            # Auth, wallet, game, and payment controllers
+│   ├── db/
+│   │   ├── schema.sql          # Supabase PostgreSQL schema and stored procedures
+│   │   └── store.js            # Development in-memory fallback store
+│   ├── middleware/             # Validation for payloads and 12-digit UTRs
+│   ├── routes/                 # Express API endpoints
+│   └── index.js                # Express app entrypoint
 ├── src/
-│   ├── App.jsx       # State management, round logic, wallet system
-│   ├── main.jsx      # React entry point
-│   └── styles.css    # Custom UI styling and responsive layouts
-└── public/           # Static assets
+│   ├── api/client.js           # Frontend API consumer
+│   ├── components/DepositModal # UPI payment & UTR verification UI
+│   ├── App.jsx                 # Application layout and state
+│   ├── main.jsx                # React root
+│   └── styles.css              # Styling rules
+└── tests/
+    └── test_backend.js         # Automated backend test suite
 ```
 
 ## Setup & Installation
 
 ### Prerequisites
 
-- Node.js (v18 or higher recommended)
-- npm or yarn
+- Node.js 18+
+- Supabase account (free tier supported)
 
 ### Installation
 
@@ -42,24 +57,47 @@ A real-time color prediction and trading simulator built with React and Vite. De
    npm install
    ```
 
-3. Run the development server:
+3. Configure environment variables:
+   Copy `.env.example` to `.env` and configure your credentials:
    ```bash
-   npm run dev
+   cp .env.example .env
    ```
+   Provide your `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `MERCHANT_UPI_VPA`.
+
+4. Set up the database:
+   Run the contents of `server/db/schema.sql` in your **Supabase SQL Editor** to create tables and atomic procedures.
 
 ## Usage
 
-1. Open `http://localhost:5173` in your browser.
-2. Select your stake amount and choose a color (Green, Violet, Red) or a number (0–9).
-3. Confirm the order before the round countdown reaches the lock window.
-4. Review the result and your updated virtual balance upon round completion.
+### Run Backend API
+```bash
+npm run server
+```
+Server runs at `http://localhost:5000`.
+
+### Run Frontend Development Server
+```bash
+npm run dev
+```
+Client runs at `http://localhost:5173`.
+
+### Run Automated Tests
+```bash
+npm test
+```
 
 ## Deployment
 
-Build the optimized production assets:
-
+### Frontend
+Build optimized static assets:
 ```bash
 npm run build
 ```
+Deploy the generated `dist/` directory to Vercel, Netlify, or any static host.
 
-The compiled static files will be placed in the `dist/` directory, ready to deploy to platforms like Vercel, Netlify, or GitHub Pages.
+### Backend
+Deploy the Express server to platforms like Railway, Render, Fly.io, or VPS:
+```bash
+node server/index.js
+```
+Ensure all environment variables from `.env.example` are set on the hosting provider.
