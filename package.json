@@ -1,15 +1,17 @@
 {
-  "name": "prism-play",
+  "name": "prince-club",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite frontend",
+    "dev:frontend": "vite frontend",
+    "dev:server": "node --watch server/index.js",
     "start": "node server/index.js",
     "server": "node server/index.js",
-    "test": "node tests/test_backend.js",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "vite build frontend",
+    "preview": "vite preview frontend",
+    "test": "node tests/test_backend.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

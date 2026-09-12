@@ -33,36 +33,38 @@ Prince Club is a full-stack, mobile-first real-time color trading and prediction
 
 ---
 
-## Architecture & Tech Stack
-
-- **Frontend**: React 18, Vite, Lucide React, Vanilla CSS (Mobile-First Glassmorphism).
-- **Backend**: Node.js, Express.js, Native Crypto (HMAC, SHA-256), QRCode.
-- **Database**: Supabase PostgreSQL (`profiles`, `wallets`, `bets`, `deposit_requests`, `wallet_transactions`, `password_resets`) with in-memory fallback for local development.
+## Project Structure
 
 ```
-├── index.html                   # Mobile entry layout with PWA meta tags
-├── src/
-│   ├── api/client.js            # Unified API client with automatic bearer token attachment
-│   ├── components/
-│   │   ├── AuthModal.jsx        # Login, Register, Forgot, and Reset password dialog
-│   │   └── DepositModal.jsx     # Dynamic UPI QR payment and UTR submission dialog
-│   ├── utils/audio.js           # Web Audio API sound synthesizer
-│   ├── App.jsx                  # Mobile application shell and real-time state machine
-│   └── styles.css               # Dark theme, glassmorphism, and responsive layout
-├── server/
-│   ├── index.js                 # Express server entry point (port 5000)
-│   ├── config/supabase.js       # Supabase database connection and status
-│   ├── controllers/             # Auth, game, wallet, and payment logic
+├── frontend/                     # Dedicated React frontend application
+│   ├── index.html                # Mobile entry layout with PWA meta tags
+│   ├── vite.config.js            # Vite build and dev server configuration
+│   ├── package.json              # Frontend dependencies and scripts
+│   ├── .env.example              # Frontend environment template
+│   └── src/
+│       ├── api/client.js         # Unified API client with automatic bearer token attachment
+│       ├── components/
+│       │   ├── AuthModal.jsx     # Login, Register, Forgot, and Reset password dialog
+│       │   └── DepositModal.jsx  # Dynamic UPI QR payment and UTR submission dialog
+│       ├── utils/audio.js        # Web Audio API sound synthesizer
+│       ├── App.jsx               # Mobile application shell and real-time state machine
+│       └── styles.css            # Dark theme, glassmorphism, and responsive layout
+├── server/                       # Node.js / Express backend service
+│   ├── index.js                  # Express server entry point (port 5000)
+│   ├── config/supabase.js        # Supabase database connection and status
+│   ├── controllers/              # Auth, game, wallet, and payment logic
 │   ├── middleware/
-│   │   ├── auth.js              # Token generation, verification, and admin guards
-│   │   ├── validate.js          # Strict request payload validators
-│   │   └── rateLimit.js         # Sliding-window rate limiters
-│   └── routes/                  # Express route declarations
+│   │   ├── auth.js               # Token generation, verification, and admin guards
+│   │   ├── validate.js           # Strict request payload validators
+│   │   └── rateLimit.js          # Sliding-window rate limiters
+│   ├── services/
+│   │   └── notificationService.js # Multi-channel WhatsApp & Email OTP dispatcher
+│   └── routes/                   # Express route declarations
 └── tests/
-    ├── clean_db.js              # Script to wipe database records for fresh deployment
-    ├── test_auth_flows.js       # Verification of signup, login, OTP, and reset
-    ├── test_realtime_game.js    # Live round sync & authoritative payout loop tests
-    └── test_security_validation.js # Anti-spoofing and parameter boundary tests
+    ├── clean_db.js               # Script to wipe database records for fresh deployment
+    ├── test_auth_flows.js        # Verification of signup, login, OTP, and reset
+    ├── test_realtime_game.js     # Live round sync & authoritative payout loop tests
+    └── test_whatsapp_email_otp.js # Multi-channel OTP verification suite
 ```
 
 ---
@@ -81,9 +83,10 @@ npm install
 ```
 
 ### 3. Environment Configuration
-Copy `.env.example` to `.env`:
+Copy `.env.example` to `.env` in the root and `frontend/.env.example` to `frontend/.env`:
 ```bash
 cp .env.example .env
+cp frontend/.env.example frontend/.env
 ```
 
 Ensure your credentials are set:
@@ -110,15 +113,19 @@ node tests/clean_db.js
 
 **Start the API Server:**
 ```bash
-cd server
-npm run dev
-# Server runs on http://localhost:5000
+npm run server
+# Express API runs on http://localhost:5000
 ```
 
 **Start the Frontend:**
 ```bash
 npm run dev
 # Frontend runs on http://localhost:5173
+```
+Alternatively, navigate to `frontend` and run directly:
+```bash
+cd frontend
+npm run dev
 ```
 
 ---
@@ -131,8 +138,8 @@ Run the test suites to verify system integrity:
 # Verify authentication flows (Signup, Login, OTP, Reset)
 node tests/test_auth_flows.js
 
-# Verify anti-spoofing and security rules (8/8 scenarios)
-node tests/test_security_validation.js
+# Verify WhatsApp and Email OTP delivery
+node tests/test_whatsapp_email_otp.js
 
 # Verify real-time 45s round engine and background settlement
 node tests/test_realtime_game.js
@@ -149,7 +156,7 @@ Compile optimized production client assets:
 ```bash
 npm run build
 ```
-The output will be placed in the `dist/` directory, ready to be served by any static host (Vercel, Netlify, Cloudflare Pages, or Nginx) while the Express API runs on your backend server.
+The output will be placed in `frontend/dist/`, ready to be served by any static host (Vercel, Netlify, Cloudflare Pages, or Nginx) while the Express API runs on your backend server.
 
 ---
 
