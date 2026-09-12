@@ -8,16 +8,16 @@ import {
   requestWithdrawal,
   resetWallet,
 } from '../controllers/walletController.js'
-import { optionalAuth, requireAdmin } from '../middleware/auth.js'
+import { optionalAuth, requireAdmin, requireAuth } from '../middleware/auth.js'
 import { paymentRateLimit } from '../middleware/rateLimit.js'
 import { validateWithdrawalRequest } from '../middleware/validate.js'
 
 const router = Router()
 
-// Wallet queries support verified user sessions or fallback guest access
-router.get('/:userId', optionalAuth, getWallet)
-router.get('/:userId/transactions', optionalAuth, getTransactions)
-router.post('/reset', optionalAuth, resetWallet)
+// Wallet queries require verified user sessions with HMAC token
+router.get('/:userId', requireAuth, getWallet)
+router.get('/:userId/transactions', requireAuth, getTransactions)
+router.post('/reset', requireAuth, resetWallet)
 
 // Financial Payouts & Withdrawals
 router.post('/withdraw', optionalAuth, paymentRateLimit, validateWithdrawalRequest, requestWithdrawal)

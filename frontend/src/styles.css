@@ -2292,6 +2292,9 @@ button {
   background: rgba(255, 255, 255, 0.08);
   color: #f1f5f9;
 }
+/* =========================================================
+   RAJALUCK AUTHENTIC MOBILE UI THEME
+   ========================================================= */
 
 /* ==========================================================================
    MULTI-GAME LEVEL SELECTOR TABS (Parity 30s, Sapre 1m, Bcone 3m, Emerd 5m)
@@ -2672,5 +2675,642 @@ button {
 }
 
 
+.raja-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: #180f2d;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
 
+.raja-circle-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
 
+.raja-circle-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  transform: scale(1.05);
+}
+
+.raja-brand {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.raja-crown {
+  font-size: 22px;
+  filter: drop-shadow(0 2px 4px rgba(245, 166, 35, 0.4));
+}
+
+.raja-brand-name {
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  background: linear-gradient(180deg, #ffe066 0%, #f6c343 50%, #f5a623 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+  font-family: var(--font-heading), sans-serif;
+}
+
+.raja-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* RAJALUCK WALLET HERO CARD */
+.raja-wallet-card {
+  margin: 14px 14px 10px;
+  padding: 20px 18px 18px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #2b174d 0%, #1e1039 100%);
+  border: 1px solid rgba(168, 85, 247, 0.28);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.raja-wallet-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.raja-balance-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: relative;
+  width: 100%;
+}
+
+.raja-balance-num {
+  font-size: 34px;
+  font-weight: 800;
+  color: #f6c343;
+  letter-spacing: 0.5px;
+  font-family: var(--font-heading), sans-serif;
+  text-shadow: 0 2px 8px rgba(246, 195, 67, 0.3);
+}
+
+.raja-refresh-btn {
+  color: #a78bfa;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: absolute;
+  right: 4px;
+  top: 4px;
+  transition: transform 0.3s ease;
+}
+
+.raja-refresh-btn:active {
+  transform: rotate(180deg);
+}
+
+.raja-wallet-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #b3a4cb;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.raja-wallet-icon {
+  font-size: 14px;
+}
+
+.raja-wallet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.raja-btn-withdraw {
+  padding: 12px 0;
+  border-radius: 30px;
+  background: linear-gradient(180deg, #ffc837 0%, #ff8008 100%);
+  color: #1a0e2e;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(255, 128, 8, 0.35);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.raja-btn-withdraw:active {
+  transform: scale(0.97);
+}
+
+.raja-btn-deposit {
+  padding: 12px 0;
+  border-radius: 30px;
+  background: linear-gradient(180deg, #b06ab3 0%, #7c3aed 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4);
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.raja-btn-deposit:active {
+  transform: scale(0.97);
+}
+
+/* WIN GO 4-MODE SELECTOR */
+.raja-modes-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin: 6px 14px 12px;
+  padding: 8px 6px;
+  border-radius: 16px;
+  background: #1c1133;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.raja-mode-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.raja-mode-tab.active {
+  background: linear-gradient(135deg, #351c5a 0%, #291448 100%);
+  border: 1px solid rgba(168, 85, 247, 0.45);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.raja-clock-icon-wrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8c7b9e;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
+}
+
+.raja-clock-icon-wrap.active {
+  background: linear-gradient(135deg, #ff5e62 0%, #ff9966 100%);
+  color: #fff;
+  box-shadow: 0 3px 10px rgba(255, 94, 98, 0.45);
+}
+
+.raja-mode-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #8c7b9e;
+  line-height: 1.2;
+}
+
+.raja-mode-sub {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8c7b9e;
+  line-height: 1.2;
+}
+
+.raja-mode-tab.active .raja-mode-title,
+.raja-mode-tab.active .raja-mode-sub {
+  color: #f6c343;
+}
+
+/* GAME STATUS & COUNTDOWN CARD */
+.raja-countdown-card {
+  margin: 0 14px 14px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #2a164c 0%, #1f1039 100%);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  display: flex;
+  align-items: center;
+  position: relative;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.raja-cd-left {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.raja-howtoplay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(246, 195, 67, 0.4);
+  background: rgba(246, 195, 67, 0.08);
+  color: #f6c343;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.raja-mode-active-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #b3a4cb;
+}
+
+.raja-recent-balls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.raja-ball-mini {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  box-shadow: inset -2px -2px 4px rgba(0, 0, 0, 0.4), inset 2px 2px 4px rgba(255, 255, 255, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.raja-ball-mini--green {
+  background: radial-gradient(circle at 35% 35%, #4ade80 0%, #16a34a 65%, #14532d 100%);
+}
+
+.raja-ball-mini--red {
+  background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 65%, #7f1d1d 100%);
+}
+
+.raja-ball-mini--violet {
+  background: radial-gradient(circle at 35% 35%, #c084fc 0%, #9333ea 65%, #581c87 100%);
+}
+
+.raja-ball-mini--dual-0 {
+  background: linear-gradient(135deg, #dc2626 50%, #9333ea 50%);
+}
+
+.raja-ball-mini--dual-5 {
+  background: linear-gradient(135deg, #16a34a 50%, #9333ea 50%);
+}
+
+.raja-cd-divider {
+  width: 1px;
+  height: 60px;
+  border-left: 2px dashed rgba(168, 85, 247, 0.25);
+  margin: 0 12px;
+}
+
+.raja-cd-right {
+  flex: 1.1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  gap: 4px;
+}
+
+.raja-cd-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #b3a4cb;
+  letter-spacing: 0.5px;
+}
+
+.raja-timer-boxes {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.raja-tbox {
+  width: 26px;
+  height: 32px;
+  border-radius: 6px;
+  background: #140a24;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f6c343;
+  font-size: 17px;
+  font-weight: 900;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.6);
+  font-family: var(--font-heading), monospace;
+}
+
+.raja-tbox.urgent {
+  color: #ef4444;
+  animation: pulse 1s infinite alternate;
+}
+
+.raja-tcolon {
+  color: #f6c343;
+  font-weight: 900;
+  font-size: 16px;
+  margin: 0 1px;
+}
+
+.raja-period-num {
+  font-size: 13px;
+  font-weight: 900;
+  color: #f6c343;
+  letter-spacing: 0.5px;
+  font-family: var(--font-heading), monospace;
+  margin-top: 2px;
+}
+
+/* PRIMARY 3 COLOR BUTTONS */
+.raja-color-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0 14px 14px;
+}
+
+.raja-color-btn {
+  padding: 12px 0;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: transform 0.15s ease, filter 0.15s ease;
+}
+
+.raja-color-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.raja-color-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.raja-btn--green {
+  background: linear-gradient(180deg, #22c55e 0%, #16a34a 100%);
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.4);
+}
+
+.raja-btn--purple {
+  background: linear-gradient(180deg, #a855f7 0%, #7e22ce 100%);
+  box-shadow: 0 4px 14px rgba(168, 85, 247, 0.4);
+}
+
+.raja-btn--red {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.4);
+}
+
+/* NUMBER LOTTERY BALLS (0-9) 2X5 GRID */
+.raja-numbers-card {
+  margin: 0 14px 12px;
+  padding: 14px 12px;
+  border-radius: 18px;
+  background: #1b1031;
+  border: 1px solid rgba(168, 85, 247, 0.15);
+}
+
+.raja-numbers-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 12px 8px;
+  justify-items: center;
+}
+
+.raja-lottery-ball {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5), inset -2px -2px 6px rgba(0, 0, 0, 0.4), inset 2px 2px 6px rgba(255, 255, 255, 0.5);
+  transition: transform 0.15s ease;
+}
+
+.raja-lottery-ball:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.05);
+}
+
+.raja-lottery-ball:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.raja-lottery-ball:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.raja-ball-inner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.raja-ball-digit {
+  font-size: 17px;
+  font-weight: 900;
+  font-family: var(--font-heading), sans-serif;
+}
+
+/* 3D Ball colors matching standard Win Go */
+.ball-0 {
+  background: linear-gradient(135deg, #a855f7 50%, #ef4444 50%);
+}
+.ball-0 .raja-ball-digit {
+  color: #9333ea;
+}
+
+.ball-1, .ball-3, .ball-7, .ball-9 {
+  background: radial-gradient(circle at 35% 35%, #4ade80 0%, #16a34a 65%, #14532d 100%);
+}
+.ball-1 .raja-ball-digit,
+.ball-3 .raja-ball-digit,
+.ball-7 .raja-ball-digit,
+.ball-9 .raja-ball-digit {
+  color: #16a34a;
+}
+
+.ball-2, .ball-4, .ball-6, .ball-8 {
+  background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 65%, #7f1d1d 100%);
+}
+.ball-2 .raja-ball-digit,
+.ball-4 .raja-ball-digit,
+.ball-6 .raja-ball-digit,
+.ball-8 .raja-ball-digit {
+  color: #dc2626;
+}
+
+.ball-5 {
+  background: linear-gradient(135deg, #a855f7 50%, #22c55e 50%);
+}
+.ball-5 .raja-ball-digit {
+  color: #9333ea;
+}
+
+/* MULTIPLIER & RANDOM BET BAR */
+.raja-multiplier-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 14px 12px;
+}
+
+.raja-random-btn {
+  padding: 7px 11px;
+  border-radius: 8px;
+  border: 1px solid #f6c343;
+  background: rgba(246, 195, 67, 0.08);
+  color: #f6c343;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.raja-random-btn:hover {
+  background: rgba(246, 195, 67, 0.18);
+}
+
+.raja-multiplier-chips {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  flex: 1;
+}
+
+.raja-mul-chip {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 6px;
+  background: #23153c;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.raja-mul-chip.active {
+  background: #f6c343;
+  color: #1a0e2e;
+  font-weight: 900;
+  box-shadow: 0 2px 8px rgba(246, 195, 67, 0.35);
+}
+
+/* BIG / SMALL BUTTONS */
+.raja-bigsmall-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0 14px 14px;
+}
+
+.raja-bs-btn {
+  padding: 13px 0;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.raja-bs-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.raja-bs-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.raja-btn--big {
+  background: linear-gradient(180deg, #ffc837 0%, #ff8008 100%);
+  color: #1a0e2e;
+  box-shadow: 0 4px 14px rgba(255, 128, 8, 0.35);
+}
+
+.raja-btn--small {
+  background: linear-gradient(180deg, #6366f1 0%, #4338ca 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
+}
+
+/* RULES MODAL */
+.raja-rules-modal {
+  max-width: 420px;
+}
+
+.raja-rules-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 13px;
+}
+
+.raja-rule-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.raja-rule-item strong {
+  color: #f6c343;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.raja-rule-item p {
+  color: #b3a4cb;
+  margin: 0;
+  line-height: 1.4;
+}

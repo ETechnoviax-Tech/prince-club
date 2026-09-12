@@ -189,11 +189,42 @@ export async function fetchCurrentRound(mode = 'PARITY') {
   return res.json()
 }
 
-export async function placeBet(userId, selection, amount, mode = 'PARITY') {
+export async function fetchVeerIssue(typeId = 30) {
+  const res = await fetch(`${API_BASE}/game/veer/issue?typeId=${typeId}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch VeerGame issue')
+  return res.json()
+}
+
+export async function fetchVeerHistory(typeId = 30, page = 1) {
+  const res = await fetch(`${API_BASE}/game/veer/history?typeId=${typeId}&page=${page}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch VeerGame history')
+  return res.json()
+}
+
+export async function placeBet(userId, selection, amount, arg4 = null, arg5 = null) {
+  let mode = 'PARITY'
+  let issueNumber = null
+  let typeId = 30
+
+  if (typeof arg4 === 'object' && arg4 !== null) {
+    mode = arg4.mode || 'PARITY'
+    issueNumber = arg4.issueNumber || null
+    typeId = arg4.typeId || 30
+  } else if (typeof arg4 === 'string' && ['PARITY', 'SAPRE', 'BCONE', 'EMERD'].includes(arg4.toUpperCase())) {
+    mode = arg4.toUpperCase()
+  } else if (arg4) {
+    issueNumber = arg4
+    if (arg5) typeId = arg5
+  }
+
   const res = await fetch(`${API_BASE}/game/bet`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ userId, selection, amount, mode }),
+    body: JSON.stringify({ userId, selection, amount, mode, issueNumber, typeId }),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {

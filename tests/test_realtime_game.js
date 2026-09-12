@@ -18,6 +18,7 @@ async function runRealtimeGameTests() {
     })
     const loginData = await loginRes.json()
     const userId = loginData.user.id
+    const token = loginData.token
     console.log(`✓ User logged in: ${userId}`)
 
     // 2. Fetch current round
@@ -32,7 +33,10 @@ async function runRealtimeGameTests() {
       console.log('Round currently in 8s lock window. Testing lock enforcement...')
       const betRes = await fetch(`${baseUrl}/api/game/bet`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ userId, selection: 'green', amount: 100 }),
       })
       assert.strictEqual(betRes.status, 400)
@@ -42,7 +46,10 @@ async function runRealtimeGameTests() {
       console.log('Placing bet on Green for ₹100...')
       const betRes = await fetch(`${baseUrl}/api/game/bet`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ userId, selection: 'green', amount: 100 }),
       })
       const betData = await betRes.json()

@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
+import { getLiveHistory, getLiveIssue } from '../services/veerGameService.js'
 
 export const GAME_MODES = {
   PARITY: {
@@ -215,6 +216,202 @@ const lastSettledRounds = {
   EMERD: null,
 }
 
+// Authoritative VeerGame Round Settlement
+export async function settleVeerRound(outcome) {
+  if (!outcome || !outcome.issueNumber) return
+  const issueStr = String(outcome.issueNumber)
+  const digit = Number(outcome.digit)
+
+  // 1. Settle in-memory bets matching issueNumber
+  const pendingBets = Array.from(memoryBets.values()).filter(
+    (b) => String(b.round_number) === issueStr && b.status === 'PENDING'
+  )
+
+  for (const bet of pendingBets) {
+    let won = false
+    let payout = 0
+    const sel = String(bet.selection).toLowerCase()
+
+    if (sel === 'green') {
+      if ([1, 3, 7, 9].includes(digit)) {
+        won = true
+        payout = Math.round(bet.amount * 2.0)
+      } else if (digit === 5) {
+        won = true
+        payout = Math.round(bet.amount * 1.5)
+      }
+    } else if (sel === 'red') {
+      if ([2, 4, 6, 8].includes(digit)) {
+        won = true
+        payout = Math.round(bet.amount * 2.0)
+      } else if (digit === 0) {
+        won = true
+        payout = Math.round(bet.amount * 1.5)
+      }
+    } else if (sel === 'violet') {
+      if (digit === 0 || digit === 5) {
+        won = true
+        payout = Math.round(bet.amount * 4.5)
+      }
+    } else if (sel === 'big') {
+      if (digit >= 5) {
+        won = true
+        payout = Math.round(bet.amount * 2.0)
+      }
+    } else if (sel === 'small') {
+      if (digit < 5) {
+        won = true
+        payout = Math.round(bet.amount * 2.0)
+      }
+    } else if (sel === String(digit)) {
+      won = true
+      payout = Math.round(bet.amount * 9.0)
+    }
+
+    bet.status = won ? 'WON' : 'LOST'
+    bet.payout = payout
+    bet.outcome = outcome
+    bet.settled_at = new Date().toISOString()
+    memoryBets.set(bet.id, bet)
+
+    if (won && payout > 0 && isSupabaseConfigured) {
+      try {
+        const { data: wal } = await supabase
+          .from('wallets')
+          .select('balance')
+          .eq('user_id', bet.user_id)
+          .single()
+
+        if (wal) {
+          const newBal = Number(wal.balance) + payout
+          await supabase.from('wallets').update({ balance: newBal }).eq('user_id', bet.user_id)
+          await supabase.from('wallet_transactions').insert({
+            user_id: bet.user_id,
+            type: 'BET_PAYOUT',
+            amount: payout,
+            balance_after: newBal,
+            reference_id: bet.id,
+            description: `Won ₹${payout} on ${bet.selection} (VeerGame ${issueStr})`,
+          })
+        }
+      } catch (err) {
+        console.error('[settleVeerRound wallet credit error]:', err)
+      }
+    }
+  }
+
+  // 2. Settle Supabase DB bets if configured
+  if (isSupabaseConfigured) {
+    try {
+      const { data: dbBets } = await supabase
+        .from('bets')
+        .select('*')
+        .eq('round_number', issueStr)
+        .eq('status', 'PENDING')
+
+      if (Array.isArray(dbBets)) {
+        for (const b of dbBets) {
+          let won = false
+          let payout = 0
+          const sel = String(b.selection).toLowerCase()
+
+          if (sel === 'green') {
+            if ([1, 3, 7, 9].includes(digit)) {
+              won = true
+              payout = Math.round(b.amount * 2.0)
+            } else if (digit === 5) {
+              won = true
+              payout = Math.round(b.amount * 1.5)
+            }
+          } else if (sel === 'red') {
+            if ([2, 4, 6, 8].includes(digit)) {
+              won = true
+              payout = Math.round(b.amount * 2.0)
+            } else if (digit === 0) {
+              won = true
+              payout = Math.round(b.amount * 1.5)
+            }
+          } else if (sel === 'violet') {
+            if (digit === 0 || digit === 5) {
+              won = true
+              payout = Math.round(b.amount * 4.5)
+            }
+          } else if (sel === 'big') {
+            if (digit >= 5) {
+              won = true
+              payout = Math.round(b.amount * 2.0)
+            }
+          } else if (sel === 'small') {
+            if (digit < 5) {
+              won = true
+              payout = Math.round(b.amount * 2.0)
+            }
+          } else if (sel === String(digit)) {
+            won = true
+            payout = Math.round(b.amount * 9.0)
+          }
+
+          const status = won ? 'WON' : 'LOST'
+          await supabase.from('bets').update({ status, payout }).eq('id', b.id)
+
+          if (won && payout > 0) {
+            const { data: wal } = await supabase
+              .from('wallets')
+              .select('balance')
+              .eq('user_id', b.user_id)
+              .single()
+
+            if (wal) {
+              const newBal = Number(wal.balance) + payout
+              await supabase.from('wallets').update({ balance: newBal }).eq('user_id', b.user_id)
+              await supabase.from('wallet_transactions').insert({
+                user_id: b.user_id,
+                type: 'BET_PAYOUT',
+                amount: payout,
+                balance_after: newBal,
+                reference_id: b.id,
+                description: `Won ₹${payout} on ${b.selection} (VeerGame ${issueStr})`,
+              })
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('[settleVeerRound Supabase error]:', err)
+    }
+  }
+}
+
+// Background VeerGame settlement poller
+let isVeerPolling = false
+const veerLoopInterval = setInterval(async () => {
+  if (isVeerPolling) return
+  isVeerPolling = true
+  try {
+    const [h30, h1] = await Promise.allSettled([
+      getLiveHistory(30, 1),
+      getLiveHistory(1, 1),
+    ])
+    if (h30.status === 'fulfilled' && Array.isArray(h30.value?.list)) {
+      for (const item of h30.value.list.slice(0, 5)) {
+        await settleVeerRound(item)
+      }
+    }
+    if (h1.status === 'fulfilled' && Array.isArray(h1.value?.list)) {
+      for (const item of h1.value.list.slice(0, 5)) {
+        await settleVeerRound(item)
+      }
+    }
+  } catch {} finally {
+    isVeerPolling = false
+  }
+}, 3000)
+
+if (veerLoopInterval?.unref) {
+  veerLoopInterval.unref()
+}
+
+// Background Multi-Game Loop
 const gameLoopInterval = setInterval(() => {
   const now = Date.now()
 
@@ -302,9 +499,11 @@ export async function placeBet(req, res) {
       selection: req.body.selection,
       amount: Number(req.body.amount),
       mode: (req.body.mode || 'PARITY').toUpperCase(),
+      issueNumber: req.body.issueNumber,
+      typeId: req.body.typeId || 30,
     }
 
-    const { userId, selection, amount } = validated
+    const { userId, selection, amount, issueNumber, typeId } = validated
     const modeKey = String(validated.mode || req.body.mode || 'PARITY').trim().toUpperCase()
     const cfg = GAME_MODES[modeKey] || GAME_MODES.PARITY
 
@@ -312,19 +511,23 @@ export async function placeBet(req, res) {
       return res.status(400).json({ error: 'Valid userId, selection, and amount (min ₹10) required' })
     }
 
-    // Strict Lock Window check for the specific game mode
     const now = Date.now()
     const roundNumber = Math.floor(now / cfg.durationMs)
-    const roundEndTime = (roundNumber + 1) * cfg.durationMs
-    const lockStartTime = roundEndTime - cfg.lockMs
+    const targetRound = issueNumber ? String(issueNumber) : String(roundNumber)
 
-    if (now >= lockStartTime) {
-      return res.status(400).json({
-        error: `Round is locked for ${cfg.name}. Bets are closed for this round.`,
-        roundNumber,
-        mode: cfg.id,
-        secondsRemaining: Math.ceil((roundEndTime - now) / 1000),
-      })
+    // Strict Lock Window check for the specific game mode
+    if (!issueNumber) {
+      const roundEndTime = (roundNumber + 1) * cfg.durationMs
+      const lockStartTime = roundEndTime - cfg.lockMs
+
+      if (now >= lockStartTime) {
+        return res.status(400).json({
+          error: `Round is locked for ${cfg.name}. Bets are closed for this round.`,
+          roundNumber,
+          mode: cfg.id,
+          secondsRemaining: Math.ceil((roundEndTime - now) / 1000),
+        })
+      }
     }
 
     let multiplier = 2.0
@@ -335,8 +538,9 @@ export async function placeBet(req, res) {
 
     const betRecord = {
       id: crypto.randomUUID(),
-      round_number: roundNumber,
+      round_number: targetRound,
       game_mode: cfg.id,
+      type_id: typeId || 30,
       user_id: userId,
       selection: sel,
       amount,
@@ -453,3 +657,29 @@ export async function getUserBets(req, res) {
     return res.status(500).json({ error: 'Failed to fetch user bets' })
   }
 }
+
+// 4. Live VeerGame Issue Proxy
+export async function getVeerIssue(req, res) {
+  try {
+    const typeId = Number(req.query.typeId) || 30
+    const issue = await getLiveIssue(typeId)
+    return res.json(issue)
+  } catch (err) {
+    console.error('[getVeerIssue Exception]:', err)
+    return res.status(500).json({ error: 'Failed to fetch VeerGame issue' })
+  }
+}
+
+// 5. Live VeerGame Draw History Proxy
+export async function getVeerHistory(req, res) {
+  try {
+    const typeId = Number(req.query.typeId) || 30
+    const page = Number(req.query.page) || 1
+    const history = await getLiveHistory(typeId, page)
+    return res.json(history)
+  } catch (err) {
+    console.error('[getVeerHistory Exception]:', err)
+    return res.status(500).json({ error: 'Failed to fetch VeerGame history' })
+  }
+}
+

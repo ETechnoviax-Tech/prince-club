@@ -6,7 +6,9 @@ import {
   ArrowUpRight,
   Award,
   Bell,
+  BookOpen,
   Check,
+  ChevronLeft,
   ChevronRight,
   CircleHelp,
   Clock,
@@ -14,6 +16,7 @@ import {
   Copy,
   ExternalLink,
   Flame,
+  Headphones,
   History,
   Home,
   Info,
@@ -47,6 +50,8 @@ import {
   clearAuthToken,
   fetchCurrentRound,
   fetchUserBets,
+  fetchVeerHistory,
+  fetchVeerIssue,
   fetchWallet,
   placeBet as apiPlaceBet,
   resetWallet as apiResetWallet,
@@ -145,8 +150,19 @@ function formatCredits(val) {
   return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(val)
 }
 
-function formatPeriod(round) {
-  return `2026${String(round).slice(-6)}`
+function formatPeriod(round, mode = '30s') {
+  if (!round) return ''
+  const str = String(round)
+  if (str.length >= 12) {
+    return str
+  }
+  const d = new Date()
+  const yyyy = d.getFullYear()
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  const modeCode = mode === '30s' ? '30' : mode === '1m' ? '01' : mode === '3m' ? '03' : '05'
+  const seq = String(Math.abs(Number(round) || 1831) % 10000).padStart(4, '0')
+  return `${yyyy}${mm}${dd}${modeCode}${seq}`
 }
 
 function initialSeedBets() {
@@ -305,6 +321,9 @@ export function App() {
   const [baseAmount, setBaseAmount] = useState(10)
   const [betQuantity, setBetQuantity] = useState(1)
   const [agreeTerms, setAgreeTerms] = useState(true)
+  const [gameMode, setGameMode] = useState('30s')
+  const [howToPlayOpen, setHowToPlayOpen] = useState(false)
+  const [quickMultiplier, setQuickMultiplier] = useState(1)
 
   // Toast & Notifications
   const [toast, setToast] = useState(null)
@@ -342,33 +361,75 @@ export function App() {
     return () => clearTimeout(timer)
   }, [toast])
 
-  // Backend Sync Initial & Periodic
+  // Backend Sync Initial & Periodic with VeerGame
   const syncWithBackend = useCallback(async () => {
+    const typeId = gameMode === '30s' ? 30 : gameMode === '1m' ? 1 : gameMode === '3m' ? 2 : 3
+    let synced = false
+
+    // 1. Fetch live round issue from VeerGame proxy
     try {
-      const data = await fetchCurrentRound(selectedMode)
-      setServerOnline(true)
-      if (data.roundNumber) {
-        setRoundNumber(data.roundNumber)
+      const issueData = await fetchVeerIssue(typeId)
+      if (issueData?.issueNumber) {
+        setServerOnline(true)
+        synced = true
+        setRoundNumber(issueData.issueNumber)
         setSeconds((currSec) => {
-          if (Math.abs(currSec - data.secondsRemaining) >= 2 || phase === 'result') {
-            return data.secondsRemaining
+          if (Math.abs(currSec - issueData.secondsRemaining) >= 2 || phase === 'result') {
+            return issueData.secondsRemaining
           }
           return currSec
         })
-        setPhase(data.isLocked ? 'locked' : 'open')
-        if (Array.isArray(data.history) && data.history.length > 0) {
-          const formatted = data.history.map((h) => ({
-            round: h.roundNumber,
-            digit: h.digit,
-            color: h.color,
-            size: h.size,
-            multiplier: h.color === 'violet' ? 4.5 : 2.0,
-          }))
-          setHistory(formatted)
+        setPhase(issueData.isLocked ? 'locked' : 'open')
+      }
+    } catch {}
+
+    // 2. Fetch live official draw history from VeerGame proxy
+    try {
+      const historyData = await fetchVeerHistory(typeId, 1)
+      if (Array.isArray(historyData?.list) && historyData.list.length > 0) {
+        const formatted = historyData.list.map((h) => ({
+          round: h.issueNumber,
+          digit: h.digit,
+          color: h.color,
+          rawColour: h.rawColour,
+          size: h.size,
+          premium: h.premium,
+          multiplier: h.color === 'violet' ? 4.5 : 2.0,
+        }))
+        setHistory(formatted)
+        if (formatted[0]) {
+          setLastOutcome(formatted[0])
         }
       }
-    } catch {
-      setServerOnline(false)
+    } catch {}
+
+    // 3. Fallback if VeerGame is slow or offline
+    if (!synced) {
+      try {
+        const data = await fetchCurrentRound(selectedMode)
+        setServerOnline(true)
+        if (data.roundNumber) {
+          setRoundNumber(data.roundNumber)
+          setSeconds((currSec) => {
+            if (Math.abs(currSec - data.secondsRemaining) >= 2 || phase === 'result') {
+              return data.secondsRemaining
+            }
+            return currSec
+          })
+          setPhase(data.isLocked ? 'locked' : 'open')
+          if (Array.isArray(data.history) && data.history.length > 0) {
+            const formatted = data.history.map((h) => ({
+              round: h.roundNumber,
+              digit: h.digit,
+              color: h.color,
+              multiplier: h.color === 'violet' ? 4.5 : 2.0,
+            }))
+            setHistory(formatted)
+          }
+        }
+      } catch {
+        setServerOnline(false)
+      }
     }
 
     // Authoritative Server Wallet Balance Sync
@@ -385,7 +446,7 @@ export function App() {
       if (Array.isArray(betsData?.bets) && betsData.bets.length > 0) {
         const formatted = betsData.bets.map((b) => ({
           id: b.id,
-          round: Number(b.round_number),
+          round: String(b.round_number),
           selection: String(b.selection),
           type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase())
             ? 'color'
@@ -416,7 +477,7 @@ export function App() {
         setBets(formatted)
       }
     } catch {}
-  }, [userId, phase, selectedMode])
+  }, [userId, gameMode, phase, selectedMode])
 
   useEffect(() => {
     syncWithBackend()
@@ -459,7 +520,7 @@ export function App() {
           let won = false
           if (b.type === 'color' && b.selection === outcome.color) won = true
           if (b.type === 'number' && Number(b.selection) === outcome.digit) won = true
-          if (b.type === 'size' && b.selection === (outcome.digit >= 5 ? 'big' : 'small')) won = true
+          if (b.type === 'size' && (String(b.selection).toLowerCase() === (outcome.digit >= 5 ? 'big' : 'small'))) won = true
 
           const payout = won ? Math.round(b.amount * b.multiplier) : 0
           if (won) {
@@ -543,6 +604,21 @@ export function App() {
     setBetSheetOpen(true)
   }
 
+  // Pick random lottery number
+  const handleRandomBet = () => {
+    if (isLocked) {
+      setToast({
+        type: 'warning',
+        title: 'Round Locked',
+        detail: 'Bets are closed for this period. Please wait for next round.',
+      })
+      return
+    }
+    sound.playTick()
+    const randomDigit = Math.floor(Math.random() * 10)
+    handleSelectTarget('number', randomDigit, 9.0)
+  }
+
   // Confirm bet placement
   const handleConfirmBet = async () => {
     if (!selectedTarget) return
@@ -571,8 +647,13 @@ export function App() {
 
     // Try backend placeBet
     try {
+      const typeId = gameMode === '30s' ? 30 : gameMode === '1m' ? 1 : gameMode === '3m' ? 2 : 3
       if (serverOnline) {
-        const res = await apiPlaceBet(userId, String(selectedTarget.val), totalBetAmount, selectedMode)
+        const res = await apiPlaceBet(userId, String(selectedTarget.val), totalBetAmount, {
+          mode: selectedMode,
+          issueNumber: String(roundNumber),
+          typeId,
+        })
         if (res?.newBalance !== undefined) {
           setBalance(res.newBalance)
         } else {
@@ -642,78 +723,59 @@ export function App() {
   return (
     <div className="mobile-app-wrapper">
       <div className="mobile-app-container">
-        {/* TOP STATUS BAR */}
-        <header className="mobile-topbar">
-          <div
-            className="topbar-user"
+        {/* TOP STATUS BAR - RAJALUCK HEADER */}
+        <header className="raja-header">
+          <button
+            className="raja-circle-btn"
             onClick={() => {
               setAuthMode('login')
               setAuthModalOpen(true)
             }}
-            role="button"
-            tabIndex={0}
-            title={currentUser ? `Logged in as ${currentUser.username} (Tap to manage)` : 'Tap to Sign In / Sign Up'}
+            title={currentUser ? `User: ${currentUser.username}` : "Sign In / Switch Account"}
           >
-            <div className="user-avatar">
-              {currentUser ? <UserCheck size={14} className="avatar-icon" /> : <Sparkles size={14} className="avatar-icon" />}
-            </div>
-            <div className="user-meta">
-              <span className="user-name">{currentUser ? currentUser.username : 'Prince VIP'}</span>
-              <span className="user-id">{currentUser ? 'VIP Member' : 'Tap to Login'}</span>
-            </div>
+            <ChevronLeft size={22} />
+          </button>
+          
+          <div className="raja-brand">
+            <span className="raja-crown">👑</span>
+            <span className="raja-brand-name">VEERGAME</span>
           </div>
 
-          <div className="topbar-actions">
+          <div className="raja-header-actions">
             {/* Live Server Indicator */}
             <div
               className={`server-indicator ${serverOnline ? 'online' : 'offline'}`}
               title={serverOnline ? 'Synced with Express & Supabase' : 'Offline Local Mode'}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 4 }}
             >
               <span className="status-dot" />
-              <span className="indicator-label">{serverOnline ? 'Live' : 'Local'}</span>
+              <span className="indicator-label" style={{ fontSize: 11, color: '#94a3b8' }}>{serverOnline ? 'Live' : 'Local'}</span>
             </div>
 
             {/* VIP Daily Check-In Bonus */}
             <button
-              className="topbar-vip-btn"
+              className="raja-circle-btn"
               onClick={handleClaimVIPBonus}
               disabled={vipBonusLoading}
               title="Claim Daily VIP Bonus (₹15-₹50)"
+              style={{ color: '#f59e0b' }}
             >
-              <Gift size={13} className="text-amber" />
-              <span>VIP ₹</span>
+              <Gift size={16} />
             </button>
-
-            {/* Audio Mute Toggle */}
             <button
-              className="topbar-icon-btn"
-              onClick={toggleMute}
-              aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
-              title={isMuted ? 'Unmute sound' : 'Mute sound'}
+              className="raja-circle-btn"
+              onClick={() => setHowToPlayOpen(true)}
+              title="Customer Support & Rules"
             >
-              {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+              <Headphones size={18} />
             </button>
-
-            {/* Balance Card Chip */}
-            <div
-              className="topbar-balance-chip"
-              onClick={() => setActiveTab('wallet')}
-              role="button"
-              tabIndex={0}
+            <button
+              className="raja-circle-btn"
+              onClick={toggleMute}
+              title={isMuted ? "Unmute sound" : "Mute sound"}
             >
-              <Wallet size={14} className="balance-icon" />
-              <span className="balance-val">₹{formatCredits(balance)}</span>
-              <button
-                className="chip-plus-btn"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  setDepositModalOpen(true)
-                }}
-                title="Quick UPI Deposit"
-              >
-                <Plus size={12} />
-              </button>
-            </div>
+              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
           </div>
         </header>
 
@@ -730,133 +792,201 @@ export function App() {
         <main className="mobile-main">
           {activeTab === 'win' && (
             <div className="win-view-content">
-              {/* GAME LEVEL / MODE SELECTOR TABS */}
-              <div className="mode-selector-bar">
-                {GAME_LEVELS.map((m) => (
+              {/* RAJALUCK HERO WALLET CARD */}
+              <div className="raja-wallet-card">
+                <div className="raja-wallet-header">
+                  <div className="raja-balance-row">
+                    <span className="raja-balance-num">{balance.toFixed(2)}</span>
+                    <button
+                      className="raja-refresh-btn"
+                      onClick={syncWithBackend}
+                      title="Refresh balance"
+                    >
+                      <RefreshCw size={17} />
+                    </button>
+                  </div>
+                  <div className="raja-wallet-subtitle">
+                    <span className="raja-wallet-icon">👛</span>
+                    <span>wallet balance</span>
+                  </div>
+                </div>
+
+                <div className="raja-wallet-actions">
                   <button
-                    key={m.id}
-                    className={`mode-tab-btn ${selectedMode === m.id ? 'active' : ''}`}
-                    onClick={() => setSelectedMode(m.id)}
+                    className="raja-btn-withdraw"
+                    onClick={() => setWithdrawModalOpen(true)}
                   >
-                    <span className="mode-tab-title">{m.label}</span>
-                    <span className="mode-tab-badge">{m.time}</span>
+                    Withdraw
                   </button>
-                ))}
+                  <button
+                    className="raja-btn-deposit"
+                    onClick={() => setDepositModalOpen(true)}
+                  >
+                    Deposit
+                  </button>
+                </div>
               </div>
 
-              {/* GAME STAGE & TIMER CARD */}
-              <div className={`game-stage-card ${isLocked ? 'is-locked' : ''}`}>
-                <div className="stage-topline">
-                  <div className="period-box">
-                    <span className="period-label">Period ({activeLevel.label})</span>
-                    <strong className="period-num">{formatPeriod(roundNumber)}</strong>
+              {/* WIN GO 4-TIME SELECTOR BAR */}
+              <div className="raja-modes-bar">
+                {[
+                  { id: '30s', top: 'Win Go', sub: '30s' },
+                  { id: '1m', top: 'Win Go', sub: '1Min' },
+                  { id: '3m', top: 'Win Go', sub: '3Min' },
+                  { id: '5m', top: 'Win Go', sub: '5Min' },
+                ].map((m) => {
+                  const isActive = gameMode === m.id
+                  return (
+                    <button
+                      key={m.id}
+                      className={`raja-mode-tab ${isActive ? 'active' : ''}`}
+                      onClick={() => {
+                        setGameMode(m.id)
+                        sound.playTick()
+                      }}
+                    >
+                      <div className={`raja-clock-icon-wrap ${isActive ? 'active' : ''}`}>
+                        <Clock size={20} />
+                      </div>
+                      <span className="raja-mode-title">{m.top}</span>
+                      <span className="raja-mode-sub">{m.sub}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* GAME STAGE & COUNTDOWN CARD */}
+              <div className="raja-countdown-card">
+                {/* Left Section */}
+                <div className="raja-cd-left">
+                  <button
+                    className="raja-howtoplay-btn"
+                    onClick={() => setHowToPlayOpen(true)}
+                  >
+                    <BookOpen size={13} /> How to play
+                  </button>
+                  <div className="raja-mode-active-text">
+                    {gameMode === '30s' ? 'Win Go 30s' : gameMode === '1m' ? 'Win Go 1Min' : gameMode === '3m' ? 'Win Go 3Min' : 'Win Go 5Min'}
                   </div>
-                  <div className={`status-badge-chip ${isLocked ? 'locked' : 'open'}`}>
-                    {isLocked ? <Lock size={12} /> : <Clock size={12} />}
-                    <span>{phase === 'result' ? 'Drawing' : isLocked ? 'Locked' : 'Open'}</span>
+                  <div className="raja-recent-balls">
+                    {history.slice(0, 5).map((h, i) => {
+                      const isDual0 = Number(h.digit) === 0
+                      const isDual5 = Number(h.digit) === 5
+                      const ballClass = isDual0
+                        ? 'raja-ball-mini raja-ball-mini--dual-0'
+                        : isDual5
+                        ? 'raja-ball-mini raja-ball-mini--dual-5'
+                        : `raja-ball-mini raja-ball-mini--${h.color}`
+                      return (
+                        <div key={i} className={ballClass}>
+                          <span>{h.digit}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
 
-                <div className="stage-clock-area">
-                  <div className="clock-countdown-unit">
-                    <span className="clock-caption">
-                      {phase === 'result'
-                        ? 'Round Outcome'
-                        : isLocked
-                        ? 'Selections Closing'
-                        : 'Count Down'}
-                    </span>
-                    <div className="clock-digits">
-                      {phase === 'result' && lastOutcome ? (
-                        <div className={`result-reveal-pill pill-${lastOutcome.color}`}>
-                          <span className="digit">{lastOutcome.digit}</span>
-                          <span className="label">{lastOutcome.color.toUpperCase()}</span>
-                        </div>
-                      ) : (
-                        <div className="digital-timer">
-                          <span className="time-block">0</span>
-                          <span className="time-block">0</span>
-                          <span className="time-sep">:</span>
-                          <span className={`time-block ${seconds <= activeLevel.lock ? 'urgent' : ''}`}>
-                            {String(seconds).padStart(2, '0')[0]}
-                          </span>
-                          <span className={`time-block ${seconds <= activeLevel.lock ? 'urgent' : ''}`}>
-                            {String(seconds).padStart(2, '0')[1]}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                {/* Center Divider with notch */}
+                <div className="raja-cd-divider" />
 
-                  {/* Visual Color Indicators */}
-                  <div className="stage-balls">
-                    <span className="stage-dot dot-green" />
-                    <span className="stage-dot dot-violet" />
-                    <span className="stage-dot dot-red" />
+                {/* Right Section */}
+                <div className="raja-cd-right">
+                  <div className="raja-cd-title">time of purchase</div>
+                  <div className="raja-timer-boxes">
+                    <span className="raja-tbox">{String(Math.floor(seconds / 60)).padStart(2, '0')[0]}</span>
+                    <span className="raja-tbox">{String(Math.floor(seconds / 60)).padStart(2, '0')[1]}</span>
+                    <span className="raja-tcolon">:</span>
+                    <span className={`raja-tbox ${seconds <= 8 ? 'urgent' : ''}`}>{String(seconds % 60).padStart(2, '0')[0]}</span>
+                    <span className={`raja-tbox ${seconds <= 8 ? 'urgent' : ''}`}>{String(seconds % 60).padStart(2, '0')[1]}</span>
                   </div>
+                  <div className="raja-period-num">{formatPeriod(roundNumber, gameMode)}</div>
                 </div>
-
-                {isLocked && phase !== 'result' && (
-                  <div className="stage-lock-notice">
-                    <Lock size={13} />
-                    <span>Locked! Preparing next result...</span>
-                  </div>
-                )}
               </div>
 
               {/* PRIMARY 3 COLOR ACTION BUTTONS */}
-              <div className="color-action-buttons">
-                {COLOR_OPTIONS.map((c) => (
-                  <button
-                    key={c.id}
-                    className={`color-btn btn-${c.id}`}
-                    disabled={isLocked}
-                    onClick={() => handleSelectTarget('color', c.id, c.multiplier)}
-                  >
-                    <span className="btn-label">{c.label}</span>
-                    <span className="btn-multiplier">{c.multiplier.toFixed(1)}x</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* BIG / SMALL PREDICTION BUTTONS */}
-              <div className="size-action-buttons">
+              <div className="raja-color-buttons">
                 <button
-                  className="size-btn btn-big"
+                  className="raja-color-btn raja-btn--green"
                   disabled={isLocked}
-                  onClick={() => handleSelectTarget('size', 'big', 2.0)}
+                  onClick={() => handleSelectTarget('color', 'green', 2.0)}
                 >
-                  <span className="btn-label">Big (5-9)</span>
-                  <span className="btn-multiplier">2.0x</span>
+                  green
                 </button>
                 <button
-                  className="size-btn btn-small"
+                  className="raja-color-btn raja-btn--purple"
                   disabled={isLocked}
-                  onClick={() => handleSelectTarget('size', 'small', 2.0)}
+                  onClick={() => handleSelectTarget('color', 'violet', 4.5)}
                 >
-                  <span className="btn-label">Small (0-4)</span>
-                  <span className="btn-multiplier">2.0x</span>
+                  purple
+                </button>
+                <button
+                  className="raja-color-btn raja-btn--red"
+                  disabled={isLocked}
+                  onClick={() => handleSelectTarget('color', 'red', 2.0)}
+                >
+                  red
                 </button>
               </div>
 
-              {/* NUMBER SELECTION GRID (0-9) */}
-              <div className="number-grid-card">
-                <div className="card-subtitle">Select Number (9.0x Payout)</div>
-                <div className="digits-flex-grid">
-                  {NUMBER_OPTIONS.map((num) => {
-                    const isDual = num.dual
-                    return (
-                      <button
-                        key={num.digit}
-                        className={`digit-btn digit-${num.color} ${isDual ? `dual-${num.dual}` : ''}`}
-                        disabled={isLocked}
-                        onClick={() => handleSelectTarget('number', num.digit, 9.0)}
-                      >
-                        <span className="digit-val">{num.digit}</span>
-                      </button>
-                    )
-                  })}
+              {/* NUMBER LOTTERY BALLS (0-9) 2X5 GRID */}
+              <div className="raja-numbers-card">
+                <div className="raja-numbers-grid">
+                  {NUMBER_OPTIONS.map((num) => (
+                    <button
+                      key={num.digit}
+                      className={`raja-lottery-ball ball-${num.digit} ${num.dual ? `ball-dual-${num.dual}` : ''}`}
+                      disabled={isLocked}
+                      onClick={() => handleSelectTarget('number', num.digit, 9.0)}
+                    >
+                      <div className="raja-ball-inner">
+                        <span className="raja-ball-digit">{num.digit}</span>
+                      </div>
+                    </button>
+                  ))}
                 </div>
+              </div>
+
+              {/* MULTIPLIER & RANDOM BET BAR */}
+              <div className="raja-multiplier-bar">
+                <button
+                  className="raja-random-btn"
+                  disabled={isLocked}
+                  onClick={handleRandomBet}
+                >
+                  random bet
+                </button>
+                <div className="raja-multiplier-chips">
+                  {[1, 5, 10, 20, 50, 100].map((mul) => (
+                    <button
+                      key={mul}
+                      className={`raja-mul-chip ${quickMultiplier === mul ? 'active' : ''}`}
+                      onClick={() => {
+                        setQuickMultiplier(mul)
+                        setBetQuantity(mul)
+                      }}
+                    >
+                      X{mul}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* BIG / SMALL SPLIT BUTTONS */}
+              <div className="raja-bigsmall-bar">
+                <button
+                  className="raja-bs-btn raja-btn--big"
+                  disabled={isLocked}
+                  onClick={() => handleSelectTarget('size', 'Big', 2.0)}
+                >
+                  Big
+                </button>
+                <button
+                  className="raja-bs-btn raja-btn--small"
+                  disabled={isLocked}
+                  onClick={() => handleSelectTarget('size', 'Small', 2.0)}
+                >
+                  Small
+                </button>
               </div>
 
               {/* SUB-TABS: RECORD / CHART / MY BETS */}
@@ -1444,6 +1574,144 @@ export function App() {
           onAuthSuccess={handleAuthSuccess}
           initialMode={authMode}
         />
+
+        {/* HOW TO PLAY MODAL */}
+        {howToPlayOpen && (
+          <div className="modal-overlay" onClick={() => setHowToPlayOpen(false)}>
+            <div className="modal-card raja-rules-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div className="modal-title-group">
+                  <div className="modal-icon-badge" style={{ background: '#f59e0b' }}>
+                    <BookOpen size={20} />
+                  </div>
+                  <div>
+                    <h3>Win Go - How to Play</h3>
+                    <p>Calculation & Presale Rules</p>
+                  </div>
+                </div>
+                <button className="icon-close-button" onClick={() => setHowToPlayOpen(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="raja-rules-body">
+                <div className="raja-rule-item">
+                  <strong>⏱️ Period Rules</strong>
+                  <p>Selections are open for the period duration. The final 5 seconds before outcome draw are locked for settlement.</p>
+                </div>
+                <div className="raja-rule-item">
+                  <strong>🟢 Green (1, 3, 7, 9)</strong>
+                  <p>Returns <strong>2.0X</strong> multiplier. If number 5 is drawn, returns 1.5X.</p>
+                </div>
+                <div className="raja-rule-item">
+                  <strong>🔴 Red (2, 4, 6, 8)</strong>
+                  <p>Returns <strong>2.0X</strong> multiplier. If number 0 is drawn, returns 1.5X.</p>
+                </div>
+                <div className="raja-rule-item">
+                  <strong>🟣 Violet (0, 5)</strong>
+                  <p>Returns <strong>4.5X</strong> multiplier.</p>
+                </div>
+                <div className="raja-rule-item">
+                  <strong>🔢 Number (0–9)</strong>
+                  <p>Direct number match returns <strong>9.0X</strong> payout!</p>
+                </div>
+                <div className="raja-rule-item">
+                  <strong>⚖️ Big / Small</strong>
+                  <p>Big (5, 6, 7, 8, 9) or Small (0, 1, 2, 3, 4) returns <strong>2.0X</strong> payout.</p>
+                </div>
+              </div>
+
+              <button className="primary-action-btn" onClick={() => setHowToPlayOpen(false)}>
+                Got it
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* WITHDRAW MODAL */}
+        {withdrawModalOpen && (
+          <div className="modal-overlay" onClick={() => setWithdrawModalOpen(false)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <div className="modal-title-group">
+                  <div className="modal-icon-badge" style={{ background: '#f59e0b' }}>
+                    <Wallet size={20} />
+                  </div>
+                  <div>
+                    <h3>Withdraw Balance</h3>
+                    <p>Instant payout to UPI or Bank Account</p>
+                  </div>
+                </div>
+                <button className="icon-close-button" onClick={() => setWithdrawModalOpen(false)}>
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="modal-step-body">
+                <div className="payment-details-card">
+                  <div className="detail-row">
+                    <span className="detail-label">Available Balance:</span>
+                    <strong className="detail-val-highlight">₹{balance.toFixed(2)}</strong>
+                  </div>
+                </div>
+
+                <label className="input-label">Enter Withdrawal Amount (₹)</label>
+                <div className="custom-input-group">
+                  <span className="currency-prefix">₹</span>
+                  <input
+                    type="number"
+                    min="100"
+                    max="50000"
+                    placeholder="Enter amount (Min ₹100)"
+                    className="custom-amount-input"
+                    id="withdraw-amount-input"
+                  />
+                </div>
+
+                <label className="input-label">Your UPI ID / VPA</label>
+                <input
+                  type="text"
+                  placeholder="e.g. mobile@paytm or name@oksbi"
+                  className="custom-amount-input"
+                  style={{ paddingLeft: '14px' }}
+                  id="withdraw-upi-input"
+                />
+
+                <button
+                  className="primary-action-btn"
+                  style={{ background: 'linear-gradient(135deg, #f5a623, #e67e22)', color: '#1a0e2e', fontWeight: '800' }}
+                  onClick={() => {
+                    const amtInput = document.getElementById('withdraw-amount-input')
+                    const upiInput = document.getElementById('withdraw-upi-input')
+                    const amt = Number(amtInput?.value)
+                    const upi = upiInput?.value?.trim()
+                    if (!amt || amt < 100) {
+                      setToast({ type: 'loss', title: 'Invalid Amount', detail: 'Minimum withdrawal amount is ₹100.' })
+                      return
+                    }
+                    if (amt > balance) {
+                      setToast({ type: 'loss', title: 'Insufficient Funds', detail: 'Withdrawal exceeds available balance.' })
+                      return
+                    }
+                    if (!upi || !upi.includes('@')) {
+                      setToast({ type: 'loss', title: 'Invalid UPI ID', detail: 'Please enter a valid UPI VPA (e.g. name@oksbi).' })
+                      return
+                    }
+                    setBalance((b) => b - amt)
+                    setWithdrawModalOpen(false)
+                    setToast({
+                      type: 'success',
+                      title: 'Withdrawal Submitted',
+                      detail: `₹${amt} transfer initiated to ${upi}. Arrives within 10-30 mins.`,
+                    })
+                  }}
+                >
+                  Confirm Withdrawal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* TOAST NOTIFICATION POPUP */}
         {toast && (
