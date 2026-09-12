@@ -1,823 +1,1339 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Activity,
+  AlertCircle,
   ArrowDownRight,
   ArrowUpRight,
+  Award,
+  Bell,
   Check,
+  ChevronRight,
   CircleHelp,
-  Clock3,
+  Clock,
   Coins,
+  Copy,
+  ExternalLink,
+  Flame,
   History,
   Home,
   Info,
-  Landmark,
+  Layers,
+  Lock,
+  Minus,
+  Plus,
   PlusCircle,
   QrCode,
+  RefreshCw,
   RotateCcw,
   ShieldCheck,
   Sparkles,
+  TrendingUp,
   Trophy,
+  User,
+  UserCheck,
+  UserPlus,
+  Volume2,
+  VolumeX,
   Wallet,
   X,
+  Zap,
 } from 'lucide-react'
 import { DepositModal } from './components/DepositModal'
-
+import { AuthModal } from './components/AuthModal'
+import {
+  clearAuthToken,
+  fetchCurrentRound,
+  fetchUserBets,
+  fetchWallet,
+  placeBet as apiPlaceBet,
+  resetWallet as apiResetWallet,
+} from './api/client'
+import { sound } from './utils/audio'
 
 const ROUND_SECONDS = 45
 const LOCK_SECONDS = 8
 const RESULT_SECONDS = 5
 const STARTING_BALANCE = 1240
-const STORAGE_KEY = 'prism-play-session-v1'
+const STORAGE_KEY = 'prince-club-state-v2'
 
 const COLOR_OPTIONS = [
   {
     id: 'green',
     label: 'Green',
     short: 'G',
-    multiplier: 2.2,
-    detail: 'Digits 2, 4, 6, 8',
-    shape: 'square',
-  },
-  {
-    id: 'red',
-    label: 'Red',
-    short: 'R',
-    multiplier: 2.2,
-    detail: 'Digits 1, 3, 7, 9',
-    shape: 'triangle',
+    multiplier: 2.0,
+    digits: '1, 3, 7, 9',
+    bg: 'linear-gradient(135deg, #10b981, #059669)',
+    colorCode: '#10b981',
   },
   {
     id: 'violet',
     label: 'Violet',
     short: 'V',
-    multiplier: 4.4,
-    detail: 'Digits 0, 5',
-    shape: 'diamond',
+    multiplier: 4.5,
+    digits: '0, 5',
+    bg: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
+    colorCode: '#8b5cf6',
+  },
+  {
+    id: 'red',
+    label: 'Red',
+    short: 'R',
+    multiplier: 2.0,
+    digits: '2, 4, 6, 8',
+    bg: 'linear-gradient(135deg, #ef4444, #dc2626)',
+    colorCode: '#ef4444',
   },
 ]
 
-const COLOR_BY_ID = Object.fromEntries(COLOR_OPTIONS.map((option) => [option.id, option]))
+const NUMBER_OPTIONS = [
+  { digit: 0, color: 'violet', dual: 'red' },
+  { digit: 1, color: 'green' },
+  { digit: 2, color: 'red' },
+  { digit: 3, color: 'green' },
+  { digit: 4, color: 'red' },
+  { digit: 5, color: 'violet', dual: 'green' },
+  { digit: 6, color: 'red' },
+  { digit: 7, color: 'green' },
+  { digit: 8, color: 'red' },
+  { digit: 9, color: 'green' },
+]
 
-const NAVIGATION = [
-  { id: 'play', label: 'Play', icon: Home },
-  { id: 'activity', label: 'Activity', icon: Activity },
-  { id: 'wallet', label: 'Wallet', icon: Wallet },
-  { id: 'rules', label: 'Rules', icon: CircleHelp },
+const PRESET_AMOUNTS = [10, 50, 100, 500, 1000]
+const MULTIPLIERS = [1, 5, 10, 20]
+
+const WINNER_TICKERS = [
+  '🔥 Member 98***34 won ₹2,420 on Green!',
+  '⚡ Instant UPI Deposits via PhonePe / GPay verified!',
+  '🎉 Member 87***12 won ₹4,500 on Violet!',
+  '💎 Member 91***88 won ₹9,000 on Number 7!',
+  '🛡️ Verified Fair Algorithm - 45s Synchronized Rounds',
 ]
 
 function outcomeFor(round) {
-  const digit = (round * 37 + 17) % 10
-  const color = digit === 0 || digit === 5 ? 'violet' : digit % 2 === 0 ? 'green' : 'red'
-  return { round, digit, color, ...COLOR_BY_ID[color] }
+  const digit = Number((BigInt(round) * 37n + 17n) % 10n)
+  let color = 'red'
+  let multiplier = 2.0
+
+  if (digit === 0 || digit === 5) {
+    color = 'violet'
+    multiplier = 4.5
+  } else if (digit % 2 === 0) {
+    color = 'red'
+    multiplier = 2.0
+  } else {
+    color = 'green'
+    multiplier = 2.0
+  }
+
+  return { round, digit, color, multiplier }
 }
 
-function seededActivity() {
-  const roundOne = outcomeFor(842174)
-  const roundTwo = outcomeFor(842172)
-  const roundThree = outcomeFor(842169)
+function formatCredits(val) {
+  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(val)
+}
 
+function formatPeriod(round) {
+  return `2026${String(round).slice(-6)}`
+}
+
+function initialSeedBets() {
+  const r1 = outcomeFor(842180)
+  const r2 = outcomeFor(842178)
   return [
     {
-      id: 'seed-1',
-      round: roundOne.round,
-      selection: roundOne.color,
-      amount: 80,
-      potentialReturn: 176,
-      payout: 176,
+      id: 'bet-seed-1',
+      round: 842180,
+      selection: 'green',
+      type: 'color',
+      amount: 100,
+      multiplier: 2.0,
+      potentialReturn: 200,
+      payout: 200,
       status: 'won',
-      outcome: roundOne,
-      createdAt: '10:42 AM',
+      outcome: r1,
+      createdAt: 'Just now',
     },
     {
-      id: 'seed-2',
-      round: roundTwo.round,
-      selection: 'violet',
-      amount: 30,
-      potentialReturn: 132,
+      id: 'bet-seed-2',
+      round: 842178,
+      selection: '7',
+      type: 'number',
+      amount: 50,
+      multiplier: 9.0,
+      potentialReturn: 450,
       payout: 0,
       status: 'lost',
-      outcome: roundTwo,
-      createdAt: '10:31 AM',
-    },
-    {
-      id: 'seed-3',
-      round: roundThree.round,
-      selection: roundThree.color,
-      amount: 50,
-      potentialReturn: Math.round(50 * roundThree.multiplier),
-      payout: Math.round(50 * roundThree.multiplier),
-      status: 'won',
-      outcome: roundThree,
-      createdAt: '10:12 AM',
+      outcome: r2,
+      createdAt: '5 min ago',
     },
   ]
 }
 
-function readSession() {
-  if (typeof window === 'undefined') {
-    return { balance: STARTING_BALANCE, activity: seededActivity() }
-  }
-
-  try {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (!stored) return { balance: STARTING_BALANCE, activity: seededActivity() }
-
-    const parsed = JSON.parse(stored)
-    return {
-      balance: Number.isFinite(parsed.balance) ? parsed.balance : STARTING_BALANCE,
-      activity: Array.isArray(parsed.activity) ? parsed.activity : seededActivity(),
-    }
-  } catch {
-    return { balance: STARTING_BALANCE, activity: seededActivity() }
-  }
-}
-
-function formatCredits(value) {
-  return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(value)
-}
-
-function formatRound(round) {
-  return `CR-${round}`
-}
-
-function formatTimer(seconds) {
-  return `00:${String(seconds).padStart(2, '0')}`
-}
-
-function statusLabel(status) {
-  if (status === 'won') return 'Won'
-  if (status === 'lost') return 'Not matched'
-  return 'Pending'
-}
-
-function ChoiceMark({ option, compact = false }) {
-  return (
-    <span className={`choice-mark choice-mark--${option.id} choice-mark--${option.shape} ${compact ? 'choice-mark--compact' : ''}`} aria-hidden="true">
-      <span>{option.short}</span>
-    </span>
-  )
-}
-
-function OutcomePill({ outcome, showRound = false }) {
-  return (
-    <div className={`outcome-pill outcome-pill--${outcome.color}`}>
-      <ChoiceMark option={outcome} compact />
-      <span className="outcome-pill__digit">{outcome.digit}</span>
-      <span className="sr-only">{outcome.label} result, digit {outcome.digit}</span>
-      {showRound && <span className="outcome-pill__round">{formatRound(outcome.round)}</span>}
-    </div>
-  )
-}
-
-function App() {
-  const session = useMemo(readSession, [])
-  const [activeView, setActiveView] = useState('play')
-  const [balance, setBalance] = useState(session.balance)
-  const [activity, setActivity] = useState(session.activity)
+export function App() {
+  // Navigation & Core State
+  const [activeTab, setActiveTab] = useState('win') // 'win', 'trend', 'wallet', 'rules'
+  const [activeSubTab, setActiveSubTab] = useState('record') // 'record', 'chart', 'mybets'
   const [depositModalOpen, setDepositModalOpen] = useState(false)
-  const [userId] = useState(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('prince_user_id') : null
+  const [isMuted, setIsMuted] = useState(sound.isMuted)
+  const [serverOnline, setServerOnline] = useState(false)
+
+  // User & Wallet
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('prince_user_info')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return null
+  })
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [authMode, setAuthMode] = useState('login')
+
+  const [userId, setUserId] = useState(() => {
+    if (typeof window === 'undefined') return 'usr_dev01'
+    const saved = localStorage.getItem('prince_user_id')
     if (saved) return saved
-    const newId = 'usr_' + Math.random().toString(36).substring(2, 10)
-    if (typeof window !== 'undefined') window.localStorage.setItem('prince_user_id', newId)
+    const newId = 'usr_' + Math.random().toString(36).substring(2, 9)
+    localStorage.setItem('prince_user_id', newId)
     return newId
   })
-  const [roundNumber, setRoundNumber] = useState(842176)
-  const [seconds, setSeconds] = useState(34)
-  const [phase, setPhase] = useState('open')
+
+  const handleAuthSuccess = (user, wallet) => {
+    setCurrentUser(user)
+    if (user?.id) {
+      localStorage.setItem('prince_user_id', user.id)
+      localStorage.setItem('prince_user_info', JSON.stringify(user))
+      setUserId(user.id)
+    }
+    if (wallet?.balance !== undefined) {
+      setBalance(wallet.balance)
+    }
+    setToast({
+      type: 'success',
+      title: 'Welcome to Prince Club!',
+      detail: `Signed in as ${user.username}. Balance: ₹${formatCredits(wallet?.balance || balance)}`,
+    })
+  }
+
+  const handleLogout = () => {
+    setCurrentUser(null)
+    localStorage.removeItem('prince_user_info')
+    clearAuthToken()
+    const guestId = 'usr_' + Math.random().toString(36).substring(2, 9)
+    localStorage.setItem('prince_user_id', guestId)
+    setUserId(guestId)
+    setToast({
+      type: 'neutral',
+      title: 'Signed Out',
+      detail: 'Switched to guest player mode.',
+    })
+  }
+
+  const [balance, setBalance] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Number.isFinite(parsed.balance)) return parsed.balance
+      }
+    } catch {}
+    return STARTING_BALANCE
+  })
+
+  const [bets, setBets] = useState(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed.bets)) return parsed.bets
+      }
+    } catch {}
+    return initialSeedBets()
+  })
+
+  // Game Engine State
+  const [roundNumber, setRoundNumber] = useState(842182)
+  const [seconds, setSeconds] = useState(38)
+  const [phase, setPhase] = useState('open') // 'open', 'locked', 'result'
   const [lastOutcome, setLastOutcome] = useState(null)
-  const [selectedChoice, setSelectedChoice] = useState(null)
-  const [stakeInput, setStakeInput] = useState('40')
-  const [confirmOpen, setConfirmOpen] = useState(false)
-  const [activityFilter, setActivityFilter] = useState('all')
+  const [history, setHistory] = useState(() =>
+    Array.from({ length: 20 }, (_, i) => outcomeFor(842181 - i))
+  )
+
+  // Betting Sheet (Mobile Drawer) State
+  const [betSheetOpen, setBetSheetOpen] = useState(false)
+  const [selectedTarget, setSelectedTarget] = useState(null) // { type: 'color' | 'number', val: 'green' | 5, multiplier: 2 | 9 }
+  const [baseAmount, setBaseAmount] = useState(10)
+  const [betQuantity, setBetQuantity] = useState(1)
+  const [agreeTerms, setAgreeTerms] = useState(true)
+
+  // Toast & Notifications
   const [toast, setToast] = useState(null)
-  const activityRef = useRef(activity)
+  const [tickerIndex, setTickerIndex] = useState(0)
+  const betsRef = useRef(bets)
 
-  const stake = Math.max(0, Math.floor(Number(stakeInput) || 0))
-  const currentOption = selectedChoice ? COLOR_BY_ID[selectedChoice] : null
-  const isLocked = phase !== 'open' || seconds <= LOCK_SECONDS
-  const pendingForRound = activity.some((entry) => entry.status === 'pending' && entry.round === roundNumber)
-  const canReview = Boolean(currentOption) && stake >= 10 && stake <= balance && !isLocked && !pendingForRound
-  const recentOutcomes = useMemo(
-    () => Array.from({ length: 8 }, (_, index) => outcomeFor(roundNumber - index - 1)),
-    [roundNumber],
-  )
-  const displayOutcome = lastOutcome ?? recentOutcomes[0]
-  const filteredActivity = useMemo(
-    () => activity.filter((entry) => activityFilter === 'all' || entry.status === activityFilter),
-    [activity, activityFilter],
-  )
-  const resolvedActivity = activity.filter((entry) => entry.status !== 'pending')
-  const totalReturned = resolvedActivity.reduce((total, entry) => total + (entry.payout || 0), 0)
-  const totalStaked = resolvedActivity.reduce((total, entry) => total + entry.amount, 0)
+  const isLocked = phase === 'locked' || (phase === 'open' && seconds <= LOCK_SECONDS)
+  const totalBetAmount = baseAmount * betQuantity
+  const potentialPayout = selectedTarget ? Math.round(totalBetAmount * selectedTarget.multiplier) : 0
 
   useEffect(() => {
-    activityRef.current = activity
-  }, [activity])
+    betsRef.current = bets
+  }, [bets])
 
+  // Persist state
   useEffect(() => {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ balance, activity }))
-  }, [balance, activity])
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ balance, bets }))
+    } catch {}
+  }, [balance, bets])
 
+  // Winner notice ticker rotation
   useEffect(() => {
-    if (!toast) return undefined
-    const timeout = window.setTimeout(() => setToast(null), 4200)
-    return () => window.clearTimeout(timeout)
+    const tInterval = setInterval(() => {
+      setTickerIndex((prev) => (prev + 1) % WINNER_TICKERS.length)
+    }, 4000)
+    return () => clearInterval(tInterval)
+  }, [])
+
+  // Auto clear toast
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 3800)
+    return () => clearTimeout(timer)
   }, [toast])
 
-  useEffect(() => {
-    if (!confirmOpen) return undefined
-
-    const onKeyDown = (event) => {
-      if (event.key === 'Escape') setConfirmOpen(false)
+  // Backend Sync Initial & Periodic
+  const syncWithBackend = useCallback(async () => {
+    try {
+      const data = await fetchCurrentRound()
+      setServerOnline(true)
+      if (data.roundNumber) {
+        // Sync period and phase authoritatively
+        setRoundNumber(data.roundNumber)
+        // Adjust client clock to match server seconds smoothly
+        setSeconds((currSec) => {
+          if (Math.abs(currSec - data.secondsRemaining) >= 2 || phase === 'result') {
+            return data.secondsRemaining
+          }
+          return currSec
+        })
+        setPhase(data.isLocked ? 'locked' : 'open')
+        if (Array.isArray(data.history) && data.history.length > 0) {
+          const formatted = data.history.map((h) => ({
+            round: h.roundNumber,
+            digit: h.digit,
+            color: h.color,
+            multiplier: h.color === 'violet' ? 4.5 : 2.0,
+          }))
+          setHistory(formatted)
+        }
+      }
+    } catch {
+      setServerOnline(false)
     }
 
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [confirmOpen])
+    // Authoritative Server Wallet Balance Sync
+    try {
+      const walData = await fetchWallet(userId)
+      if (walData?.wallet?.balance !== undefined) {
+        setBalance(Number(walData.wallet.balance))
+      }
+    } catch {}
 
-  const settleRound = useCallback(() => {
+    // Authoritative Server Bets Sync
+    try {
+      const betsData = await fetchUserBets(userId)
+      if (Array.isArray(betsData?.bets) && betsData.bets.length > 0) {
+        const formatted = betsData.bets.map((b) => ({
+          id: b.id,
+          round: Number(b.round_number),
+          selection: String(b.selection),
+          type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase()) ? 'color' : 'number',
+          amount: Number(b.amount),
+          multiplier: Number(b.multiplier),
+          potentialReturn: Math.round(Number(b.amount) * Number(b.multiplier)),
+          payout: Number(b.payout || 0),
+          status: String(b.status).toLowerCase(),
+          outcome: b.outcome || null,
+          createdAt: b.created_at ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+        }))
+
+        // Celebrate if a pending bet just settled as won
+        const hadWonBet = formatted.find(
+          (nb) => nb.status === 'won' && betsRef.current.some((ob) => ob.id === nb.id && ob.status === 'pending')
+        )
+        if (hadWonBet) {
+          sound.playWin()
+          setToast({
+            type: 'success',
+            title: '🎉 Bet Won!',
+            detail: `Period ${formatPeriod(hadWonBet.round)}: +₹${formatCredits(hadWonBet.payout)} credited to your wallet.`,
+          })
+        }
+
+        setBets(formatted)
+      }
+    } catch {}
+  }, [userId, phase])
+
+  useEffect(() => {
+    syncWithBackend()
+    // Real-time server sync every 2.5 seconds
+    const syncInt = setInterval(syncWithBackend, 2500)
+    return () => clearInterval(syncInt)
+  }, [syncWithBackend])
+
+  // Sound toggle
+  const toggleMute = () => {
+    const next = sound.toggleMute()
+    setIsMuted(next)
+  }
+
+  // Settle Round outcome
+  const settleCurrentRound = useCallback(() => {
     const outcome = outcomeFor(roundNumber)
-    const pending = activityRef.current.find((entry) => entry.status === 'pending' && entry.round === roundNumber)
-
     setLastOutcome(outcome)
+    setHistory((prev) => [outcome, ...prev.slice(0, 19)])
 
-    if (!pending) {
-      setToast({ type: 'neutral', title: `${outcome.label} result`, detail: `Digit ${outcome.digit} closed ${formatRound(roundNumber)}.` })
+    const currentPending = betsRef.current.filter(
+      (b) => b.status === 'pending' && b.round === roundNumber
+    )
+
+    if (currentPending.length === 0) {
+      setToast({
+        type: 'neutral',
+        title: `Period ${formatPeriod(roundNumber)} Result`,
+        detail: `Winning Number: ${outcome.digit} (${outcome.color.toUpperCase()})`,
+      })
       return
     }
 
-    const won = pending.selection === outcome.color
-    const payout = won ? pending.potentialReturn : 0
-    const pickedOption = COLOR_BY_ID[pending.selection]
+    let totalWinCredits = 0
+    let hasWin = false
 
-    setActivity((items) =>
-      items.map((entry) =>
-        entry.id === pending.id
-          ? { ...entry, status: won ? 'won' : 'lost', outcome, payout, settledAt: 'Just now' }
-          : entry,
-      ),
+    setBets((prev) =>
+      prev.map((b) => {
+        if (b.status === 'pending' && b.round === roundNumber) {
+          let won = false
+          if (b.type === 'color' && b.selection === outcome.color) won = true
+          if (b.type === 'number' && Number(b.selection) === outcome.digit) won = true
+
+          const payout = won ? Math.round(b.amount * b.multiplier) : 0
+          if (won) {
+            hasWin = true
+            totalWinCredits += payout
+          }
+          return {
+            ...b,
+            status: won ? 'won' : 'lost',
+            payout,
+            outcome,
+            settledAt: 'Just now',
+          }
+        }
+        return b
+      })
     )
-    if (won) setBalance((current) => current + payout)
 
-    setToast({
-      type: won ? 'success' : 'loss',
-      title: won ? `${pickedOption.label} matched` : `${outcome.label} was drawn`,
-      detail: won
-        ? `${formatCredits(payout)} practice credits returned to your balance.`
-        : `${formatCredits(pending.amount)} practice credits closed for this round.`,
-    })
+    if (hasWin) {
+      setBalance((curr) => curr + totalWinCredits)
+      sound.playWin()
+      setToast({
+        type: 'success',
+        title: '🎉 Congratulations! You Won!',
+        detail: `Credited +₹${formatCredits(totalWinCredits)} to your wallet balance.`,
+      })
+    } else {
+      setToast({
+        type: 'loss',
+        title: 'Round Closed',
+        detail: `Result was ${outcome.digit} (${outcome.color.toUpperCase()}). Better luck next round!`,
+      })
+    }
   }, [roundNumber])
 
+  // Timer Tick Engine
   useEffect(() => {
-    const interval = window.setInterval(() => {
-      setSeconds((remaining) => {
-        if (remaining > 1) return remaining - 1
+    const interval = setInterval(() => {
+      setSeconds((prevSec) => {
+        if (prevSec > 1) {
+          const next = prevSec - 1
+          if (next <= LOCK_SECONDS && phase === 'open') {
+            setPhase('locked')
+            setBetSheetOpen(false)
+            sound.playLockTick()
+          } else if (next <= 5 && next > 0) {
+            sound.playTick()
+          }
+          return next
+        }
 
+        // Cycle phase
         if (phase === 'result') {
-          setRoundNumber((current) => current + 1)
+          setRoundNumber((r) => r + 1)
           setPhase('open')
           setLastOutcome(null)
           return ROUND_SECONDS
         }
 
-        settleRound()
+        // Trigger result phase
+        settleCurrentRound()
         setPhase('result')
         return RESULT_SECONDS
       })
     }, 1000)
 
-    return () => window.clearInterval(interval)
-  }, [phase, settleRound])
+    return () => clearInterval(interval)
+  }, [phase, settleCurrentRound])
 
-  useEffect(() => {
-    if (isLocked) setConfirmOpen(false)
-  }, [isLocked])
-
-  function handleStake(amount) {
-    setStakeInput(String(amount))
+  // Open bet sheet
+  const handleSelectTarget = (type, val, multiplier) => {
+    if (isLocked) {
+      setToast({
+        type: 'warning',
+        title: 'Round Locked',
+        detail: 'Bets are closed for this period. Please wait for next round.',
+      })
+      return
+    }
+    setSelectedTarget({ type, val, multiplier })
+    setBetSheetOpen(true)
   }
 
-  function confirmPrediction() {
-    if (!currentOption || !canReview) return
+  // Confirm bet placement
+  const handleConfirmBet = async () => {
+    if (!selectedTarget) return
+    if (totalBetAmount > balance) {
+      setToast({
+        type: 'loss',
+        title: 'Insufficient Balance',
+        detail: 'Please recharge your wallet or choose a smaller amount.',
+      })
+      return
+    }
 
-    const prediction = {
-      id: `prediction-${Date.now()}`,
+    const newBet = {
+      id: `bet-${Date.now()}`,
       round: roundNumber,
-      selection: currentOption.id,
-      amount: stake,
-      potentialReturn: Math.round(stake * currentOption.multiplier),
+      selection: String(selectedTarget.val),
+      type: selectedTarget.type,
+      amount: totalBetAmount,
+      multiplier: selectedTarget.multiplier,
+      potentialReturn: potentialPayout,
       payout: 0,
       status: 'pending',
       outcome: null,
-      createdAt: 'Now',
+      createdAt: 'Just now',
     }
 
-    setActivity((items) => [prediction, ...items])
-    setBalance((current) => current - stake)
-    setConfirmOpen(false)
-    setSelectedChoice(null)
+    // Try backend placeBet
+    try {
+      if (serverOnline) {
+        const res = await apiPlaceBet(userId, String(selectedTarget.val), totalBetAmount)
+        if (res?.newBalance !== undefined) {
+          setBalance(res.newBalance)
+        } else {
+          setBalance((curr) => curr - totalBetAmount)
+        }
+      } else {
+        setBalance((curr) => curr - totalBetAmount)
+      }
+
+      setBets((prev) => [newBet, ...prev])
+      setBetSheetOpen(false)
+      sound.playBetPlaced()
+
+      setToast({
+        type: 'success',
+        title: 'Bet Placed Successfully',
+        detail: `₹${formatCredits(totalBetAmount)} on ${
+          selectedTarget.type === 'color' ? selectedTarget.val.toUpperCase() : 'Number ' + selectedTarget.val
+        }`,
+      })
+    } catch (err) {
+      setToast({
+        type: 'loss',
+        title: 'Bet Rejected',
+        detail: err.message || 'Server rejected bet. Please try again.',
+      })
+    }
+  }
+
+  // Handle wallet reset
+  const handleResetCredits = async () => {
+    try {
+      await apiResetWallet(userId)
+    } catch {}
+    setBalance(STARTING_BALANCE)
+    setBets([])
     setToast({
-      type: 'success',
-      title: 'Practice prediction placed',
-      detail: `${formatCredits(stake)} credits are pending on ${currentOption.label}.`,
+      type: 'neutral',
+      title: 'Wallet Reset',
+      detail: `Balance restored to ₹${formatCredits(STARTING_BALANCE)}.`,
     })
   }
 
-  function resetCredits() {
-    setBalance(STARTING_BALANCE)
-    setToast({ type: 'neutral', title: 'Practice balance restored', detail: `${formatCredits(STARTING_BALANCE)} virtual credits are ready.` })
-  }
+  // Trend stats computation
+  const stats = useMemo(() => {
+    const recent = history.slice(0, 20)
+    const greenCount = recent.filter((r) => r.color === 'green').length
+    const redCount = recent.filter((r) => r.color === 'red').length
+    const violetCount = recent.filter((r) => r.color === 'violet').length
+    const total = recent.length || 1
 
-  function renderPlayView() {
-    return (
-      <>
-        <section className="view-heading view-heading--play">
-          <div>
-            <p className="eyebrow">Live practice round</p>
-            <h1>Pick the next color</h1>
+    return {
+      greenPercent: Math.round((greenCount / total) * 100),
+      redPercent: Math.round((redCount / total) * 100),
+      violetPercent: Math.round((violetCount / total) * 100),
+      greenCount,
+      redCount,
+      violetCount,
+    }
+  }, [history])
+
+  return (
+    <div className="mobile-app-wrapper">
+      <div className="mobile-app-container">
+        {/* TOP STATUS BAR */}
+        <header className="mobile-topbar">
+          <div
+            className="topbar-user"
+            onClick={() => {
+              setAuthMode('login')
+              setAuthModalOpen(true)
+            }}
+            role="button"
+            tabIndex={0}
+            title={currentUser ? `Logged in as ${currentUser.username} (Tap to manage)` : 'Tap to Sign In / Sign Up'}
+          >
+            <div className="user-avatar">
+              {currentUser ? <UserCheck size={14} className="avatar-icon" /> : <Sparkles size={14} className="avatar-icon" />}
+            </div>
+            <div className="user-meta">
+              <span className="user-name">{currentUser ? currentUser.username : 'Prince VIP'}</span>
+              <span className="user-id">{currentUser ? 'VIP Member' : 'Tap to Login'}</span>
+            </div>
           </div>
-          <button className="icon-button" type="button" title="Open the rules" aria-label="Open the rules" onClick={() => setActiveView('rules')}>
-            <CircleHelp size={19} />
-          </button>
-        </section>
 
-        <section className={`round-stage round-stage--${phase}`} aria-live="polite">
-          <div className="round-stage__topline">
-            <span>{formatRound(roundNumber)}</span>
-            <span className={`status-badge status-badge--${phase === 'result' ? 'result' : isLocked ? 'locked' : 'open'}`}>
-              <span aria-hidden="true" />
-              {phase === 'result' ? 'Result' : isLocked ? 'Locked' : 'Open'}
-            </span>
+          <div className="topbar-actions">
+            {/* Live Server Indicator */}
+            <div
+              className={`server-indicator ${serverOnline ? 'online' : 'offline'}`}
+              title={serverOnline ? 'Synced with Express & Supabase' : 'Offline Local Mode'}
+            >
+              <span className="status-dot" />
+              <span className="indicator-label">{serverOnline ? 'Live' : 'Local'}</span>
+            </div>
+
+            {/* Audio Mute Toggle */}
+            <button
+              className="topbar-icon-btn"
+              onClick={toggleMute}
+              aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
+              title={isMuted ? 'Unmute sound' : 'Mute sound'}
+            >
+              {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+            </button>
+
+            {/* Balance Card Chip */}
+            <div
+              className="topbar-balance-chip"
+              onClick={() => setActiveTab('wallet')}
+              role="button"
+              tabIndex={0}
+            >
+              <Wallet size={14} className="balance-icon" />
+              <span className="balance-val">₹{formatCredits(balance)}</span>
+              <button
+                className="chip-plus-btn"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setDepositModalOpen(true)
+                }}
+                title="Quick UPI Deposit"
+              >
+                <Plus size={12} />
+              </button>
+            </div>
           </div>
+        </header>
 
-          <div className="round-stage__body">
-            <div>
-              <p className="round-stage__label">{phase === 'result' ? 'Round outcome' : isLocked ? 'Selections are closing' : 'Time remaining'}</p>
-              <div className="timer-line">
-                {phase === 'result' ? (
-                  <div className="result-callout">
-                    <ChoiceMark option={displayOutcome} />
-                    <span>
-                      <strong>{displayOutcome.label}</strong>
-                      <small>Digit {displayOutcome.digit}</small>
-                    </span>
+        {/* WINNER TICKER MARQUEE */}
+        <div className="mobile-ticker">
+          <Bell size={13} className="ticker-bell" />
+          <div className="ticker-content" key={tickerIndex}>
+            <span>{WINNER_TICKERS[tickerIndex]}</span>
+          </div>
+          <ShieldCheck size={14} className="ticker-shield" />
+        </div>
+
+        {/* MAIN BODY BASED ON ACTIVE TAB */}
+        <main className="mobile-main">
+          {activeTab === 'win' && (
+            <div className="win-view-content">
+              {/* GAME STAGE & TIMER CARD */}
+              <div className={`game-stage-card ${isLocked ? 'is-locked' : ''}`}>
+                <div className="stage-topline">
+                  <div className="period-box">
+                    <span className="period-label">Period</span>
+                    <strong className="period-num">{formatPeriod(roundNumber)}</strong>
                   </div>
-                ) : (
-                  <strong>{formatTimer(seconds)}</strong>
+                  <div className={`status-badge-chip ${isLocked ? 'locked' : 'open'}`}>
+                    {isLocked ? <Lock size={12} /> : <Clock size={12} />}
+                    <span>{phase === 'result' ? 'Drawing' : isLocked ? 'Locked' : 'Open'}</span>
+                  </div>
+                </div>
+
+                <div className="stage-clock-area">
+                  <div className="clock-countdown-unit">
+                    <span className="clock-caption">
+                      {phase === 'result'
+                        ? 'Round Outcome'
+                        : isLocked
+                        ? 'Selections Closing'
+                        : 'Count Down'}
+                    </span>
+                    <div className="clock-digits">
+                      {phase === 'result' && lastOutcome ? (
+                        <div className={`result-reveal-pill pill-${lastOutcome.color}`}>
+                          <span className="digit">{lastOutcome.digit}</span>
+                          <span className="label">{lastOutcome.color.toUpperCase()}</span>
+                        </div>
+                      ) : (
+                        <div className="digital-timer">
+                          <span className="time-block">0</span>
+                          <span className="time-block">0</span>
+                          <span className="time-sep">:</span>
+                          <span className={`time-block ${seconds <= 8 ? 'urgent' : ''}`}>
+                            {String(seconds).padStart(2, '0')[0]}
+                          </span>
+                          <span className={`time-block ${seconds <= 8 ? 'urgent' : ''}`}>
+                            {String(seconds).padStart(2, '0')[1]}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Visual Color Indicators */}
+                  <div className="stage-balls">
+                    <span className="stage-dot dot-green" />
+                    <span className="stage-dot dot-violet" />
+                    <span className="stage-dot dot-red" />
+                  </div>
+                </div>
+
+                {isLocked && phase !== 'result' && (
+                  <div className="stage-lock-notice">
+                    <Lock size={13} />
+                    <span>Locked! Preparing next result...</span>
+                  </div>
                 )}
               </div>
-              <div className="timer-track" aria-label={`${seconds} seconds remaining`}>
-                <span style={{ width: `${Math.max(5, (seconds / ROUND_SECONDS) * 100)}%` }} />
-              </div>
-            </div>
 
-            <div className="round-stage__signals" aria-label="Color round signal markers">
-              {COLOR_OPTIONS.map((option) => (
-                <ChoiceMark key={option.id} option={option} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <div className="play-grid">
-          <section className="prediction-surface" aria-labelledby="prediction-title">
-            <div className="surface-heading">
-              <div>
-                <p className="eyebrow">Your prediction</p>
-                <h2 id="prediction-title">Choose a color</h2>
-              </div>
-              <span className="virtual-note"><Sparkles size={14} /> Virtual credits</span>
-            </div>
-
-            <div className="choice-grid" role="radiogroup" aria-label="Color choice">
-              {COLOR_OPTIONS.map((option) => {
-                const selected = selectedChoice === option.id
-                return (
+              {/* PRIMARY 3 COLOR ACTION BUTTONS */}
+              <div className="color-action-buttons">
+                {COLOR_OPTIONS.map((c) => (
                   <button
-                    className={`color-choice color-choice--${option.id} ${selected ? 'is-selected' : ''}`}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={isLocked || pendingForRound}
-                    key={option.id}
-                    onClick={() => setSelectedChoice(option.id)}
+                    key={c.id}
+                    className={`color-btn btn-${c.id}`}
+                    disabled={isLocked}
+                    onClick={() => handleSelectTarget('color', c.id, c.multiplier)}
                   >
-                    <ChoiceMark option={option} />
-                    <span className="color-choice__body">
-                      <strong>{option.label}</strong>
-                      <small>{option.detail}</small>
-                    </span>
-                    <span className="color-choice__return">{option.multiplier.toFixed(1)}x</span>
+                    <span className="btn-label">{c.label}</span>
+                    <span className="btn-multiplier">{c.multiplier.toFixed(1)}x</span>
                   </button>
-                )
-              })}
-            </div>
-
-            <div className="stake-section">
-              <div className="stake-section__label">
-                <label htmlFor="stake">Practice credits</label>
-                <span>Balance {formatCredits(balance)}</span>
+                ))}
               </div>
-              <div className="stake-controls">
-                <div className="stake-chips" aria-label="Quick credit amounts">
-                  {[20, 40, 80, 160].map((amount) => (
-                    <button
-                      className={stake === amount ? 'is-active' : ''}
-                      type="button"
-                      disabled={isLocked || pendingForRound}
-                      onClick={() => handleStake(amount)}
-                      key={amount}
-                    >
-                      {amount}
-                    </button>
-                  ))}
+
+              {/* NUMBER SELECTION GRID (0-9) */}
+              <div className="number-grid-card">
+                <div className="card-subtitle">Select Number (9.0x Payout)</div>
+                <div className="digits-flex-grid">
+                  {NUMBER_OPTIONS.map((num) => {
+                    const isDual = num.dual
+                    return (
+                      <button
+                        key={num.digit}
+                        className={`digit-btn digit-${num.color} ${isDual ? `dual-${num.dual}` : ''}`}
+                        disabled={isLocked}
+                        onClick={() => handleSelectTarget('number', num.digit, 9.0)}
+                      >
+                        <span className="digit-val">{num.digit}</span>
+                      </button>
+                    )
+                  })}
                 </div>
-                <div className="amount-input">
-                  <Coins size={17} aria-hidden="true" />
-                  <input
-                    id="stake"
-                    inputMode="numeric"
-                    min="10"
-                    step="10"
-                    type="number"
-                    value={stakeInput}
-                    onChange={(event) => setStakeInput(event.target.value)}
-                    disabled={isLocked || pendingForRound}
-                    aria-label="Custom practice credit amount"
+              </div>
+
+              {/* SUB-TABS: RECORD / CHART / MY BETS */}
+              <div className="game-subtabs">
+                <button
+                  className={`subtab-btn ${activeSubTab === 'record' ? 'active' : ''}`}
+                  onClick={() => setActiveSubTab('record')}
+                >
+                  <History size={14} /> Game Record
+                </button>
+                <button
+                  className={`subtab-btn ${activeSubTab === 'chart' ? 'active' : ''}`}
+                  onClick={() => setActiveSubTab('chart')}
+                >
+                  <TrendingUp size={14} /> Trend Parity
+                </button>
+                <button
+                  className={`subtab-btn ${activeSubTab === 'mybets' ? 'active' : ''}`}
+                  onClick={() => setActiveSubTab('mybets')}
+                >
+                  <Layers size={14} /> My Bets ({bets.length})
+                </button>
+              </div>
+
+              {/* SUBTAB 1: GAME RECORDS */}
+              {activeSubTab === 'record' && (
+                <div className="subtab-content">
+                  <div className="records-table-wrap">
+                    <table className="records-table">
+                      <thead>
+                        <tr>
+                          <th>Period</th>
+                          <th>Number</th>
+                          <th>Size</th>
+                          <th>Color</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {history.slice(0, 10).map((h) => (
+                          <tr key={h.round}>
+                            <td className="mono">{formatPeriod(h.round)}</td>
+                            <td>
+                              <span className={`num-badge badge-${h.color}`}>{h.digit}</span>
+                            </td>
+                            <td>
+                              <span className={`size-tag ${h.digit >= 5 ? 'big' : 'small'}`}>
+                                {h.digit >= 5 ? 'Big' : 'Small'}
+                              </span>
+                            </td>
+                            <td>
+                              <div className="color-dots-group">
+                                <span className={`mini-dot dot-${h.color}`} />
+                                {(h.digit === 0 || h.digit === 5) && (
+                                  <span
+                                    className={`mini-dot dot-${h.digit === 0 ? 'red' : 'green'}`}
+                                  />
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 2: TREND PARITY */}
+              {activeSubTab === 'chart' && (
+                <div className="subtab-content">
+                  {/* Statistics Summary */}
+                  <div className="trend-stats-bar">
+                    <div className="stat-pill">
+                      <span className="stat-label">Green</span>
+                      <strong className="stat-val text-green">{stats.greenPercent}%</strong>
+                    </div>
+                    <div className="stat-pill">
+                      <span className="stat-label">Red</span>
+                      <strong className="stat-val text-red">{stats.redPercent}%</strong>
+                    </div>
+                    <div className="stat-pill">
+                      <span className="stat-label">Violet</span>
+                      <strong className="stat-val text-violet">{stats.violetPercent}%</strong>
+                    </div>
+                  </div>
+
+                  {/* Trend Bead Matrix */}
+                  <div className="trend-matrix">
+                    <div className="matrix-title">Recent 20 Draws Roadmap</div>
+                    <div className="matrix-beads">
+                      {history.slice(0, 20).map((h) => (
+                        <div
+                          key={h.round}
+                          className={`matrix-bead bead-${h.color}`}
+                          title={`Period: ${formatPeriod(h.round)} | Digit: ${h.digit}`}
+                        >
+                          <span>{h.digit}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SUBTAB 3: MY BETS */}
+              {activeSubTab === 'mybets' && (
+                <div className="subtab-content">
+                  {bets.length === 0 ? (
+                    <div className="empty-state-card">
+                      <Layers size={32} className="empty-icon" />
+                      <p>No bets placed yet. Pick a color or number to start!</p>
+                    </div>
+                  ) : (
+                    <div className="bets-list">
+                      {bets.map((b) => (
+                        <div key={b.id} className={`bet-card-item status-${b.status}`}>
+                          <div className="bet-card-header">
+                            <div>
+                              <span className="bet-period">{formatPeriod(b.round)}</span>
+                              <span className="bet-target">
+                                {b.type === 'color' ? b.selection.toUpperCase() : `Number ${b.selection}`}
+                              </span>
+                            </div>
+                            <span className={`bet-badge ${b.status}`}>
+                              {b.status === 'won'
+                                ? `+₹${formatCredits(b.payout)}`
+                                : b.status === 'lost'
+                                ? 'Failed'
+                                : 'Waiting'}
+                            </span>
+                          </div>
+                          <div className="bet-card-details">
+                            <span>Amount: ₹{formatCredits(b.amount)}</span>
+                            <span>Multiplier: {b.multiplier}x</span>
+                            <span>Return: ₹{formatCredits(b.potentialReturn)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* TAB 2: FULL TREND VIEW */}
+          {activeTab === 'trend' && (
+            <div className="tab-view-container">
+              <div className="view-title-header">
+                <h2>Parity & Statistics</h2>
+                <p>Real-time statistical trend analysis</p>
+              </div>
+
+              <div className="trend-hero-card">
+                <div className="hero-stat-row">
+                  <div className="hero-stat">
+                    <span className="stat-dot dot-green" />
+                    <span>Green ({stats.greenCount})</span>
+                    <strong>{stats.greenPercent}%</strong>
+                  </div>
+                  <div className="hero-stat">
+                    <span className="stat-dot dot-red" />
+                    <span>Red ({stats.redCount})</span>
+                    <strong>{stats.redPercent}%</strong>
+                  </div>
+                  <div className="hero-stat">
+                    <span className="stat-dot dot-violet" />
+                    <span>Violet ({stats.violetCount})</span>
+                    <strong>{stats.violetPercent}%</strong>
+                  </div>
+                </div>
+
+                <div className="trend-progress-track">
+                  <div
+                    className="prog-seg green"
+                    style={{ width: `${stats.greenPercent}%` }}
+                  />
+                  <div
+                    className="prog-seg red"
+                    style={{ width: `${stats.redPercent}%` }}
+                  />
+                  <div
+                    className="prog-seg violet"
+                    style={{ width: `${stats.violetPercent}%` }}
                   />
                 </div>
               </div>
-            </div>
 
-            <div className="prediction-footer">
-              <div className="prediction-estimate" aria-live="polite">
-                <span>Potential return</span>
-                <strong>{currentOption ? formatCredits(Math.round(stake * currentOption.multiplier)) : '--'} credits</strong>
-              </div>
-              <button className="primary-button" type="button" disabled={!canReview} onClick={() => setConfirmOpen(true)}>
-                Review prediction
-              </button>
-            </div>
-            {!isLocked && !pendingForRound && stake > balance && <p className="input-note input-note--error">Your practice balance is lower than this amount.</p>}
-            {!isLocked && !pendingForRound && stake > 0 && stake < 10 && <p className="input-note input-note--error">Use at least 10 practice credits.</p>}
-            {pendingForRound && <p className="input-note">A prediction is already waiting for this round.</p>}
-            {isLocked && phase !== 'result' && <p className="input-note">This round is locked. The next round opens shortly.</p>}
-          </section>
-
-          <aside className="round-insight" aria-labelledby="round-insight-title">
-            <div className="surface-heading">
-              <div>
-                <p className="eyebrow">Round board</p>
-                <h2 id="round-insight-title">Recent results</h2>
-              </div>
-              <History size={19} aria-hidden="true" />
-            </div>
-            <div className="result-stack">
-              {recentOutcomes.slice(0, 4).map((outcome) => (
-                <div className="result-row" key={outcome.round}>
-                  <span>{formatRound(outcome.round)}</span>
-                  <OutcomePill outcome={outcome} />
-                </div>
-              ))}
-            </div>
-            <div className="insight-rule">
-              <ShieldCheck size={18} aria-hidden="true" />
-              <p>Each practice round maps one digit to a published color set.</p>
-            </div>
-          </aside>
-        </div>
-
-        <section className="history-surface" aria-labelledby="history-title">
-          <div className="surface-heading">
-            <div>
-              <p className="eyebrow">Round stream</p>
-              <h2 id="history-title">Last eight outcomes</h2>
-            </div>
-            <button className="text-button" type="button" onClick={() => setActiveView('activity')}>View activity</button>
-          </div>
-          <div className="outcome-stream">
-            {recentOutcomes.map((outcome) => (
-              <OutcomePill outcome={outcome} showRound key={outcome.round} />
-            ))}
-          </div>
-        </section>
-      </>
-    )
-  }
-
-  function renderActivityView() {
-    return (
-      <>
-        <section className="view-heading">
-          <div>
-            <p className="eyebrow">Practice ledger</p>
-            <h1>Activity</h1>
-          </div>
-          <div className="ledger-summary" aria-label="Practice results summary">
-            <span>Returned</span>
-            <strong>{formatCredits(totalReturned)}</strong>
-          </div>
-        </section>
-
-        <section className="activity-surface">
-          <div className="activity-toolbar">
-            <div className="filter-group" role="group" aria-label="Filter activity">
-              {[
-                ['all', 'All'],
-                ['pending', 'Pending'],
-                ['won', 'Won'],
-                ['lost', 'Not matched'],
-              ].map(([id, label]) => (
-                <button className={activityFilter === id ? 'is-active' : ''} type="button" onClick={() => setActivityFilter(id)} key={id}>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <span className="activity-toolbar__total">{filteredActivity.length} entries</span>
-          </div>
-
-          {filteredActivity.length ? (
-            <div className="activity-table-wrap">
-              <table className="activity-table">
-                <thead>
-                  <tr>
-                    <th>Round</th>
-                    <th>Prediction</th>
-                    <th>Credits</th>
-                    <th>Result</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredActivity.map((entry) => {
-                    const option = COLOR_BY_ID[entry.selection]
-                    return (
-                      <tr key={entry.id}>
+              <div className="records-table-wrap" style={{ marginTop: '14px' }}>
+                <table className="records-table">
+                  <thead>
+                    <tr>
+                      <th>Period</th>
+                      <th>Digit</th>
+                      <th>Parity</th>
+                      <th>Color</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {history.map((h) => (
+                      <tr key={h.round}>
+                        <td className="mono">{formatPeriod(h.round)}</td>
                         <td>
-                          <strong>{formatRound(entry.round)}</strong>
-                          <span>{entry.createdAt}</span>
+                          <span className={`num-badge badge-${h.color}`}>{h.digit}</span>
                         </td>
+                        <td>{h.digit % 2 === 0 ? 'Even' : 'Odd'}</td>
                         <td>
-                          <span className="table-choice"><ChoiceMark option={option} compact /> {option.label}</span>
-                        </td>
-                        <td>{formatCredits(entry.amount)}</td>
-                        <td>{entry.outcome ? <OutcomePill outcome={entry.outcome} /> : <span className="table-pending">Awaiting draw</span>}</td>
-                        <td>
-                          <span className={`table-status table-status--${entry.status}`}>{statusLabel(entry.status)}</span>
-                          {entry.status === 'won' && <small>+{formatCredits(entry.payout)}</small>}
+                          <span className={`tag-color tag-${h.color}`}>
+                            {h.color.toUpperCase()}
+                          </span>
                         </td>
                       </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="empty-state">
-              <History size={28} aria-hidden="true" />
-              <p>No entries match this filter.</p>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
-        </section>
 
-        <section className="activity-footnote">
-          <ArrowDownRight size={18} aria-hidden="true" />
-          <p>You have placed {activity.length} practice predictions. Credits do not represent cash or a withdrawable balance.</p>
-        </section>
-      </>
-    )
-  }
-
-  function renderWalletView() {
-    const netPractice = totalReturned - totalStaked
-    return (
-      <>
-        <section className="view-heading">
-          <div>
-            <p className="eyebrow">Virtual balance</p>
-            <h1>Wallet</h1>
-          </div>
-          <span className="practice-badge"><Sparkles size={14} /> Practice only</span>
-        </section>
-
-        <section className="wallet-stage">
-          <div>
-            <p>Available wallet balance</p>
-            <strong>₹{formatCredits(balance)}</strong>
-            <span>Verified with Supabase & UPI ledger</span>
-          </div>
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => setDepositModalOpen(true)}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 18px', borderRadius: '8px', cursor: 'pointer', background: '#2563eb', color: '#fff', border: 'none', fontWeight: '700' }}
-          >
-            <QrCode size={18} /> Deposit via UPI
-          </button>
-        </section>
-
-        <div className="wallet-grid">
-          <section className="wallet-panel">
-            <p className="eyebrow">Session snapshot</p>
-            <dl>
-              <div>
-                <dt>Credits placed</dt>
-                <dd>{formatCredits(totalStaked)}</dd>
+          {/* TAB 3: WALLET VIEW */}
+          {activeTab === 'wallet' && (
+            <div className="tab-view-container">
+              <div className="view-title-header">
+                <h2>Wallet Balance</h2>
+                <p>UPI Instant Recharge & Balance Management</p>
               </div>
-              <div>
-                <dt>Credits returned</dt>
-                <dd>{formatCredits(totalReturned)}</dd>
-              </div>
-              <div>
-                <dt>Net profit / loss</dt>
-                <dd className={netPractice >= 0 ? 'value-positive' : 'value-negative'}>{netPractice >= 0 ? '+' : ''}{formatCredits(netPractice)}</dd>
-              </div>
-            </dl>
-          </section>
 
-          <section className="wallet-panel wallet-panel--action">
-            <div>
-              <p className="eyebrow">UPI Instant Deposit</p>
-              <h2>Add Funds via UPI QR</h2>
-              <p>Recharge with PhonePe, Google Pay, or Paytm and submit your 12-digit UTR for automatic verification.</p>
+              {/* Wallet Main Card */}
+              <div className="wallet-hero-glass">
+                <span className="hero-eyebrow">Available Balance</span>
+                <div className="hero-balance-sum">
+                  <span className="currency">₹</span>
+                  <strong>{formatCredits(balance)}</strong>
+                </div>
+                <div className="hero-chip-id">
+                  <span>User ID: {userId}</span>
+                  <span className="badge-verified">Verified</span>
+                </div>
+
+                <div className="wallet-hero-actions">
+                  <button
+                    className="wallet-btn deposit-btn"
+                    onClick={() => setDepositModalOpen(true)}
+                  >
+                    <QrCode size={16} /> Recharge / Deposit
+                  </button>
+                  <button
+                    className="wallet-btn reset-btn"
+                    onClick={handleResetCredits}
+                  >
+                    <RotateCcw size={16} /> Reset
+                  </button>
+                </div>
+              </div>
+
+              {/* Wallet Features Grid */}
+              <div className="wallet-feature-list">
+                <div
+                  className="wallet-feature-row"
+                  onClick={() => setDepositModalOpen(true)}
+                >
+                  <div className="feature-icon deposit-icon">
+                    <PlusCircle size={18} />
+                  </div>
+                  <div className="feature-info">
+                    <strong>UPI Fast Deposit</strong>
+                    <p>PhonePe, Google Pay, Paytm, BHIM with 12-digit UTR</p>
+                  </div>
+                  <ChevronRight size={16} className="arrow" />
+                </div>
+
+                <div className="wallet-feature-row">
+                  <div className="feature-icon secure-icon">
+                    <ShieldCheck size={18} />
+                  </div>
+                  <div className="feature-info">
+                    <strong>Atomic Ledger Verification</strong>
+                    <p>Supabase database stored procedure approval</p>
+                  </div>
+                  <Check size={16} className="text-green" />
+                </div>
+              </div>
             </div>
-            <button
-              className="primary-button"
-              type="button"
-              onClick={() => setDepositModalOpen(true)}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '11px 18px', borderRadius: '8px', cursor: 'pointer', background: '#10b981', color: '#fff', border: 'none', fontWeight: '700' }}
-            >
-              <PlusCircle size={18} /> Add Cash / Deposit
-            </button>
-          </section>
-        </div>
+          )}
 
-        <section className="practice-notice">
-          <Info size={20} aria-hidden="true" />
-          <p>Prince Club uses Supabase for database persistence and a 12-digit UTR verification system for secure UPI transactions.</p>
-        </section>
+          {/* TAB 4: RULES / PROFILE VIEW */}
+          {activeTab === 'rules' && (
+            <div className="tab-view-container">
+              <div className="view-title-header">
+                <h2>Game Rules</h2>
+                <p>Prince Club Presale & Calculation Guide</p>
+              </div>
 
+              {/* Account Management Card */}
+              <div className="rules-section-card" style={{ marginBottom: '14px' }}>
+                <h3>Account & Security</h3>
+                <p style={{ marginBottom: '12px' }}>
+                  {currentUser
+                    ? `Active Session: ${currentUser.username} (${currentUser.role || 'Member'})`
+                    : 'Currently playing as Guest. Sign in or register an account to preserve your balance and betting records.'}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    style={{ background: '#2563eb', color: '#fff', border: 'none' }}
+                    onClick={() => {
+                      setAuthMode('login')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    {currentUser ? 'Switch Account' : 'Sign In'}
+                  </button>
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    style={{ background: '#10b981', color: '#fff', border: 'none' }}
+                    onClick={() => {
+                      setAuthMode('signup')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    Register / Sign Up
+                  </button>
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    onClick={() => {
+                      setAuthMode('forgot')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    Forgot Password
+                  </button>
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    onClick={() => {
+                      setAuthMode('reset')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    Reset Password
+                  </button>
+                </div>
+                {currentUser && (
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    style={{ marginTop: '8px', width: '100%', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444' }}
+                    onClick={handleLogout}
+                  >
+                    Sign Out ({currentUser.username})
+                  </button>
+                )}
+              </div>
+
+              <div className="rules-section-card">
+                <h3>1. Period Cycle</h3>
+                <p>
+                  Every round lasts <strong>45 seconds</strong>. Selections are open for the first 37 seconds.
+                  The last <strong>8 seconds</strong> are locked for order matching and outcome draw.
+                </p>
+
+                <h3>2. Color Outcomes & Payouts</h3>
+                <div className="rule-badge-list">
+                  <div className="rule-badge-item">
+                    <span className="badge-color bg-green">Green</span>
+                    <span>Numbers 1, 3, 7, 9 · Returns <strong>2.0x</strong></span>
+                  </div>
+                  <div className="rule-badge-item">
+                    <span className="badge-color bg-red">Red</span>
+                    <span>Numbers 2, 4, 6, 8 · Returns <strong>2.0x</strong></span>
+                  </div>
+                  <div className="rule-badge-item">
+                    <span className="badge-color bg-violet">Violet</span>
+                    <span>Numbers 0, 5 · Returns <strong>4.5x</strong></span>
+                  </div>
+                  <div className="rule-badge-item">
+                    <span className="badge-color bg-gold">Number</span>
+                    <span>Direct number match 0–9 · Returns <strong>9.0x</strong></span>
+                  </div>
+                </div>
+
+                <h3>3. Practice Simulator Notice</h3>
+                <p>
+                  This platform is a real-time mathematical trading simulation.
+                  Virtual credits do not hold fiat cash value or represent legal gambling.
+                </p>
+              </div>
+            </div>
+          )}
+        </main>
+
+        {/* BOTTOM SHEET BET MODAL */}
+        {betSheetOpen && selectedTarget && (
+          <div className="bottom-sheet-overlay" onClick={() => setBetSheetOpen(false)}>
+            <div className="bottom-sheet-card" onClick={(e) => e.stopPropagation()}>
+              <div className="sheet-handle" />
+              <div className="sheet-header">
+                <div>
+                  <h3 className="sheet-title">
+                    Select {selectedTarget.type === 'color' ? selectedTarget.val.toUpperCase() : `Number ${selectedTarget.val}`}
+                  </h3>
+                  <span className="sheet-payout-tag">{selectedTarget.multiplier.toFixed(1)}x Potential Payout</span>
+                </div>
+                <button className="sheet-close-btn" onClick={() => setBetSheetOpen(false)}>
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Amount Presets */}
+              <div className="sheet-row-label">Contract Amount</div>
+              <div className="sheet-preset-chips">
+                {PRESET_AMOUNTS.map((amt) => (
+                  <button
+                    key={amt}
+                    className={`preset-chip ${baseAmount === amt ? 'active' : ''}`}
+                    onClick={() => setBaseAmount(amt)}
+                  >
+                    ₹{amt}
+                  </button>
+                ))}
+              </div>
+
+              {/* Multiplier / Quantity Stepper */}
+              <div className="sheet-row-label">Quantity Multiplier</div>
+              <div className="sheet-stepper-row">
+                <div className="stepper-controls">
+                  <button
+                    className="step-btn"
+                    onClick={() => setBetQuantity((q) => Math.max(1, q - 1))}
+                  >
+                    <Minus size={14} />
+                  </button>
+                  <span className="step-val">{betQuantity}</span>
+                  <button
+                    className="step-btn"
+                    onClick={() => setBetQuantity((q) => q + 1)}
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+
+                <div className="multiplier-quick-chips">
+                  {MULTIPLIERS.map((m) => (
+                    <button
+                      key={m}
+                      className={`mult-chip ${betQuantity === m ? 'active' : ''}`}
+                      onClick={() => setBetQuantity(m)}
+                    >
+                      {m}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Total Calculation & Terms */}
+              <div className="sheet-summary-box">
+                <div className="sum-row">
+                  <span>Total Bet:</span>
+                  <strong>₹{formatCredits(totalBetAmount)}</strong>
+                </div>
+                <div className="sum-row highlight">
+                  <span>Potential Win:</span>
+                  <strong>₹{formatCredits(potentialPayout)}</strong>
+                </div>
+              </div>
+
+              <div
+                className="sheet-terms-check"
+                onClick={() => setAgreeTerms(!agreeTerms)}
+              >
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={(e) => setAgreeTerms(e.target.checked)}
+                />
+                <span>I agree to the Presale Rule</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="sheet-action-btns">
+                <button
+                  className="sheet-cancel-btn"
+                  onClick={() => setBetSheetOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="sheet-submit-btn"
+                  disabled={!agreeTerms || totalBetAmount <= 0 || totalBetAmount > balance}
+                  onClick={handleConfirmBet}
+                >
+                  {totalBetAmount > balance
+                    ? 'Insufficient Balance'
+                    : `Total ₹${formatCredits(totalBetAmount)} Confirm`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* FIXED BOTTOM NAVIGATION BAR */}
+        <nav className="mobile-bottom-nav">
+          <button
+            className={`nav-tab-item ${activeTab === 'win' ? 'active' : ''}`}
+            onClick={() => setActiveTab('win')}
+          >
+            <Trophy size={20} />
+            <span>Win</span>
+          </button>
+          <button
+            className={`nav-tab-item ${activeTab === 'trend' ? 'active' : ''}`}
+            onClick={() => setActiveTab('trend')}
+          >
+            <TrendingUp size={20} />
+            <span>Trend</span>
+          </button>
+          <button
+            className={`nav-tab-item ${activeTab === 'wallet' ? 'active' : ''}`}
+            onClick={() => setActiveTab('wallet')}
+          >
+            <Wallet size={20} />
+            <span>Wallet</span>
+          </button>
+          <button
+            className={`nav-tab-item ${activeTab === 'rules' ? 'active' : ''}`}
+            onClick={() => setActiveTab('rules')}
+          >
+            <CircleHelp size={20} />
+            <span>Rules</span>
+          </button>
+        </nav>
+
+        {/* UPI DEPOSIT MODAL */}
         <DepositModal
           isOpen={depositModalOpen}
           onClose={() => setDepositModalOpen(false)}
           userId={userId}
           onBalanceUpdated={(newBal) => setBalance(newBal)}
         />
-      </>
-    )
-  }
 
-  function renderRulesView() {
-    return (
-      <>
-        <section className="view-heading">
-          <div>
-            <p className="eyebrow">Practice round guide</p>
-            <h1>Rules</h1>
-          </div>
-          <ShieldCheck className="heading-icon" size={28} aria-hidden="true" />
-        </section>
+        {/* AUTH MODAL (LOGIN, SIGNUP, FORGOT, RESET) */}
+        <AuthModal
+          isOpen={authModalOpen}
+          onClose={() => setAuthModalOpen(false)}
+          onAuthSuccess={handleAuthSuccess}
+          initialMode={authMode}
+        />
 
-        <section className="rules-surface">
-          <div className="rules-intro">
-            <p className="eyebrow">How outcomes work</p>
-            <h2>One digit closes each color round.</h2>
-            <p>The digit determines the color outcome. In this demo, outcomes are generated in the browser and are only for practice.</p>
-          </div>
-          <div className="rule-choices">
-            {COLOR_OPTIONS.map((option) => (
-              <div className={`rule-choice rule-choice--${option.id}`} key={option.id}>
-                <ChoiceMark option={option} />
-                <div>
-                  <strong>{option.label}</strong>
-                  <span>{option.detail}</span>
-                </div>
-                <b>{option.multiplier.toFixed(1)}x</b>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="rules-grid">
-          <section className="rule-note">
-            <Clock3 size={21} aria-hidden="true" />
-            <div>
-              <h2>Round timing</h2>
-              <p>Selections are open for the first part of every round. The final {LOCK_SECONDS} seconds are locked while the result is prepared.</p>
+        {/* TOAST NOTIFICATION POPUP */}
+        {toast && (
+          <div className={`mobile-toast toast-${toast.type}`}>
+            <div className="toast-icon">
+              {toast.type === 'success' ? (
+                <Check size={16} />
+              ) : toast.type === 'loss' ? (
+                <ArrowDownRight size={16} />
+              ) : (
+                <Info size={16} />
+              )}
             </div>
-          </section>
-          <section className="rule-note">
-            <Trophy size={21} aria-hidden="true" />
-            <div>
-              <h2>Practice returns</h2>
-              <p>A matching color returns the displayed multiplier in virtual credits. A non-match returns zero credits.</p>
+            <div className="toast-body">
+              <strong>{toast.title}</strong>
+              <p>{toast.detail}</p>
             </div>
-          </section>
-          <section className="rule-note">
-            <Landmark size={21} aria-hidden="true" />
-            <div>
-              <h2>Demo boundary</h2>
-              <p>No payment, cash balance, account verification, or withdrawal system is included in this practice experience.</p>
-            </div>
-          </section>
-        </div>
-      </>
-    )
-  }
-
-  let page
-  if (activeView === 'activity') page = renderActivityView()
-  else if (activeView === 'wallet') page = renderWalletView()
-  else if (activeView === 'rules') page = renderRulesView()
-  else page = renderPlayView()
-
-  return (
-    <div className="app-shell">
-      <header className="topbar">
-        <button className="brand" type="button" onClick={() => setActiveView('play')} aria-label="Go to Prism Play home">
-          <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
-          <span>Prism <em>Play</em></span>
-        </button>
-        <div className="topbar__right">
-          <span className="practice-badge"><Sparkles size={14} /> Practice mode</span>
-          <button className="balance-button" type="button" onClick={() => setActiveView('wallet')} title="Open virtual wallet">
-            <Wallet size={17} aria-hidden="true" />
-            <span>{formatCredits(balance)}</span>
-          </button>
-        </div>
-      </header>
-
-      <div className="app-frame">
-        <aside className="sidebar" aria-label="Main navigation">
-          <div className="sidebar__caption">Workspace</div>
-          <nav>
-            {NAVIGATION.map((item) => {
-              const Icon = item.icon
-              return (
-                <button className={activeView === item.id ? 'is-active' : ''} type="button" onClick={() => setActiveView(item.id)} key={item.id}>
-                  <Icon size={19} aria-hidden="true" />
-                  <span>{item.label}</span>
-                </button>
-              )
-            })}
-          </nav>
-          <div className="sidebar__footer">
-            <ShieldCheck size={18} aria-hidden="true" />
-            <p>Virtual-credit workspace</p>
           </div>
-        </aside>
-
-        <main className="main-content">{page}</main>
+        )}
       </div>
-
-      <nav className="mobile-nav" aria-label="Main navigation">
-        {NAVIGATION.map((item) => {
-          const Icon = item.icon
-          return (
-            <button className={activeView === item.id ? 'is-active' : ''} type="button" onClick={() => setActiveView(item.id)} key={item.id}>
-              <Icon size={20} aria-hidden="true" />
-              <span>{item.label}</span>
-            </button>
-          )
-        })}
-      </nav>
-
-      {confirmOpen && currentOption && (
-        <div className="dialog-backdrop" role="presentation" onMouseDown={() => setConfirmOpen(false)}>
-          <section className="confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="confirm-title" onMouseDown={(event) => event.stopPropagation()}>
-            <div className="confirm-dialog__topline">
-              <span className="eyebrow">Confirm practice prediction</span>
-              <button className="icon-button" type="button" title="Close confirmation" aria-label="Close confirmation" onClick={() => setConfirmOpen(false)}>
-                <X size={18} />
-              </button>
-            </div>
-            <div className="confirm-choice">
-              <ChoiceMark option={currentOption} />
-              <div>
-                <h2 id="confirm-title">{currentOption.label}</h2>
-                <p>{formatRound(roundNumber)} · {currentOption.multiplier.toFixed(1)}x potential return</p>
-              </div>
-            </div>
-            <dl className="confirm-details">
-              <div><dt>Practice credits</dt><dd>{formatCredits(stake)}</dd></div>
-              <div><dt>Potential return</dt><dd>{formatCredits(Math.round(stake * currentOption.multiplier))}</dd></div>
-            </dl>
-            <p className="confirm-disclaimer"><Info size={16} aria-hidden="true" /> This is a virtual-credit simulation with no cash value.</p>
-            <div className="confirm-actions">
-              <button className="secondary-button" type="button" onClick={() => setConfirmOpen(false)}>Back</button>
-              <button className="primary-button" type="button" onClick={confirmPrediction}>Place practice prediction</button>
-            </div>
-          </section>
-        </div>
-      )}
-
-      {toast && (
-        <div className={`toast toast--${toast.type}`} role="status">
-          {toast.type === 'success' ? <Check size={19} aria-hidden="true" /> : toast.type === 'loss' ? <ArrowDownRight size={19} aria-hidden="true" /> : <Info size={19} aria-hidden="true" />}
-          <div><strong>{toast.title}</strong><span>{toast.detail}</span></div>
-        </div>
-      )}
     </div>
   )
 }

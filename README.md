@@ -1,103 +1,157 @@
 # Prince Club
 
-Real-time color prediction and trading platform built with React, Vite, Express.js, and Supabase. Features live rounds, wallet ledger tracking, and UPI payment integration with 12-digit UTR verification.
+Prince Club is a full-stack, mobile-first real-time color trading and prediction platform built with React 18, Vite, Express.js, and Supabase (PostgreSQL). Designed for production environments with real users, it features an authoritative 45-second round engine, tamper-proof HMAC session tokens, atomic balance deduction, strict input sanitization, rate limiting, and dynamic UPI QR deposit processing with 12-digit UTR verification.
+
+---
 
 ## Features
 
-- **Authoritative Game Engine**: 45-second round cycles with automatic 8-second betting locks and deterministic outcomes.
-- **Color & Number Predictions**: Supports Red, Green, Violet, and individual digits (0–9) with standard payout multipliers.
-- **Supabase Persistence**: Relational PostgreSQL schema tracking profiles, balances, round results, bets, and transaction ledgers.
-- **UPI Payments & UTR Verification**:
-  - Dynamic QR code generation for PhonePe, Google Pay, Paytm, and BHIM.
-  - 12-digit UTR submission with deduplication checks to prevent duplicate claims.
-  - Atomic database stored procedures to credit balances safely upon verification.
-- **Responsive Interface**: Mobile-first dark UI built with vanilla CSS.
+- **Tamper-Proof Authentication & Sessions**:
+  - Cryptographically signed HMAC-SHA256 session tokens preventing user identity spoofing and unauthorized actions.
+  - User registration with optional referral bonus (₹1,200 initial balance vs. ₹1,000 standard).
+  - Secure login with PBKDF2/SHA-256 salted hashing and instant 1-click Guest Trader mode.
+  - 6-digit OTP password recovery with 15-minute expiration windows.
+- **Multi-Channel OTP Verification (WhatsApp & Email)**:
+  - Deliver 6-digit verification codes directly to player WhatsApp numbers (via Meta WhatsApp Cloud API or Twilio) or Email inboxes (via Resend REST API or SMTP).
+  - Built-in development sandbox simulator that logs formatted message previews when API credentials are not yet configured.
+  - Interactive channel switcher in the frontend modal allowing players to choose between WhatsApp and Email verification.
+- **Strict Zero-Bypass Security Architecture**:
+  - **Identity Verification**: Protected routes verify caller identity against the bearer token to prevent users from placing bets, checking balances, or submitting UTRs on behalf of other accounts.
+  - **Admin Gatekeeper**: Financial approval endpoints (`/api/payments/verify`) are strictly locked behind admin authentication, preventing unauthorized self-approval of balances.
+  - **Anti-Race Condition**: Atomic balance deduction guards (`gte('balance', amount)`) prevent concurrent double-spending attacks.
+  - **Input Sanitization**: Alphanumeric-only username validation, length constraints, bet selection whitelists, and 12-digit numeric UTR enforcement.
+  - **Sliding Window Rate Limiting**: Zero-dependency memory rate limiters for authentication (15 req/min), betting (60 req/min), and deposits (20 req/min).
+- **Authoritative Real-Time Game Engine**:
+  - Synchronized 45-second round cycles with an 8-second countdown lock window enforced both on client and server.
+  - Server-side background loop that automatically settles pending bets, resolves winning multipliers (Green 2.0x, Red 2.0x, Violet 4.5x, Single Digits 9.0x), and credits wallet payouts directly.
+- **Mobile-First User Experience**:
+  - Fluid mobile layout (360px–480px responsive view) with safe-area insets, sticky bottom navigation, bottom-sheet betting drawer, and sound feedback via the Web Audio API.
+- **UPI QR Recharge & UTR Settlement**:
+  - Dynamic QR generation compatible with PhonePe, Google Pay, Paytm, and BHIM.
+  - Server-side deduplication preventing re-submission of previously used UTR numbers.
+  - Atomic PostgreSQL stored procedures for wallet credits upon verification.
 
-## Architecture
+---
+
+## Architecture & Tech Stack
+
+- **Frontend**: React 18, Vite, Lucide React, Vanilla CSS (Mobile-First Glassmorphism).
+- **Backend**: Node.js, Express.js, Native Crypto (HMAC, SHA-256), QRCode.
+- **Database**: Supabase PostgreSQL (`profiles`, `wallets`, `bets`, `deposit_requests`, `wallet_transactions`, `password_resets`) with in-memory fallback for local development.
 
 ```
-├── index.html                  # Entry template
-├── package.json                # Dependencies and run scripts
-├── server/
-│   ├── config/supabase.js      # Supabase database client
-│   ├── controllers/            # Auth, wallet, game, and payment controllers
-│   ├── db/
-│   │   ├── schema.sql          # Supabase PostgreSQL schema and stored procedures
-│   │   └── store.js            # Development in-memory fallback store
-│   ├── middleware/             # Validation for payloads and 12-digit UTRs
-│   ├── routes/                 # Express API endpoints
-│   └── index.js                # Express app entrypoint
+├── index.html                   # Mobile entry layout with PWA meta tags
 ├── src/
-│   ├── api/client.js           # Frontend API consumer
-│   ├── components/DepositModal # UPI payment & UTR verification UI
-│   ├── App.jsx                 # Application layout and state
-│   ├── main.jsx                # React root
-│   └── styles.css              # Styling rules
+│   ├── api/client.js            # Unified API client with automatic bearer token attachment
+│   ├── components/
+│   │   ├── AuthModal.jsx        # Login, Register, Forgot, and Reset password dialog
+│   │   └── DepositModal.jsx     # Dynamic UPI QR payment and UTR submission dialog
+│   ├── utils/audio.js           # Web Audio API sound synthesizer
+│   ├── App.jsx                  # Mobile application shell and real-time state machine
+│   └── styles.css               # Dark theme, glassmorphism, and responsive layout
+├── server/
+│   ├── index.js                 # Express server entry point (port 5000)
+│   ├── config/supabase.js       # Supabase database connection and status
+│   ├── controllers/             # Auth, game, wallet, and payment logic
+│   ├── middleware/
+│   │   ├── auth.js              # Token generation, verification, and admin guards
+│   │   ├── validate.js          # Strict request payload validators
+│   │   └── rateLimit.js         # Sliding-window rate limiters
+│   └── routes/                  # Express route declarations
 └── tests/
-    └── test_backend.js         # Automated backend test suite
+    ├── clean_db.js              # Script to wipe database records for fresh deployment
+    ├── test_auth_flows.js       # Verification of signup, login, OTP, and reset
+    ├── test_realtime_game.js    # Live round sync & authoritative payout loop tests
+    └── test_security_validation.js # Anti-spoofing and parameter boundary tests
 ```
 
-## Setup & Installation
+---
 
-### Prerequisites
+## Getting Started
 
-- Node.js 18+
-- Supabase account (free tier supported)
+### 1. Prerequisites
+- Node.js 18.x or higher
+- npm 9.x or higher
 
-### Installation
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/ETechnoviax-Tech/prince-club.git
-   cd prince-club
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Configure environment variables:
-   Copy `.env.example` to `.env` and configure your credentials:
-   ```bash
-   cp .env.example .env
-   ```
-   Provide your `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `MERCHANT_UPI_VPA`.
-
-4. Set up the database:
-   Run the contents of `server/db/schema.sql` in your **Supabase SQL Editor** to create tables and atomic procedures.
-
-## Usage
-
-### Run Backend API
+### 2. Installation
 ```bash
-npm run server
+git clone https://github.com/ETechnoviax-Tech/prince-club.git
+cd prince-club
+npm install
 ```
-Server runs at `http://localhost:5000`.
 
-### Run Frontend Development Server
+### 3. Environment Configuration
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+
+Ensure your credentials are set:
+```env
+PORT=5000
+VITE_API_BASE_URL=http://localhost:5000
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+MERCHANT_UPI_VPA=princeclub@upi
+MERCHANT_NAME=Prince Club
+AUTO_APPROVE_UTR=false
+```
+
+### 4. Database Setup
+Execute the SQL script in `server/db/schema.sql` inside your Supabase SQL editor to create all required tables, foreign keys, indexes, and atomic stored procedures.
+
+To wipe test data and prepare the database for real users:
+```bash
+node tests/clean_db.js
+```
+
+### 5. Running the Application
+
+**Start the API Server:**
+```bash
+cd server
+npm run dev
+# Server runs on http://localhost:5000
+```
+
+**Start the Frontend:**
 ```bash
 npm run dev
+# Frontend runs on http://localhost:5173
 ```
-Client runs at `http://localhost:5173`.
 
-### Run Automated Tests
+---
+
+## Testing & Quality Assurance
+
+Run the test suites to verify system integrity:
+
 ```bash
+# Verify authentication flows (Signup, Login, OTP, Reset)
+node tests/test_auth_flows.js
+
+# Verify anti-spoofing and security rules (8/8 scenarios)
+node tests/test_security_validation.js
+
+# Verify real-time 45s round engine and background settlement
+node tests/test_realtime_game.js
+
+# Run full backend suite
 npm test
 ```
 
-## Deployment
+---
 
-### Frontend
-Build optimized static assets:
+## Production Build
+
+Compile optimized production client assets:
 ```bash
 npm run build
 ```
-Deploy the generated `dist/` directory to Vercel, Netlify, or any static host.
+The output will be placed in the `dist/` directory, ready to be served by any static host (Vercel, Netlify, Cloudflare Pages, or Nginx) while the Express API runs on your backend server.
 
-### Backend
-Deploy the Express server to platforms like Railway, Render, Fly.io, or VPS:
-```bash
-node server/index.js
-```
-Ensure all environment variables from `.env.example` are set on the hosting provider.
+---
+
+## License
+MIT

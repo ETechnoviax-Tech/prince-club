@@ -1,13 +1,16 @@
 import crypto from 'crypto'
 import QRCode from 'qrcode'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
-
 import { memoryDeposits, memoryTransactions, memoryWallets } from '../db/store.js'
 
 export async function createDeposit(req, res) {
   try {
-    const { userId } = req.body
-    const amount = req.validatedAmount
+    const userId = req.targetUserId || (req.user ? req.user.id : req.body.userId)
+    const amount = req.validatedAmount || Number(req.body.amount)
+
+    if (!userId || !amount || amount < 100) {
+      return res.status(400).json({ error: 'Valid userId and minimum deposit of ₹100 required' })
+    }
 
     const merchantVPA = process.env.MERCHANT_UPI_VPA || 'princeclub@upi'
     const merchantName = process.env.MERCHANT_NAME || 'Prince Club'
@@ -72,11 +75,31 @@ export async function createDeposit(req, res) {
 export async function submitUTR(req, res) {
   try {
     const { depositId } = req.body
-    const utr = req.cleanUTR
+    const utr = req.cleanUTR || String(req.body.utrNumber).trim()
     const autoApprove = process.env.AUTO_APPROVE_UTR === 'true'
 
     if (isSupabaseConfigured) {
-      // 1. Check if UTR already exists on any approved or pending deposit
+      // 1. Fetch current deposit first to verify ownership
+      const { data: deposit, error: depErr } = await supabase
+        .from('deposit_requests')
+        .select('*')
+        .eq('id', depositId)
+        .single()
+
+      if (depErr || !deposit) {
+        return res.status(404).json({ error: 'Deposit request not found' })
+      }
+
+      // Ensure user owns this deposit
+      if (req.user && req.user.role !== 'admin' && req.user.id !== deposit.user_id) {
+        return res.status(403).json({ error: 'Security violation: Cannot submit UTR for another user deposit' })
+      }
+
+      if (deposit.status === 'APPROVED') {
+        return res.status(400).json({ error: 'Deposit is already approved' })
+      }
+
+      // 2. Check if UTR already exists on any approved or pending deposit (Anti-duplicate / anti-replay)
       const { data: existingUTR, error: utrCheckErr } = await supabase
         .from('deposit_requests')
         .select('id, order_ref, status')
@@ -95,21 +118,6 @@ export async function submitUTR(req, res) {
         })
       }
 
-      // 2. Fetch current deposit
-      const { data: deposit, error: depErr } = await supabase
-        .from('deposit_requests')
-        .select('*')
-        .eq('id', depositId)
-        .single()
-
-      if (depErr || !deposit) {
-        return res.status(404).json({ error: 'Deposit request not found' })
-      }
-
-      if (deposit.status === 'APPROVED') {
-        return res.status(400).json({ error: 'Deposit is already approved' })
-      }
-
       // 3. Attach UTR
       const { data: updated, error: updateErr } = await supabase
         .from('deposit_requests')
@@ -123,11 +131,11 @@ export async function submitUTR(req, res) {
         return res.status(500).json({ error: 'Failed to update UTR' })
       }
 
-      // Auto-approve if enabled (e.g. dev/testing environment)
+      // Auto-approve if explicitly enabled
       if (autoApprove) {
         const { data: rpcRes, error: rpcErr } = await supabase.rpc('approve_deposit_utr', {
           p_deposit_id: depositId,
-          p_notes: 'Auto-approved in testing mode',
+          p_notes: 'Auto-approved in sandbox mode',
         })
         if (!rpcErr && rpcRes?.success) {
           return res.json({
@@ -139,7 +147,7 @@ export async function submitUTR(req, res) {
       }
 
       return res.json({
-        message: 'UTR submitted successfully. Awaiting verification.',
+        message: 'UTR submitted successfully. Awaiting admin verification.',
         deposit: updated,
       })
     }
@@ -148,6 +156,10 @@ export async function submitUTR(req, res) {
     const deposit = memoryDeposits.get(depositId)
     if (!deposit) {
       return res.status(404).json({ error: 'Deposit request not found' })
+    }
+
+    if (req.user && req.user.role !== 'admin' && req.user.id !== deposit.user_id) {
+      return res.status(403).json({ error: 'Security violation: Cannot submit UTR for another user deposit' })
     }
 
     for (const [id, d] of memoryDeposits.entries()) {
@@ -182,7 +194,7 @@ export async function submitUTR(req, res) {
     }
 
     return res.json({
-      message: 'UTR submitted successfully. Awaiting verification.',
+      message: 'UTR submitted successfully. Awaiting admin verification.',
       deposit,
     })
   } catch (err) {
@@ -191,6 +203,7 @@ export async function submitUTR(req, res) {
   }
 }
 
+// Strictly protected admin verification endpoint
 export async function verifyDeposit(req, res) {
   try {
     const { depositId, action, notes, adminId } = req.body
@@ -203,8 +216,8 @@ export async function verifyDeposit(req, res) {
       if (isSupabaseConfigured) {
         const { data, error } = await supabase.rpc('approve_deposit_utr', {
           p_deposit_id: depositId,
-          p_admin_id: adminId || null,
-          p_notes: notes || 'Approved by admin',
+          p_admin_id: adminId || req.user?.id || null,
+          p_notes: notes || 'Approved by authorized admin',
         })
 
         if (error || !data?.success) {
@@ -280,15 +293,25 @@ export async function getDeposit(req, res) {
   if (isSupabaseConfigured) {
     const { data, error } = await supabase.from('deposit_requests').select('*').eq('id', id).single()
     if (error || !data) return res.status(404).json({ error: 'Deposit not found' })
+    if (req.user && req.user.role !== 'admin' && req.user.id !== data.user_id) {
+      return res.status(403).json({ error: 'Access denied' })
+    }
     return res.json({ deposit: data })
   }
   const dep = memoryDeposits.get(id)
   if (!dep) return res.status(404).json({ error: 'Deposit not found' })
+  if (req.user && req.user.role !== 'admin' && req.user.id !== dep.user_id) {
+    return res.status(403).json({ error: 'Access denied' })
+  }
   return res.json({ deposit: dep })
 }
 
 export async function listUserDeposits(req, res) {
   const { userId } = req.params
+  if (req.user && req.user.role !== 'admin' && req.user.id !== userId) {
+    return res.status(403).json({ error: 'Access denied' })
+  }
+
   if (isSupabaseConfigured) {
     const { data, error } = await supabase
       .from('deposit_requests')

@@ -158,3 +158,23 @@ BEGIN
     );
 END;
 $$;
+
+-- 8. Password Resets (Forgot & Reset Verification OTP Persistence for Email & WhatsApp)
+CREATE TABLE IF NOT EXISTS public.password_resets (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE,
+    identity TEXT NOT NULL,
+    otp_code VARCHAR(6) NOT NULL,
+    channel VARCHAR(20) NOT NULL DEFAULT 'EMAIL' CHECK (channel IN ('EMAIL', 'WHATSAPP', 'SMS', 'AUTO')),
+    destination TEXT,
+    expires_at TIMESTAMPTZ NOT NULL,
+    is_used BOOLEAN NOT NULL DEFAULT FALSE,
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_password_resets_identity ON public.password_resets(identity);
+CREATE INDEX IF NOT EXISTS idx_password_resets_code ON public.password_resets(otp_code);
+CREATE INDEX IF NOT EXISTS idx_password_resets_status ON public.password_resets(is_used, expires_at);
+CREATE INDEX IF NOT EXISTS idx_password_resets_channel ON public.password_resets(channel);
+

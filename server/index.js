@@ -1,13 +1,19 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
 import cors from 'cors'
 import dotenv from 'dotenv'
 import express from 'express'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+dotenv.config({ path: path.resolve(__dirname, '../.env') })
+dotenv.config({ path: path.resolve(__dirname, '.env') })
+dotenv.config()
+
 import { isSupabaseConfigured } from './config/supabase.js'
 import authRoutes from './routes/authRoutes.js'
 import gameRoutes from './routes/gameRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
 import walletRoutes from './routes/walletRoutes.js'
-
-dotenv.config()
 
 const app = express()
 const PORT = process.env.PORT || 5000

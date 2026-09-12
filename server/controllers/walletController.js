@@ -1,11 +1,14 @@
-import crypto from 'crypto'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
-
 import { memoryTransactions, memoryWallets } from '../db/store.js'
 
 export async function getWallet(req, res) {
   try {
     const { userId } = req.params
+
+    // Strict Authorization Guard
+    if (req.user && req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({ error: 'Access denied: Cannot view another user wallet' })
+    }
 
     if (isSupabaseConfigured) {
       let { data: wallet, error } = await supabase
@@ -19,7 +22,7 @@ export async function getWallet(req, res) {
       }
 
       if (!wallet) {
-        // Auto-create wallet with starting bonus/balance if not exists
+        // Auto-create wallet with initial credits
         const { data: newWallet, error: createErr } = await supabase
           .from('wallets')
           .insert({ user_id: userId, balance: 1000.0 })
@@ -56,6 +59,10 @@ export async function getTransactions(req, res) {
   try {
     const { userId } = req.params
 
+    if (req.user && req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({ error: 'Access denied: Cannot view another user transactions' })
+    }
+
     if (isSupabaseConfigured) {
       const { data, error } = await supabase
         .from('wallet_transactions')
@@ -79,14 +86,19 @@ export async function getTransactions(req, res) {
 
 export async function resetWallet(req, res) {
   try {
-    const { userId } = req.body
+    const authUserId = req.user ? req.user.id : req.body.userId
     const DEFAULT_START = 1000.0
+
+    // Only allow self reset if in development mode or user is admin
+    if (process.env.NODE_ENV === 'production' && req.user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Wallet reset is disabled in production mode' })
+    }
 
     if (isSupabaseConfigured) {
       const { data, error } = await supabase
         .from('wallets')
         .update({ balance: DEFAULT_START, updated_at: new Date().toISOString() })
-        .eq('user_id', userId)
+        .eq('user_id', authUserId)
         .select()
         .single()
 
@@ -94,10 +106,10 @@ export async function resetWallet(req, res) {
       return res.json({ message: 'Wallet balance reset', wallet: data })
     }
 
-    memoryWallets.set(userId, DEFAULT_START)
+    memoryWallets.set(authUserId, DEFAULT_START)
     return res.json({
       message: 'Wallet balance reset',
-      wallet: { user_id: userId, balance: DEFAULT_START },
+      wallet: { user_id: authUserId, balance: DEFAULT_START },
     })
   } catch (err) {
     return res.status(500).json({ error: 'Failed to reset wallet' })

@@ -1,12 +1,193 @@
-export function validateDepositRequest(req, res, next) {
-  const { amount, userId } = req.body
-  const parsedAmount = Number(amount)
+const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,24}$/
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+const UTR_REGEX = /^\d{12}$/
+const OTP_REGEX = /^\d{6}$/
 
-  if (!userId || typeof userId !== 'string') {
-    return res.status(400).json({ error: 'userId is required and must be a string' })
+const VALID_BET_SELECTIONS = new Set([
+  'green',
+  'violet',
+  'red',
+  '0',
+  '1',
+  '2',
+  '3',
+  '4',
+  '5',
+  '6',
+  '7',
+  '8',
+  '9',
+])
+
+export function validateSignup(req, res, next) {
+  const { username, email, password, referralCode } = req.body
+
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ error: 'Username is required' })
   }
 
-  if (!parsedAmount || isNaN(parsedAmount) || parsedAmount < 100) {
+  const cleanUsername = username.trim()
+  if (!USERNAME_REGEX.test(cleanUsername)) {
+    return res.status(400).json({
+      error: 'Username must be 3-24 characters long and contain only letters, numbers, and underscores (no spaces or special characters)',
+    })
+  }
+
+  if (!password || typeof password !== 'string' || password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters long' })
+  }
+
+  if (password.length > 64) {
+    return res.status(400).json({ error: 'Password must not exceed 64 characters' })
+  }
+
+  let cleanEmail = null
+  if (email && typeof email === 'string' && email.trim().length > 0) {
+    cleanEmail = email.trim().toLowerCase()
+    if (!EMAIL_REGEX.test(cleanEmail) || cleanEmail.length > 100) {
+      return res.status(400).json({ error: 'Invalid email address format' })
+    }
+  }
+
+  let cleanReferral = null
+  if (referralCode && typeof referralCode === 'string') {
+    cleanReferral = referralCode.trim().toUpperCase()
+    if (!/^[A-Z0-9_]{3,16}$/.test(cleanReferral)) {
+      return res.status(400).json({ error: 'Invalid referral code format' })
+    }
+  }
+
+  req.validatedSignup = {
+    username: cleanUsername.toLowerCase(),
+    email: cleanEmail,
+    password,
+    referralCode: cleanReferral,
+  }
+
+  next()
+}
+
+export function validateLogin(req, res, next) {
+  const { username, identity, password } = req.body
+  const rawId = username || identity
+
+  if (!rawId || typeof rawId !== 'string' || rawId.trim().length < 3) {
+    return res.status(400).json({ error: 'Username or phone must be at least 3 characters' })
+  }
+
+  const cleanId = rawId.trim()
+  if (cleanId.length > 50) {
+    return res.status(400).json({ error: 'Username exceeds maximum allowed length' })
+  }
+
+  req.validatedLogin = {
+    identity: cleanId.toLowerCase(),
+    password: password && typeof password === 'string' ? password : null,
+  }
+
+  next()
+}
+
+export function validateForgotPassword(req, res, next) {
+  const { identity } = req.body
+  if (!identity || typeof identity !== 'string' || identity.trim().length < 3) {
+    return res.status(400).json({ error: 'Please provide a valid registered username or phone' })
+  }
+
+  const cleanId = identity.trim().toLowerCase()
+  if (cleanId.length > 50) {
+    return res.status(400).json({ error: 'Invalid identity format' })
+  }
+
+  req.cleanIdentity = cleanId
+  next()
+}
+
+export function validateResetPassword(req, res, next) {
+  const { identity, resetCode, newPassword } = req.body
+
+  if (!identity || typeof identity !== 'string' || identity.trim().length < 3) {
+    return res.status(400).json({ error: 'Identity is required' })
+  }
+
+  if (!resetCode || typeof resetCode !== 'string' || !OTP_REGEX.test(resetCode.trim())) {
+    return res.status(400).json({ error: 'Reset verification code must be a 6-digit number' })
+  }
+
+  if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+    return res.status(400).json({ error: 'New password must be at least 6 characters long' })
+  }
+
+  if (newPassword.length > 64) {
+    return res.status(400).json({ error: 'New password must not exceed 64 characters' })
+  }
+
+  req.validatedReset = {
+    identity: identity.trim().toLowerCase(),
+    resetCode: resetCode.trim(),
+    newPassword,
+  }
+
+  next()
+}
+
+export function validateBetPlacement(req, res, next) {
+  const { selection, amount } = req.body
+  const authUserId = req.user ? req.user.id : req.body.userId
+
+  if (!authUserId || typeof authUserId !== 'string') {
+    return res.status(401).json({ error: 'Authenticated user session is required' })
+  }
+
+  // Prevent user spoofing another user's ID
+  if (req.user && req.body.userId && req.user.id !== req.body.userId) {
+    return res.status(403).json({ error: 'Security violation: Cannot place bets on behalf of another user' })
+  }
+
+  if (!selection || typeof selection !== 'string') {
+    return res.status(400).json({ error: 'Bet selection is required' })
+  }
+
+  const cleanSelection = selection.trim().toLowerCase()
+  if (!VALID_BET_SELECTIONS.has(cleanSelection)) {
+    return res.status(400).json({
+      error: 'Invalid selection. Must be green, violet, red, or digits 0-9.',
+    })
+  }
+
+  const numAmount = Number(amount)
+  if (!Number.isFinite(numAmount) || !Number.isInteger(numAmount) || numAmount < 10) {
+    return res.status(400).json({ error: 'Minimum bet amount is ₹10 (whole number)' })
+  }
+
+  if (numAmount > 50000) {
+    return res.status(400).json({ error: 'Maximum bet amount per round is ₹50,000' })
+  }
+
+  req.validatedBet = {
+    userId: authUserId,
+    selection: cleanSelection,
+    amount: numAmount,
+  }
+
+  next()
+}
+
+export function validateDepositRequest(req, res, next) {
+  const { amount } = req.body
+  const authUserId = req.user ? req.user.id : req.body.userId
+
+  if (!authUserId || typeof authUserId !== 'string') {
+    return res.status(401).json({ error: 'Authenticated user session is required' })
+  }
+
+  // Anti-spoofing
+  if (req.user && req.body.userId && req.user.id !== req.body.userId) {
+    return res.status(403).json({ error: 'Security violation: Cannot create deposit for another user' })
+  }
+
+  const parsedAmount = Number(amount)
+  if (!Number.isFinite(parsedAmount) || isNaN(parsedAmount) || parsedAmount < 100) {
     return res.status(400).json({ error: 'Minimum deposit amount is ₹100' })
   }
 
@@ -15,14 +196,15 @@ export function validateDepositRequest(req, res, next) {
   }
 
   req.validatedAmount = Math.round(parsedAmount)
+  req.targetUserId = authUserId
   next()
 }
 
 export function validateUTRSubmission(req, res, next) {
   const { depositId, utrNumber } = req.body
 
-  if (!depositId) {
-    return res.status(400).json({ error: 'depositId is required' })
+  if (!depositId || typeof depositId !== 'string') {
+    return res.status(400).json({ error: 'Valid depositId is required' })
   }
 
   if (!utrNumber || typeof utrNumber !== 'string') {
@@ -30,9 +212,7 @@ export function validateUTRSubmission(req, res, next) {
   }
 
   const cleanUTR = utrNumber.trim()
-  const utrRegex = /^\d{12}$/
-
-  if (!utrRegex.test(cleanUTR)) {
+  if (!UTR_REGEX.test(cleanUTR)) {
     return res.status(400).json({
       error: 'Invalid UTR format. UTR must be exactly 12 numeric digits (e.g., 423512345678).',
     })

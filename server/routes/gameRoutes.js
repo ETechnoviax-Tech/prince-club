@@ -1,9 +1,18 @@
 import { Router } from 'express'
-import { getCurrentRound, placeBet } from '../controllers/gameController.js'
+import { getCurrentRound, getUserBets, placeBet } from '../controllers/gameController.js'
+import { optionalAuth } from '../middleware/auth.js'
+import { betRateLimit } from '../middleware/rateLimit.js'
+import { validateBetPlacement } from '../middleware/validate.js'
 
 const router = Router()
 
-router.get('/round/current', getCurrentRound)
-router.post('/bet', placeBet)
+// Public or session-aware round state
+router.get('/round/current', optionalAuth, getCurrentRound)
+
+// Betting supports verified sessions with anti-spoofing or guest play
+router.post('/bet', optionalAuth, betRateLimit, validateBetPlacement, placeBet)
+
+// User bet history supports verified sessions with anti-spoofing or guest play
+router.get('/bets/:userId', optionalAuth, getUserBets)
 
 export default router
