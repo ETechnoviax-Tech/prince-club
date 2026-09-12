@@ -24,7 +24,12 @@ Prince Club is a full-stack, mobile-first real-time color trading and prediction
 - **Authoritative Real-Time Game Engine**:
   - Synchronized 45-second round cycles with an 8-second countdown lock window enforced both on client and server.
   - Server-side background loop that automatically settles pending bets, resolves winning multipliers (Green 2.0x, Red 2.0x, Violet 4.5x, Single Digits 9.0x), and credits wallet payouts directly.
-- **Mobile-First User Experience**:
+- **Authentic RAJALUCK Mobile Interface**:
+  - Classic Win Go trading layout: Gold crown header, hero purple wallet card with live balance & Withdraw/Deposit pill buttons.
+  - Multi-timer mode selector (30s, 1Min, 3Min, 5Min) with glowing clock badges.
+  - Split game stage card with How to Play guide, 3D recent draw balls, digital countdown boxes (`[0][0]:[2][3]`), and 14-digit period indexing.
+  - High-fidelity 3D glossy lottery balls grid (0–9 with split half-half gradients for 0 and 5).
+  - Quick multiplier selector (X1, X5, X10, X20, X50, X100), Random Bet generator, and Big/Small prediction split bar.
   - Fluid mobile layout (360px–480px responsive view) with safe-area insets, sticky bottom navigation, bottom-sheet betting drawer, and sound feedback via the Web Audio API.
 - **UPI QR Recharge & UTR Settlement**:
   - Dynamic QR generation compatible with PhonePe, Google Pay, Paytm, and BHIM.
