@@ -1,167 +1,137 @@
-# Prince Club
+# Prince Club - Color Trading Platform
 
-Prince Club is a full-stack, mobile-first real-time color trading and prediction platform built with React 18, Vite, Express.js, and Supabase (PostgreSQL). Designed for production environments with real users, it features an authoritative 45-second round engine, tamper-proof HMAC session tokens, atomic balance deduction, strict input sanitization, rate limiting, and dynamic UPI QR deposit processing with 12-digit UTR verification.
+A full-stack, mobile-first real-time color trading and prediction platform built with React 18, Vite, Express.js, and Supabase (PostgreSQL). Features live game sync with VeerGame Win Go rounds, authoritative settlement, signed HMAC sessions, and instant UPI QR payments with 12-digit UTR verification.
 
 ---
 
 ## Features
 
-- **Tamper-Proof Authentication & Sessions**:
-  - Cryptographically signed HMAC-SHA256 session tokens preventing user identity spoofing and unauthorized actions.
-  - User registration with optional referral bonus (₹1,200 initial balance vs. ₹1,000 standard).
-  - Secure login with PBKDF2/SHA-256 salted hashing and instant 1-click Guest Trader mode.
-  - 6-digit OTP password recovery with 15-minute expiration windows.
-- **Multi-Channel OTP Verification (WhatsApp & Email)**:
-  - Deliver 6-digit verification codes directly to player WhatsApp numbers (via Meta WhatsApp Cloud API or Twilio) or Email inboxes (via Resend REST API or SMTP).
-  - Built-in development sandbox simulator that logs formatted message previews when API credentials are not yet configured.
-  - Interactive channel switcher in the frontend modal allowing players to choose between WhatsApp and Email verification.
-- **Strict Zero-Bypass Security Architecture**:
-  - **Identity Verification**: Protected routes verify caller identity against the bearer token to prevent users from placing bets, checking balances, or submitting UTRs on behalf of other accounts.
-  - **Admin Gatekeeper**: Financial approval endpoints (`/api/payments/verify`) are strictly locked behind admin authentication, preventing unauthorized self-approval of balances.
-  - **Anti-Race Condition**: Atomic balance deduction guards (`gte('balance', amount)`) prevent concurrent double-spending attacks.
-  - **Input Sanitization**: Alphanumeric-only username validation, length constraints, bet selection whitelists, and 12-digit numeric UTR enforcement.
-  - **Sliding Window Rate Limiting**: Zero-dependency memory rate limiters for authentication (15 req/min), betting (60 req/min), and deposits (20 req/min).
-- **Authoritative Real-Time Game Engine**:
-  - Synchronized 45-second round cycles with an 8-second countdown lock window enforced both on client and server.
-  - Server-side background loop that automatically settles pending bets, resolves winning multipliers (Green 2.0x, Red 2.0x, Violet 4.5x, Single Digits 9.0x), and credits wallet payouts directly.
-- **Authentic RAJALUCK Mobile Interface**:
-  - Classic Win Go trading layout: Gold crown header, hero purple wallet card with live balance & Withdraw/Deposit pill buttons.
-  - Multi-timer mode selector (30s, 1Min, 3Min, 5Min) with glowing clock badges.
-  - Split game stage card with How to Play guide, 3D recent draw balls, digital countdown boxes (`[0][0]:[2][3]`), and 14-digit period indexing.
-  - High-fidelity 3D glossy lottery balls grid (0–9 with split half-half gradients for 0 and 5).
-  - Quick multiplier selector (X1, X5, X10, X20, X50, X100), Random Bet generator, and Big/Small prediction split bar.
-  - Fluid mobile layout (360px–480px responsive view) with safe-area insets, sticky bottom navigation, bottom-sheet betting drawer, and sound feedback via the Web Audio API.
-- **UPI QR Recharge & UTR Settlement**:
-  - Dynamic QR generation compatible with PhonePe, Google Pay, Paytm, and BHIM.
-  - Server-side deduplication preventing re-submission of previously used UTR numbers.
-  - Atomic PostgreSQL stored procedures for wallet credits upon verification.
+- **Live VeerGame Win Go Integration**:
+  - Live round sync across 30s, 1Min, 3Min, and 5Min game modes.
+  - MD5 request signing for upstream VeerGame API endpoints (`/GetGameIssue`, `/GetNoaverageEmerdList`).
+  - Official draw results and automatic background settlement for Colors (Green 2x, Red 2x, Violet 4.5x), Numbers (0–9 at 9x), and Sizes (Big/Small at 2x).
+  - Built-in resilient fallback engine if upstream is unreachable.
+- **Security & Session Management**:
+  - Signed HMAC-SHA256 session tokens.
+  - Strict input validation and rate limiting on betting, auth, and payments.
+  - Prevention of ID spoofing and atomic balance guards against concurrent balance deductions.
+  - Admin-only financial verification endpoints.
+- **Authentication & Multi-Channel OTP**:
+  - Username & password authentication with referral bonuses.
+  - Password recovery via WhatsApp (Cloud API / Twilio) and Email (Resend / SMTP) with local development previews.
+- **Payment & Wallet System**:
+  - Dynamic UPI QR codes compatible with PhonePe, Google Pay, and Paytm.
+  - 12-digit UTR submission with deduplication and atomic PostgreSQL balance updates.
+- **Mobile-First UI**:
+  - Win Go layout with live countdown, recent draw outcome balls, split-gradient lottery balls (0 and 5), quick multipliers (X1–X100), and trend charts.
+  - Zero-dependency Web Audio API sound effects.
 
 ---
 
-## Project Structure
+## Architecture
 
 ```
-├── frontend/                     # Dedicated React frontend application
-│   ├── index.html                # Mobile entry layout with PWA meta tags
-│   ├── vite.config.js            # Vite build and dev server configuration
-│   ├── package.json              # Frontend dependencies and scripts
-│   ├── .env.example              # Frontend environment template
-│   └── src/
-│       ├── api/client.js         # Unified API client with automatic bearer token attachment
-│       ├── components/
-│       │   ├── AuthModal.jsx     # Login, Register, Forgot, and Reset password dialog
-│       │   └── DepositModal.jsx  # Dynamic UPI QR payment and UTR submission dialog
-│       ├── utils/audio.js        # Web Audio API sound synthesizer
-│       ├── App.jsx               # Mobile application shell and real-time state machine
-│       └── styles.css            # Dark theme, glassmorphism, and responsive layout
-├── server/                       # Node.js / Express backend service
-│   ├── index.js                  # Express server entry point (port 5000)
-│   ├── config/supabase.js        # Supabase database connection and status
-│   ├── controllers/              # Auth, game, wallet, and payment logic
-│   ├── middleware/
-│   │   ├── auth.js               # Token generation, verification, and admin guards
-│   │   ├── validate.js           # Strict request payload validators
-│   │   └── rateLimit.js          # Sliding-window rate limiters
-│   ├── services/
-│   │   └── notificationService.js # Multi-channel WhatsApp & Email OTP dispatcher
-│   └── routes/                   # Express route declarations
-└── tests/
-    ├── clean_db.js               # Script to wipe database records for fresh deployment
-    ├── test_auth_flows.js        # Verification of signup, login, OTP, and reset
-    ├── test_realtime_game.js     # Live round sync & authoritative payout loop tests
-    └── test_whatsapp_email_otp.js # Multi-channel OTP verification suite
+├── frontend/                     # React 18 + Vite client
+│   ├── src/
+│   │   ├── api/client.js         # API client with token management
+│   │   ├── components/           # Modals (Auth, UPI Deposit)
+│   │   ├── utils/audio.js        # Web Audio synthesizer
+│   │   ├── App.jsx               # Main application and state management
+│   │   └── styles.css            # Responsive layout & theme styles
+│   └── vite.config.js
+├── server/                       # Node.js + Express backend
+│   ├── config/supabase.js        # Database connection & client
+│   ├── controllers/              # Game, Auth, Payment, Wallet handlers
+│   ├── middleware/               # Auth, validation, and rate limiters
+│   ├── routes/                   # API routes
+│   └── services/
+│       ├── veerGameService.js    # VeerGame API client & MD5 signature generator
+│       └── notificationService.js# WhatsApp & Email OTP dispatchers
+└── tests/                        # Integration and verification test suites
 ```
 
 ---
 
-## Getting Started
+## Setup & Installation
 
-### 1. Prerequisites
+### Prerequisites
 - Node.js 18.x or higher
 - npm 9.x or higher
 
-### 2. Installation
+### 1. Clone & Install
 ```bash
 git clone https://github.com/ETechnoviax-Tech/prince-club.git
 cd prince-club
 npm install
 ```
 
-### 3. Environment Configuration
-Copy `.env.example` to `.env` in the root and `frontend/.env.example` to `frontend/.env`:
-```bash
-cp .env.example .env
-cp frontend/.env.example frontend/.env
-```
-
-Ensure your credentials are set:
+### 2. Environment Variables
+Create `.env` in the root directory:
 ```env
 PORT=5000
 VITE_API_BASE_URL=http://localhost:5000
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
-MERCHANT_UPI_VPA=princeclub@upi
+JWT_SECRET=your-secure-secret-key
+ADMIN_SECRET_KEY=your-admin-secret-key
+MERCHANT_UPI_VPA=yourvpa@upi
 MERCHANT_NAME=Prince Club
-AUTO_APPROVE_UTR=false
 ```
 
-### 4. Database Setup
-Execute the SQL script in `server/db/schema.sql` inside your Supabase SQL editor to create all required tables, foreign keys, indexes, and atomic stored procedures.
-
-To wipe test data and prepare the database for real users:
-```bash
-node tests/clean_db.js
+And `frontend/.env`:
+```env
+VITE_API_BASE_URL=http://localhost:5000
 ```
 
-### 5. Running the Application
-
-**Start the API Server:**
-```bash
-npm run server
-# Express API runs on http://localhost:5000
-```
-
-**Start the Frontend:**
-```bash
-npm run dev
-# Frontend runs on http://localhost:5173
-```
-Alternatively, navigate to `frontend` and run directly:
-```bash
-cd frontend
-npm run dev
-```
+### 3. Database
+Run the SQL schema in `server/db/schema.sql` inside your Supabase project SQL Editor to create the required tables and procedures.
 
 ---
 
-## Testing & Quality Assurance
+## Usage
 
-Run the test suites to verify system integrity:
-
+### Development Server
 ```bash
-# Verify authentication flows (Signup, Login, OTP, Reset)
-node tests/test_auth_flows.js
+# Start backend API (Port 5000)
+npm run server
 
-# Verify WhatsApp and Email OTP delivery
-node tests/test_whatsapp_email_otp.js
+# Start frontend (Port 5173)
+npm run dev
+```
 
-# Verify real-time 45s round engine and background settlement
+### Running Tests
+```bash
+# Run real-time game tests
 node tests/test_realtime_game.js
 
-# Run full backend suite
-npm test
+# Run VeerGame live sync and settlement tests
+node tests/test_veer_bet_settlement.js
+
+# Run security and validation tests
+node tests/test_security_validation.js
+
+# Run auth flows and OTP tests
+node tests/test_auth_flows.js
+node tests/test_whatsapp_email_otp.js
 ```
 
 ---
 
-## Production Build
+## Deployment
 
-Compile optimized production client assets:
+### Backend
+Deploy `server/` to any Node.js hosting platform (e.g. Render, Railway, DigitalOcean, VPS):
+```bash
+node server/index.js
+```
+
+### Frontend
+Build optimized production assets:
 ```bash
 npm run build
 ```
-The output will be placed in `frontend/dist/`, ready to be served by any static host (Vercel, Netlify, Cloudflare Pages, or Nginx) while the Express API runs on your backend server.
+Deploy the generated `frontend/dist/` folder to Vercel, Netlify, Cloudflare Pages, or serve via Nginx.
 
 ---
 

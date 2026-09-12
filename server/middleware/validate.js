@@ -7,6 +7,8 @@ const VALID_BET_SELECTIONS = new Set([
   'green',
   'violet',
   'red',
+  'big',
+  'small',
   '0',
   '1',
   '2',
@@ -133,7 +135,7 @@ export function validateResetPassword(req, res, next) {
 
 export function validateBetPlacement(req, res, next) {
   const { selection, amount } = req.body
-  const authUserId = req.user ? req.user.id : req.body.userId
+  const authUserId = req.user ? req.user.id : null
 
   if (!authUserId || typeof authUserId !== 'string') {
     return res.status(401).json({ error: 'Authenticated user session is required' })
@@ -168,6 +170,8 @@ export function validateBetPlacement(req, res, next) {
     userId: authUserId,
     selection: cleanSelection,
     amount: numAmount,
+    issueNumber: req.body.issueNumber ? String(req.body.issueNumber) : null,
+    typeId: req.body.typeId ? Number(req.body.typeId) : 30,
   }
 
   next()

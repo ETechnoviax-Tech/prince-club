@@ -188,11 +188,27 @@ export async function fetchCurrentRound() {
   return res.json()
 }
 
-export async function placeBet(userId, selection, amount) {
+export async function fetchVeerIssue(typeId = 30) {
+  const res = await fetch(`${API_BASE}/game/veer/issue?typeId=${typeId}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch VeerGame issue')
+  return res.json()
+}
+
+export async function fetchVeerHistory(typeId = 30, page = 1) {
+  const res = await fetch(`${API_BASE}/game/veer/history?typeId=${typeId}&page=${page}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch VeerGame history')
+  return res.json()
+}
+
+export async function placeBet(userId, selection, amount, issueNumber = null, typeId = 30) {
   const res = await fetch(`${API_BASE}/game/bet`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ userId, selection, amount }),
+    body: JSON.stringify({ userId, selection, amount, issueNumber, typeId }),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {

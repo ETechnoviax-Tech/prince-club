@@ -47,6 +47,8 @@ import {
   clearAuthToken,
   fetchCurrentRound,
   fetchUserBets,
+  fetchVeerHistory,
+  fetchVeerIssue,
   fetchWallet,
   placeBet as apiPlaceBet,
   resetWallet as apiResetWallet,
@@ -137,6 +139,11 @@ function formatCredits(val) {
 }
 
 function formatPeriod(round, mode = '30s') {
+  if (!round) return ''
+  const str = String(round)
+  if (str.length >= 12) {
+    return str
+  }
   const d = new Date()
   const yyyy = d.getFullYear()
   const mm = String(d.getMonth() + 1).padStart(2, '0')
@@ -315,34 +322,75 @@ export function App() {
     return () => clearTimeout(timer)
   }, [toast])
 
-  // Backend Sync Initial & Periodic
+  // Backend Sync Initial & Periodic with VeerGame
   const syncWithBackend = useCallback(async () => {
+    const typeId = gameMode === '30s' ? 30 : gameMode === '1m' ? 1 : gameMode === '3m' ? 2 : 3
+    let synced = false
+
+    // 1. Fetch live round issue from VeerGame proxy
     try {
-      const data = await fetchCurrentRound()
-      setServerOnline(true)
-      if (data.roundNumber) {
-        // Sync period and phase authoritatively
-        setRoundNumber(data.roundNumber)
-        // Adjust client clock to match server seconds smoothly
+      const issueData = await fetchVeerIssue(typeId)
+      if (issueData?.issueNumber) {
+        setServerOnline(true)
+        synced = true
+        setRoundNumber(issueData.issueNumber)
         setSeconds((currSec) => {
-          if (Math.abs(currSec - data.secondsRemaining) >= 2 || phase === 'result') {
-            return data.secondsRemaining
+          if (Math.abs(currSec - issueData.secondsRemaining) >= 2 || phase === 'result') {
+            return issueData.secondsRemaining
           }
           return currSec
         })
-        setPhase(data.isLocked ? 'locked' : 'open')
-        if (Array.isArray(data.history) && data.history.length > 0) {
-          const formatted = data.history.map((h) => ({
-            round: h.roundNumber,
-            digit: h.digit,
-            color: h.color,
-            multiplier: h.color === 'violet' ? 4.5 : 2.0,
-          }))
-          setHistory(formatted)
+        setPhase(issueData.isLocked ? 'locked' : 'open')
+      }
+    } catch {}
+
+    // 2. Fetch live official draw history from VeerGame proxy
+    try {
+      const historyData = await fetchVeerHistory(typeId, 1)
+      if (Array.isArray(historyData?.list) && historyData.list.length > 0) {
+        const formatted = historyData.list.map((h) => ({
+          round: h.issueNumber,
+          digit: h.digit,
+          color: h.color,
+          rawColour: h.rawColour,
+          size: h.size,
+          premium: h.premium,
+          multiplier: h.color === 'violet' ? 4.5 : 2.0,
+        }))
+        setHistory(formatted)
+        if (formatted[0]) {
+          setLastOutcome(formatted[0])
         }
       }
-    } catch {
-      setServerOnline(false)
+    } catch {}
+
+    // 3. Fallback if VeerGame is slow or offline
+    if (!synced) {
+      try {
+        const data = await fetchCurrentRound()
+        setServerOnline(true)
+        if (data.roundNumber) {
+          setRoundNumber(data.roundNumber)
+          setSeconds((currSec) => {
+            if (Math.abs(currSec - data.secondsRemaining) >= 2 || phase === 'result') {
+              return data.secondsRemaining
+            }
+            return currSec
+          })
+          setPhase(data.isLocked ? 'locked' : 'open')
+          if (Array.isArray(data.history) && data.history.length > 0) {
+            const formatted = data.history.map((h) => ({
+              round: h.roundNumber,
+              digit: h.digit,
+              color: h.color,
+              multiplier: h.color === 'violet' ? 4.5 : 2.0,
+            }))
+            setHistory(formatted)
+          }
+        }
+      } catch {
+        setServerOnline(false)
+      }
     }
 
     // Authoritative Server Wallet Balance Sync
@@ -359,9 +407,13 @@ export function App() {
       if (Array.isArray(betsData?.bets) && betsData.bets.length > 0) {
         const formatted = betsData.bets.map((b) => ({
           id: b.id,
-          round: Number(b.round_number),
+          round: String(b.round_number),
           selection: String(b.selection),
-          type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase()) ? 'color' : 'number',
+          type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase())
+            ? 'color'
+            : ['big', 'small'].includes(String(b.selection).toLowerCase())
+            ? 'size'
+            : 'number',
           amount: Number(b.amount),
           multiplier: Number(b.multiplier),
           potentialReturn: Math.round(Number(b.amount) * Number(b.multiplier)),
@@ -387,7 +439,7 @@ export function App() {
         setBets(formatted)
       }
     } catch {}
-  }, [userId, phase])
+  }, [userId, gameMode, phase])
 
   useEffect(() => {
     syncWithBackend()
@@ -557,8 +609,9 @@ export function App() {
 
     // Try backend placeBet
     try {
+      const typeId = gameMode === '30s' ? 30 : gameMode === '1m' ? 1 : gameMode === '3m' ? 2 : 3
       if (serverOnline) {
-        const res = await apiPlaceBet(userId, String(selectedTarget.val), totalBetAmount)
+        const res = await apiPlaceBet(userId, String(selectedTarget.val), totalBetAmount, String(roundNumber), typeId)
         if (res?.newBalance !== undefined) {
           setBalance(res.newBalance)
         } else {
@@ -638,7 +691,7 @@ export function App() {
           
           <div className="raja-brand">
             <span className="raja-crown">👑</span>
-            <span className="raja-brand-name">RAJALUCK</span>
+            <span className="raja-brand-name">VEERGAME</span>
           </div>
 
           <div className="raja-header-actions">
@@ -749,11 +802,20 @@ export function App() {
                     {gameMode === '30s' ? 'Win Go 30s' : gameMode === '1m' ? 'Win Go 1Min' : gameMode === '3m' ? 'Win Go 3Min' : 'Win Go 5Min'}
                   </div>
                   <div className="raja-recent-balls">
-                    {history.slice(0, 5).map((h, i) => (
-                      <div key={i} className={`raja-ball-mini raja-ball-mini--${h.color}`}>
-                        <span>{h.digit}</span>
-                      </div>
-                    ))}
+                    {history.slice(0, 5).map((h, i) => {
+                      const isDual0 = Number(h.digit) === 0
+                      const isDual5 = Number(h.digit) === 5
+                      const ballClass = isDual0
+                        ? 'raja-ball-mini raja-ball-mini--dual-0'
+                        : isDual5
+                        ? 'raja-ball-mini raja-ball-mini--dual-5'
+                        : `raja-ball-mini raja-ball-mini--${h.color}`
+                      return (
+                        <div key={i} className={ballClass}>
+                          <span>{h.digit}</span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
 
