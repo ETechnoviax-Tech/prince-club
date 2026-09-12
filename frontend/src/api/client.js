@@ -180,23 +180,64 @@ export async function fetchUserDeposits(userId) {
   return res.json()
 }
 
-export async function fetchCurrentRound() {
-  const res = await fetch(`${API_BASE}/game/round/current`, {
+export async function fetchCurrentRound(mode = 'PARITY') {
+  const query = mode ? `?mode=${encodeURIComponent(mode)}` : ''
+  const res = await fetch(`${API_BASE}/game/round/current${query}`, {
     headers: authHeaders(),
   })
   if (!res.ok) throw new Error('Failed to fetch game round')
   return res.json()
 }
 
-export async function placeBet(userId, selection, amount) {
+export async function placeBet(userId, selection, amount, mode = 'PARITY') {
   const res = await fetch(`${API_BASE}/game/bet`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ userId, selection, amount }),
+    body: JSON.stringify({ userId, selection, amount, mode }),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(json.error || 'Failed to place bet')
+  }
+  return json
+}
+
+export async function requestWithdrawal(userId, { amount, payoutMethod = 'UPI', upiId, bankDetails }) {
+  const res = await fetch(`${API_BASE}/wallet/withdraw`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({
+      userId,
+      amount,
+      payoutMethod,
+      upiId,
+      bankDetails,
+    }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to submit withdrawal request')
+  }
+  return json
+}
+
+export async function fetchUserWithdrawals(userId) {
+  const res = await fetch(`${API_BASE}/wallet/withdrawals/${userId}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch withdrawal history')
+  return res.json()
+}
+
+export async function claimDailyVIPBonus(userId) {
+  const res = await fetch(`${API_BASE}/wallet/vip/claim`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to claim daily VIP bonus')
   }
   return json
 }
@@ -226,3 +267,4 @@ export async function fetchUserBets(userId) {
   if (!res.ok) throw new Error('Failed to fetch bets')
   return res.json()
 }
+

@@ -7,31 +7,28 @@
 
 ## Architecture & Conventions
 - `frontend/`: Dedicated client folder containing `index.html`, `vite.config.js`, `package.json`, and `src/`.
-- `frontend/src/App.jsx`: Mobile-first client architecture with period timer sync, bottom-sheet betting drawer, trend roadmaps, real-time bet settlement notifications, and auth integrations.
+- `frontend/src/App.jsx`: Mobile-first client architecture with 4 concurrent game modes (Parity, Sapre, Bcone, Emerd), period timer sync, bottom-sheet betting drawer (Colors, Big/Small, Numbers), trend roadmaps, real-time bet settlement notifications, and auth integrations.
 - `frontend/src/components/AuthModal.jsx`: Interactive mobile authentication dialog supporting Login, Signup, Forgot Password, and Reset Password with WhatsApp / Email OTP selectors.
-- `frontend/src/components/DepositModal.jsx`: Client UPI payment modal with QR code, copy VPA, and 12-digit UTR input form.
+- `frontend/src/components/DepositModal.jsx`: Client UPI payment modal with dynamic QR code, copy VPA, and 12-digit UTR input form.
+- `frontend/src/components/WithdrawModal.jsx`: Client payout modal supporting instant UPI and IMPS Bank Account withdrawal requests with live balance and history tracking.
 - `frontend/src/utils/audio.js`: Zero-dependency Web Audio API synthesizer for mobile ticks, bet placement, and win fanfares.
-- `frontend/src/api/client.js`: Frontend API client for game rounds, user bets, auth, wallet, and UPI deposits.
+- `frontend/src/api/client.js`: Frontend API client for multi-mode game rounds, user bets, auth, wallet, UPI deposits, withdrawals, and VIP bonuses.
 - `server/index.js`: Express backend server with CORS, health check, and route mounting on port 5000.
 - `server/config/supabase.js`: Supabase client with support for `SUPABASE_URL`, `VITE_` env vars, and graceful local dev fallback.
 - `server/controllers/authController.js`: Full authentication engine: Login, Signup with referral credits, OTP-based Forgot Password, and Reset Password.
-- `server/controllers/gameController.js`: Real-time authoritative 45s rounds engine, 8s lock window, bet validation, and automatic background settlement loop with wallet payouts.
+- `server/controllers/gameController.js`: Multi-level authoritative engine running 4 parallel modes (Parity 30s, Sapre 1m, Bcone 3m, Emerd 5m) with lock window enforcement, Big (5-9)/Small (0-4) 2.0x payouts, color/digit payouts, and background settlement loop.
 - `server/controllers/paymentController.js`: UPI dynamic QR generation, 12-digit UTR submission, deduplication, and atomic verification.
-- `server/controllers/walletController.js`: Balance queries, transactions ledger, wallet management.
+- `server/controllers/walletController.js`: Balance queries, transactions ledger, atomic withdrawal requests with admin verification & auto-refunds, and 24-hour VIP daily check-in bonus.
 - `server/services/notificationService.js`: Multi-channel OTP dispatch engine supporting WhatsApp (Meta Cloud API, Twilio, console sandbox) and Email (Resend REST API, SMTP, console sandbox).
-- `server/db/schema.sql`: PostgreSQL schema with stored procedure `approve_deposit_utr` for atomic wallet credits.
+- `server/db/schema.sql`: PostgreSQL schema with stored procedure `approve_deposit_utr`, `withdrawal_requests`, and `password_resets`.
 - `tests/test_auth_flows.js`: Automated test suite covering Signup, Login, Forgot OTP, and Password Reset.
-- `tests/test_realtime_game.js`: Automated test suite verifying live round sync, bet placement, and authoritative settlement.
+- `tests/test_multi_game_modes.js`: Automated test suite verifying 4 game modes, Big/Small bets, lock windows, and mode validation.
+- `tests/test_withdrawal_vip.js`: Automated test suite verifying UPI/Bank withdrawals, balance locks, admin rejection refund, and VIP daily bonus limits.
 - `tests/test_whatsapp_email_otp.js`: Automated test suite verifying multi-channel OTP delivery, standalone verification, and password reset flows.
 
 ## Recent Actions
-- Migrated all frontend assets and code into a dedicated `frontend/` directory (`frontend/src/`, `frontend/index.html`, `frontend/vite.config.js`, `frontend/package.json`, `frontend/.env.example`).
-- Configured root `package.json` to delegate `npm run dev` and `npm run build` to `frontend/` seamlessly (`vite frontend` and `vite build frontend`).
-- Cleaned the entire database (Supabase PostgreSQL tables wiped to 0 records) ready for real users.
-- Implemented tamper-proof HMAC session authentication, preventing user ID impersonation, wallet snooping, and unauthorized betting.
-- Secured `/api/payments/verify` with admin credentials (`requireAdmin`) preventing client self-approval of deposits.
-- Added strict server validation and sanitization across auth, betting (min ₹10, integer only, valid selections, lock enforcement), and UPI deposits.
-- Implemented atomic wallet deduction guards (`gte('balance', amount)`) preventing concurrent double-spending race conditions.
-- Added sliding-window rate limiting on auth, betting, and payment routes to prevent brute-force attacks.
-- Implemented multi-channel OTP verification for both WhatsApp and Email via `server/services/notificationService.js`, with frontend channel selector in `AuthModal.jsx` and client helpers in `src/api/client.js`. Verified with `tests/test_whatsapp_email_otp.js` (6/6 tests passed).
-- Debugged and hardened `src/api/client.js` with safe environment variable detection (`import.meta.env` and `process.env`) and safe storage access (`window.localStorage` and in-memory fallback), resolving module rejection in Node/test environments.
+- Integrated 4 parallel game levels: Parity (30s round, 5s lock), Sapre (1m round, 10s lock), Bcone (3m round, 30s lock), and Emerd (5m round, 45s lock) in backend engine and frontend mode tab switcher.
+- Added Big (numbers 5–9, 2.0x payout) and Small (numbers 0–4, 2.0x payout) betting market with dedicated high-visibility action buttons and server validation.
+- Implemented complete User Withdrawal Payout System with `WithdrawModal.jsx`, supporting UPI VPA and IMPS Bank Account requests, atomic balance deductions, withdrawal history tracker, and admin verification with automated refund on rejection.
+- Implemented 24-hour VIP Daily Check-In Bonus system granting ₹15–₹50 credits with duplicate claim prevention.
+- All automated test suites (`test_multi_game_modes.js`, `test_withdrawal_vip.js`, `test_whatsapp_email_otp.js`, `test_auth_flows.js`) passed 100% and production bundle compiled with 0 errors.

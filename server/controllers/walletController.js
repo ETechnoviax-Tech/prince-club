@@ -1,5 +1,10 @@
+import crypto from 'crypto'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { memoryTransactions, memoryWallets } from '../db/store.js'
+
+// In-memory store for withdrawals and daily bonuses
+const memoryWithdrawals = new Map() // id -> record
+const memoryDailyBonus = new Map()  // userId -> lastTimestamp
 
 export async function getWallet(req, res) {
   try {
@@ -89,7 +94,6 @@ export async function resetWallet(req, res) {
     const authUserId = req.user ? req.user.id : req.body.userId
     const DEFAULT_START = 1000.0
 
-    // Only allow self reset if in development mode or user is admin
     if (process.env.NODE_ENV === 'production' && req.user?.role !== 'admin') {
       return res.status(403).json({ error: 'Wallet reset is disabled in production mode' })
     }
@@ -113,5 +117,360 @@ export async function resetWallet(req, res) {
     })
   } catch (err) {
     return res.status(500).json({ error: 'Failed to reset wallet' })
+  }
+}
+
+// 4. Request Payout Withdrawal (UPI / Bank Account)
+export async function requestWithdrawal(req, res) {
+  try {
+    const { userId, amount, payoutMethod, payoutDetails } = req.validatedWithdrawal || req.body
+
+    if (!userId || !amount || amount < 100) {
+      return res.status(400).json({ error: 'Valid userId and minimum amount ₹100 required' })
+    }
+
+    if (isSupabaseConfigured) {
+      // 1. Check wallet balance
+      const { data: wallet, error: walErr } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', userId)
+        .single()
+
+      if (walErr || !wallet) {
+        return res.status(404).json({ error: 'User wallet not found' })
+      }
+
+      if (Number(wallet.balance) < amount) {
+        return res.status(400).json({
+          error: `Insufficient balance. Your balance is ₹${wallet.balance}, requested ₹${amount}.`,
+        })
+      }
+
+      // 2. Atomic Balance Deduction
+      const newBalance = Number(wallet.balance) - amount
+      const { data: updatedWal, error: deductErr } = await supabase
+        .from('wallets')
+        .update({ balance: newBalance })
+        .eq('user_id', userId)
+        .gte('balance', amount)
+        .select()
+        .single()
+
+      if (deductErr || !updatedWal) {
+        return res.status(400).json({ error: 'Insufficient balance or concurrent transaction conflict' })
+      }
+
+      // 3. Create Withdrawal Request Record
+      const record = {
+        id: crypto.randomUUID(),
+        user_id: userId,
+        amount,
+        payout_method: payoutMethod,
+        payout_details: payoutDetails || {},
+        status: 'PENDING',
+        created_at: new Date().toISOString(),
+      }
+
+      try {
+        await supabase.from('withdrawal_requests').insert(record)
+      } catch (insErr) {
+        console.warn('[Supabase] Withdrawal insert note:', insErr.message)
+      }
+
+      // 4. Ledger Transaction
+      try {
+        await supabase.from('wallet_transactions').insert({
+          user_id: userId,
+          type: 'WITHDRAWAL',
+          amount: -amount,
+          balance_after: newBalance,
+          reference_id: record.id,
+          description: `Withdrawal request to ${payoutMethod} (${amount})`,
+        })
+      } catch {}
+
+      memoryWithdrawals.set(record.id, record)
+
+      return res.status(201).json({
+        message: 'Withdrawal request submitted successfully. Processing within 2-24 hours.',
+        withdrawal: record,
+        newBalance,
+      })
+    }
+
+    // Fallback in-memory
+    const curBal = memoryWallets.get(userId) || 1000
+    if (curBal < amount) {
+      return res.status(400).json({ error: `Insufficient balance. Balance is ₹${curBal}` })
+    }
+
+    const newBal = curBal - amount
+    memoryWallets.set(userId, newBal)
+
+    const record = {
+      id: crypto.randomUUID(),
+      user_id: userId,
+      amount,
+      payout_method: payoutMethod,
+      payout_details: payoutDetails || {},
+      status: 'PENDING',
+      created_at: new Date().toISOString(),
+    }
+    memoryWithdrawals.set(record.id, record)
+
+    return res.status(201).json({
+      message: 'Withdrawal request submitted successfully',
+      withdrawal: record,
+      newBalance: newBal,
+    })
+  } catch (err) {
+    console.error('[requestWithdrawal Exception]:', err)
+    return res.status(500).json({ error: 'Server error processing withdrawal request' })
+  }
+}
+
+// 5. Get User Withdrawal History
+export async function getUserWithdrawals(req, res) {
+  try {
+    const { userId } = req.params
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' })
+    }
+
+    if (req.user && req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({ error: 'Access denied: Cannot view another user withdrawals' })
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('withdrawal_requests')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(30)
+
+        if (!error && Array.isArray(data) && data.length > 0) {
+          return res.json({ withdrawals: data })
+        }
+      } catch {}
+    }
+
+    const userWithdrawals = Array.from(memoryWithdrawals.values())
+      .filter((w) => w.user_id === userId)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+
+    return res.json({ withdrawals: userWithdrawals })
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to retrieve withdrawals' })
+  }
+}
+
+// 6. Admin Verify Withdrawal (Approve or Reject with Refund)
+export async function adminVerifyWithdrawal(req, res) {
+  try {
+    const { withdrawalId, action, notes } = req.body
+    if (!withdrawalId || !['APPROVE', 'REJECT'].includes(action)) {
+      return res.status(400).json({ error: 'withdrawalId and action (APPROVE/REJECT) are required' })
+    }
+
+    const newStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED'
+    const nowIso = new Date().toISOString()
+
+    let wRecord = null
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('withdrawal_requests')
+          .select('*')
+          .eq('id', withdrawalId)
+          .single()
+        if (!error && data) wRecord = data
+      } catch {}
+    }
+
+    if (!wRecord) {
+      wRecord = memoryWithdrawals.get(withdrawalId)
+    }
+
+    if (!wRecord) {
+      return res.status(404).json({ error: 'Withdrawal request not found' })
+    }
+
+    if (wRecord.status !== 'PENDING') {
+      return res.status(400).json({ error: `Withdrawal is already ${wRecord.status}` })
+    }
+
+    // 2. If rejected, refund the wallet balance
+    if (action === 'REJECT') {
+      if (isSupabaseConfigured) {
+        try {
+          const { data: wal } = await supabase
+            .from('wallets')
+            .select('balance')
+            .eq('user_id', wRecord.user_id)
+            .single()
+
+          if (wal) {
+            const refundedBal = Number(wal.balance) + Number(wRecord.amount)
+            await supabase.from('wallets').update({ balance: refundedBal }).eq('user_id', wRecord.user_id)
+            await supabase.from('wallet_transactions').insert({
+              user_id: wRecord.user_id,
+              type: 'BONUS',
+              amount: Number(wRecord.amount),
+              balance_after: refundedBal,
+              reference_id: withdrawalId,
+              description: `Withdrawal rejected: ${notes || 'Refunded to wallet'}`,
+            })
+          }
+        } catch {}
+      } else {
+        const cur = memoryWallets.get(wRecord.user_id) || 0
+        memoryWallets.set(wRecord.user_id, cur + Number(wRecord.amount))
+      }
+    }
+
+    // 3. Update status in Supabase if table exists
+    if (isSupabaseConfigured) {
+      try {
+        await supabase
+          .from('withdrawal_requests')
+          .update({
+            status: newStatus,
+            admin_notes: notes || null,
+            processed_at: nowIso,
+          })
+          .eq('id', withdrawalId)
+      } catch {}
+    }
+
+    wRecord.status = newStatus
+    wRecord.admin_notes = notes || null
+    wRecord.processed_at = nowIso
+    memoryWithdrawals.set(withdrawalId, wRecord)
+
+    return res.json({
+      success: true,
+      message: `Withdrawal ${newStatus.toLowerCase()} successfully`,
+      withdrawalId,
+      status: newStatus,
+    })
+  } catch (err) {
+    console.error('[adminVerifyWithdrawal Exception]:', err)
+    return res.status(500).json({ error: 'Failed to verify withdrawal' })
+  }
+}
+
+// 7. VIP Daily Check-In Bonus
+export async function claimDailyVIPBonus(req, res) {
+  try {
+    const authUserId = req.user ? req.user.id : req.body.userId
+
+    if (!authUserId) {
+      return res.status(401).json({ error: 'Authenticated user session is required' })
+    }
+
+    const now = Date.now()
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+    // Immediate memory guard against duplicate claims
+    const cachedClaim = memoryDailyBonus.get(authUserId)
+    if (cachedClaim && now - cachedClaim < ONE_DAY_MS) {
+      const hoursLeft = Math.ceil((ONE_DAY_MS - (now - cachedClaim)) / (1000 * 60 * 60))
+      return res.status(400).json({
+        error: `Daily VIP bonus already claimed! Next claim available in ${hoursLeft} hours.`,
+        hoursLeft,
+      })
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id, last_daily_bonus')
+          .eq('id', authUserId)
+          .single()
+
+        if (profile?.last_daily_bonus) {
+          const lastClaimed = new Date(profile.last_daily_bonus).getTime()
+          const diff = now - lastClaimed
+          if (diff < ONE_DAY_MS) {
+            const hoursLeft = Math.ceil((ONE_DAY_MS - diff) / (1000 * 60 * 60))
+            return res.status(400).json({
+              error: `Daily VIP bonus already claimed! Next claim available in ${hoursLeft} hours.`,
+              hoursLeft,
+            })
+          }
+        }
+      } catch {}
+
+      // Random daily bonus between ₹15 and ₹50
+      const bonusAmount = Math.floor(Math.random() * 36) + 15
+
+      // Credit wallet
+      const { data: wal } = await supabase
+        .from('wallets')
+        .select('balance')
+        .eq('user_id', authUserId)
+        .single()
+
+      const currentBalance = wal ? Number(wal.balance) : 0
+      const newBalance = currentBalance + bonusAmount
+
+      await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', authUserId)
+      try {
+        await supabase
+          .from('profiles')
+          .update({ last_daily_bonus: new Date(now).toISOString() })
+          .eq('id', authUserId)
+      } catch {}
+
+      try {
+        await supabase.from('wallet_transactions').insert({
+          user_id: authUserId,
+          type: 'BONUS',
+          amount: bonusAmount,
+          balance_after: newBalance,
+          description: `VIP Daily Check-In Bonus (₹${bonusAmount})`,
+        })
+      } catch {}
+
+      memoryDailyBonus.set(authUserId, now)
+
+      return res.json({
+        success: true,
+        message: `🎉 Claimed VIP Daily Bonus of ₹${bonusAmount}!`,
+        bonusAmount,
+        newBalance,
+      })
+    }
+
+    // In-memory fallback
+    const lastClaim = memoryDailyBonus.get(authUserId)
+    if (lastClaim && now - lastClaim < ONE_DAY_MS) {
+      const hoursLeft = Math.ceil((ONE_DAY_MS - (now - lastClaim)) / (1000 * 60 * 60))
+      return res.status(400).json({
+        error: `Daily VIP bonus already claimed! Next claim available in ${hoursLeft} hours.`,
+        hoursLeft,
+      })
+    }
+
+    const bonusAmount = Math.floor(Math.random() * 36) + 15
+    const curBal = memoryWallets.get(authUserId) || 1000
+    const newBal = curBal + bonusAmount
+
+    memoryWallets.set(authUserId, newBal)
+    memoryDailyBonus.set(authUserId, now)
+
+    return res.json({
+      success: true,
+      message: `🎉 Claimed VIP Daily Bonus of ₹${bonusAmount}!`,
+      bonusAmount,
+      newBalance: newBal,
+    })
+  } catch (err) {
+    console.error('[claimDailyVIPBonus Exception]:', err)
+    return res.status(500).json({ error: 'Failed to claim daily VIP bonus' })
   }
 }

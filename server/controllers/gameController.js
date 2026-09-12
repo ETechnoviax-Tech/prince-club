@@ -1,14 +1,51 @@
 import crypto from 'crypto'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 
-export const ROUND_DURATION_MS = 45000 // 45s rounds
-export const LOCK_DURATION_MS = 8000   // 8s lock window
+export const GAME_MODES = {
+  PARITY: {
+    id: 'PARITY',
+    name: 'Parity 30s',
+    durationMs: 30000,
+    lockMs: 5000,
+    saltMult: 37n,
+    saltOffset: 17n,
+  },
+  SAPRE: {
+    id: 'SAPRE',
+    name: 'Sapre 1m',
+    durationMs: 60000,
+    lockMs: 10000,
+    saltMult: 41n,
+    saltOffset: 23n,
+  },
+  BCONE: {
+    id: 'BCONE',
+    name: 'Bcone 3m',
+    durationMs: 180000,
+    lockMs: 30000,
+    saltMult: 47n,
+    saltOffset: 31n,
+  },
+  EMERD: {
+    id: 'EMERD',
+    name: 'Emerd 5m',
+    durationMs: 300000,
+    lockMs: 45000,
+    saltMult: 53n,
+    saltOffset: 43n,
+  },
+}
+
+// Default export backward compatibility
+export const ROUND_DURATION_MS = GAME_MODES.PARITY.durationMs
+export const LOCK_DURATION_MS = GAME_MODES.PARITY.lockMs
 
 // In-memory fallback stores
 const memoryBets = new Map() // betId -> betRecord
 
-export function calculateOutcome(roundNumber) {
-  const digit = Number((BigInt(roundNumber) * 37n + 17n) % 10n)
+export function calculateOutcome(roundNumber, mode = 'PARITY') {
+  const cfg = GAME_MODES[mode] || GAME_MODES.PARITY
+  const digit = Number((BigInt(roundNumber) * cfg.saltMult + cfg.saltOffset) % 10n)
   let color = 'red'
   let multiplier = 2.0
 
@@ -23,16 +60,21 @@ export function calculateOutcome(roundNumber) {
     multiplier = 2.0
   }
 
-  return { roundNumber, digit, color, multiplier }
+  const size = digit >= 5 ? 'big' : 'small'
+
+  return { roundNumber, digit, color, size, multiplier, mode: cfg.id }
 }
 
-// Authoritative Round Settlement
-export async function settleRoundBets(roundNumber) {
-  const outcome = calculateOutcome(roundNumber)
+// Authoritative Round Settlement per Game Mode
+export async function settleRoundBets(roundNumber, mode = 'PARITY') {
+  const outcome = calculateOutcome(roundNumber, mode)
   
   // 1. Settle in-memory bets
   const pendingBets = Array.from(memoryBets.values()).filter(
-    (b) => Number(b.round_number) === Number(roundNumber) && b.status === 'PENDING'
+    (b) =>
+      Number(b.round_number) === Number(roundNumber) &&
+      (b.game_mode || 'PARITY') === mode &&
+      b.status === 'PENDING'
   )
 
   for (const bet of pendingBets) {
@@ -49,6 +91,12 @@ export async function settleRoundBets(roundNumber) {
     } else if (sel === 'red' && outcome.digit === 0) {
       won = true
       payout = Math.round(bet.amount * 1.5)
+    } else if (sel === 'big' && outcome.size === 'big') {
+      won = true
+      payout = Math.round(bet.amount * 2.0)
+    } else if (sel === 'small' && outcome.size === 'small') {
+      won = true
+      payout = Math.round(bet.amount * 2.0)
     } else if (sel === String(outcome.digit)) {
       won = true
       payout = Math.round(bet.amount * 9.0)
@@ -78,7 +126,7 @@ export async function settleRoundBets(roundNumber) {
             amount: payout,
             balance_after: newBal,
             reference_id: bet.id,
-            description: `Won ${payout} on ${bet.selection} (Round ${roundNumber})`,
+            description: `Won ${payout} on ${bet.selection} (${mode} Round ${roundNumber})`,
           })
         }
       } catch (err) {
@@ -98,6 +146,9 @@ export async function settleRoundBets(roundNumber) {
 
       if (Array.isArray(dbBets)) {
         for (const b of dbBets) {
+          const betMode = b.game_mode || 'PARITY'
+          if (betMode !== mode) continue
+
           let won = false
           let payout = 0
           const sel = String(b.selection).toLowerCase()
@@ -111,6 +162,12 @@ export async function settleRoundBets(roundNumber) {
           } else if (sel === 'red' && outcome.digit === 0) {
             won = true
             payout = Math.round(b.amount * 1.5)
+          } else if (sel === 'big' && outcome.size === 'big') {
+            won = true
+            payout = Math.round(b.amount * 2.0)
+          } else if (sel === 'small' && outcome.size === 'small') {
+            won = true
+            payout = Math.round(b.amount * 2.0)
           } else if (sel === String(outcome.digit)) {
             won = true
             payout = Math.round(b.amount * 9.0)
@@ -138,7 +195,7 @@ export async function settleRoundBets(roundNumber) {
                 amount: payout,
                 balance_after: newBal,
                 reference_id: b.id,
-                description: `Won ${payout} on ${b.selection} (Round ${roundNumber})`,
+                description: `Won ${payout} on ${b.selection} (${mode} Round ${roundNumber})`,
               })
             }
           }
@@ -150,20 +207,31 @@ export async function settleRoundBets(roundNumber) {
   }
 }
 
-// Background Game Loop
-let lastSettledRound = null
+// Background Game Loop for all 4 game levels
+const lastSettledRounds = {
+  PARITY: null,
+  SAPRE: null,
+  BCONE: null,
+  EMERD: null,
+}
+
 const gameLoopInterval = setInterval(() => {
   const now = Date.now()
-  const currentRound = Math.floor(now / ROUND_DURATION_MS)
-  const previousRound = currentRound - 1
 
-  if (lastSettledRound === null) {
-    lastSettledRound = previousRound
-  } else if (previousRound > lastSettledRound) {
-    for (let r = lastSettledRound + 1; r <= previousRound; r++) {
-      settleRoundBets(r).catch((err) => console.error('[Game Loop Settlement Error]:', err))
+  for (const [modeKey, cfg] of Object.entries(GAME_MODES)) {
+    const currentRound = Math.floor(now / cfg.durationMs)
+    const previousRound = currentRound - 1
+
+    if (lastSettledRounds[modeKey] === null) {
+      lastSettledRounds[modeKey] = previousRound
+    } else if (previousRound > lastSettledRounds[modeKey]) {
+      for (let r = lastSettledRounds[modeKey] + 1; r <= previousRound; r++) {
+        settleRoundBets(r, modeKey).catch((err) =>
+          console.error(`[Game Loop Settlement Error ${modeKey}]:`, err)
+        )
+      }
+      lastSettledRounds[modeKey] = previousRound
     }
-    lastSettledRound = previousRound
   }
 }, 1000)
 
@@ -171,13 +239,17 @@ if (gameLoopInterval?.unref) {
   gameLoopInterval.unref()
 }
 
-// 1. Current Round State
+// 1. Current Round State (Multi-Mode aware)
 export function getCurrentRound(req, res) {
+  const rawMode = req.query.mode || req.body?.mode || 'PARITY'
+  const modeKey = String(rawMode).trim().toUpperCase()
+  const cfg = GAME_MODES[modeKey] || GAME_MODES.PARITY
+
   const now = Date.now()
-  const roundNumber = Math.floor(now / ROUND_DURATION_MS)
-  const roundStartTime = roundNumber * ROUND_DURATION_MS
-  const roundEndTime = roundStartTime + ROUND_DURATION_MS
-  const lockStartTime = roundEndTime - LOCK_DURATION_MS
+  const roundNumber = Math.floor(now / cfg.durationMs)
+  const roundStartTime = roundNumber * cfg.durationMs
+  const roundEndTime = roundStartTime + cfg.durationMs
+  const lockStartTime = roundEndTime - cfg.lockMs
 
   const msRemaining = Math.max(0, roundEndTime - now)
   const secondsRemaining = Math.ceil(msRemaining / 1000)
@@ -186,17 +258,28 @@ export function getCurrentRound(req, res) {
   const history = []
   for (let i = 1; i <= 20; i++) {
     const r = roundNumber - i
-    const outcome = calculateOutcome(r)
+    const outcome = calculateOutcome(r, cfg.id)
     history.push({
       roundNumber: r,
       digit: outcome.digit,
       color: outcome.color,
+      size: outcome.size,
       multiplier: outcome.multiplier,
-      endedAt: new Date((r + 1) * ROUND_DURATION_MS).toISOString(),
+      mode: cfg.id,
+      endedAt: new Date((r + 1) * cfg.durationMs).toISOString(),
     })
   }
 
+  const modesList = Object.values(GAME_MODES).map((m) => ({
+    id: m.id,
+    name: m.name,
+    durationSeconds: m.durationMs / 1000,
+    lockSeconds: m.lockMs / 1000,
+  }))
+
   return res.json({
+    mode: cfg.id,
+    modeName: cfg.name,
     roundNumber,
     secondsRemaining,
     msRemaining,
@@ -204,35 +287,42 @@ export function getCurrentRound(req, res) {
     serverTime: now,
     roundStartTime: new Date(roundStartTime).toISOString(),
     roundEndTime: new Date(roundEndTime).toISOString(),
-    lockDurationSeconds: LOCK_DURATION_MS / 1000,
-    roundDurationSeconds: ROUND_DURATION_MS / 1000,
+    lockDurationSeconds: cfg.lockMs / 1000,
+    roundDurationSeconds: cfg.durationMs / 1000,
+    modes: modesList,
     history,
   })
 }
 
-// 2. Place Bet (Authoritative & Anti-Race-Condition)
+// 2. Place Bet (Authoritative, Multi-Mode, & Anti-Race-Condition)
 export async function placeBet(req, res) {
   try {
-    const { userId, selection, amount } = req.validatedBet || {
+    const validated = req.validatedBet || {
       userId: req.user ? req.user.id : req.body.userId,
       selection: req.body.selection,
       amount: Number(req.body.amount),
+      mode: (req.body.mode || 'PARITY').toUpperCase(),
     }
+
+    const { userId, selection, amount } = validated
+    const modeKey = String(validated.mode || req.body.mode || 'PARITY').trim().toUpperCase()
+    const cfg = GAME_MODES[modeKey] || GAME_MODES.PARITY
 
     if (!userId || !selection || !amount || amount < 10) {
       return res.status(400).json({ error: 'Valid userId, selection, and amount (min ₹10) required' })
     }
 
-    // Strict Lock Window check
+    // Strict Lock Window check for the specific game mode
     const now = Date.now()
-    const roundNumber = Math.floor(now / ROUND_DURATION_MS)
-    const roundEndTime = (roundNumber + 1) * ROUND_DURATION_MS
-    const lockStartTime = roundEndTime - LOCK_DURATION_MS
+    const roundNumber = Math.floor(now / cfg.durationMs)
+    const roundEndTime = (roundNumber + 1) * cfg.durationMs
+    const lockStartTime = roundEndTime - cfg.lockMs
 
     if (now >= lockStartTime) {
       return res.status(400).json({
-        error: 'Round is locked. Bets are closed for this round.',
+        error: `Round is locked for ${cfg.name}. Bets are closed for this round.`,
         roundNumber,
+        mode: cfg.id,
         secondsRemaining: Math.ceil((roundEndTime - now) / 1000),
       })
     }
@@ -240,11 +330,13 @@ export async function placeBet(req, res) {
     let multiplier = 2.0
     const sel = String(selection).toLowerCase()
     if (sel === 'violet') multiplier = 4.5
+    else if (sel === 'big' || sel === 'small') multiplier = 2.0
     else if (!['green', 'red', 'violet'].includes(sel)) multiplier = 9.0
 
     const betRecord = {
       id: crypto.randomUUID(),
       round_number: roundNumber,
+      game_mode: cfg.id,
       user_id: userId,
       selection: sel,
       amount,
@@ -275,7 +367,7 @@ export async function placeBet(req, res) {
         .from('wallets')
         .update({ balance: newBalance })
         .eq('user_id', userId)
-        .gte('balance', amount) // Critical atomic guard: only update if balance is still >= amount
+        .gte('balance', amount)
         .select()
         .single()
 
@@ -298,7 +390,7 @@ export async function placeBet(req, res) {
           amount: -amount,
           balance_after: newBalance,
           reference_id: betRecord.id,
-          description: `Bet ₹${amount} on ${sel} (Round ${roundNumber})`,
+          description: `Bet ₹${amount} on ${sel} (${cfg.name} Round ${roundNumber})`,
         })
       } catch {}
 
@@ -331,7 +423,6 @@ export async function getUserBets(req, res) {
       return res.status(400).json({ error: 'User ID is required' })
     }
 
-    // Authorization: User can only inspect their own bets unless admin
     if (req.user && req.user.role !== 'admin' && req.user.id !== userId) {
       return res.status(403).json({ error: 'Access denied: You can only view your own bet history' })
     }

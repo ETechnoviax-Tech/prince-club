@@ -37,9 +37,12 @@ import {
   Wallet,
   X,
   Zap,
+  Gift,
+  ArrowDownCircle,
 } from 'lucide-react'
 import { DepositModal } from './components/DepositModal'
 import { AuthModal } from './components/AuthModal'
+import WithdrawModal from './components/WithdrawModal'
 import {
   clearAuthToken,
   fetchCurrentRound,
@@ -47,8 +50,17 @@ import {
   fetchWallet,
   placeBet as apiPlaceBet,
   resetWallet as apiResetWallet,
+  claimDailyVIPBonus,
 } from './api/client'
 import { sound } from './utils/audio'
+
+const GAME_LEVELS = [
+  { id: 'PARITY', label: 'Parity', time: '30s', duration: 30, lock: 5 },
+  { id: 'SAPRE', label: 'Sapre', time: '1m', duration: 60, lock: 10 },
+  { id: 'BCONE', label: 'Bcone', time: '3m', duration: 180, lock: 30 },
+  { id: 'EMERD', label: 'Emerd', time: '5m', duration: 300, lock: 45 },
+]
+
 
 const ROUND_SECONDS = 45
 const LOCK_SECONDS = 8
@@ -188,6 +200,9 @@ export function App() {
   })
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState('login')
+  const [selectedMode, setSelectedMode] = useState('PARITY') // 'PARITY' | 'SAPRE' | 'BCONE' | 'EMERD'
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false)
+  const [vipBonusLoading, setVipBonusLoading] = useState(false)
 
   const [userId, setUserId] = useState(() => {
     if (typeof window === 'undefined') return 'usr_dev01'
@@ -229,6 +244,30 @@ export function App() {
     })
   }
 
+  const handleClaimVIPBonus = async () => {
+    setVipBonusLoading(true)
+    try {
+      const res = await claimDailyVIPBonus(currentUser?.id || userId)
+      if (res?.newBalance !== undefined) {
+        setBalance(res.newBalance)
+      }
+      sound.playWin()
+      setToast({
+        type: 'success',
+        title: 'VIP Bonus Claimed!',
+        detail: res.message || `+₹${res.bonusAmount} credited to your wallet!`,
+      })
+    } catch (err) {
+      setToast({
+        type: 'warning',
+        title: 'VIP Check-In',
+        detail: err.message || 'Already claimed today. Check back tomorrow!',
+      })
+    } finally {
+      setVipBonusLoading(false)
+    }
+  }
+
   const [balance, setBalance] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
@@ -262,7 +301,7 @@ export function App() {
 
   // Betting Sheet (Mobile Drawer) State
   const [betSheetOpen, setBetSheetOpen] = useState(false)
-  const [selectedTarget, setSelectedTarget] = useState(null) // { type: 'color' | 'number', val: 'green' | 5, multiplier: 2 | 9 }
+  const [selectedTarget, setSelectedTarget] = useState(null) // { type: 'color' | 'number' | 'size', val: 'green' | 5 | 'big', multiplier: 2 | 9 }
   const [baseAmount, setBaseAmount] = useState(10)
   const [betQuantity, setBetQuantity] = useState(1)
   const [agreeTerms, setAgreeTerms] = useState(true)
@@ -272,7 +311,8 @@ export function App() {
   const [tickerIndex, setTickerIndex] = useState(0)
   const betsRef = useRef(bets)
 
-  const isLocked = phase === 'locked' || (phase === 'open' && seconds <= LOCK_SECONDS)
+  const activeLevel = GAME_LEVELS.find((l) => l.id === selectedMode) || GAME_LEVELS[0]
+  const isLocked = phase === 'locked' || (phase === 'open' && seconds <= activeLevel.lock)
   const totalBetAmount = baseAmount * betQuantity
   const potentialPayout = selectedTarget ? Math.round(totalBetAmount * selectedTarget.multiplier) : 0
 
@@ -305,12 +345,10 @@ export function App() {
   // Backend Sync Initial & Periodic
   const syncWithBackend = useCallback(async () => {
     try {
-      const data = await fetchCurrentRound()
+      const data = await fetchCurrentRound(selectedMode)
       setServerOnline(true)
       if (data.roundNumber) {
-        // Sync period and phase authoritatively
         setRoundNumber(data.roundNumber)
-        // Adjust client clock to match server seconds smoothly
         setSeconds((currSec) => {
           if (Math.abs(currSec - data.secondsRemaining) >= 2 || phase === 'result') {
             return data.secondsRemaining
@@ -323,6 +361,7 @@ export function App() {
             round: h.roundNumber,
             digit: h.digit,
             color: h.color,
+            size: h.size,
             multiplier: h.color === 'violet' ? 4.5 : 2.0,
           }))
           setHistory(formatted)
@@ -348,7 +387,11 @@ export function App() {
           id: b.id,
           round: Number(b.round_number),
           selection: String(b.selection),
-          type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase()) ? 'color' : 'number',
+          type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase())
+            ? 'color'
+            : ['big', 'small'].includes(String(b.selection).toLowerCase())
+            ? 'size'
+            : 'number',
           amount: Number(b.amount),
           multiplier: Number(b.multiplier),
           potentialReturn: Math.round(Number(b.amount) * Number(b.multiplier)),
@@ -358,7 +401,6 @@ export function App() {
           createdAt: b.created_at ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
         }))
 
-        // Celebrate if a pending bet just settled as won
         const hadWonBet = formatted.find(
           (nb) => nb.status === 'won' && betsRef.current.some((ob) => ob.id === nb.id && ob.status === 'pending')
         )
@@ -374,7 +416,7 @@ export function App() {
         setBets(formatted)
       }
     } catch {}
-  }, [userId, phase])
+  }, [userId, phase, selectedMode])
 
   useEffect(() => {
     syncWithBackend()
@@ -403,7 +445,7 @@ export function App() {
       setToast({
         type: 'neutral',
         title: `Period ${formatPeriod(roundNumber)} Result`,
-        detail: `Winning Number: ${outcome.digit} (${outcome.color.toUpperCase()})`,
+        detail: `Winning Number: ${outcome.digit} (${outcome.color.toUpperCase()}) - ${outcome.digit >= 5 ? 'BIG' : 'SMALL'}`,
       })
       return
     }
@@ -417,6 +459,7 @@ export function App() {
           let won = false
           if (b.type === 'color' && b.selection === outcome.color) won = true
           if (b.type === 'number' && Number(b.selection) === outcome.digit) won = true
+          if (b.type === 'size' && b.selection === (outcome.digit >= 5 ? 'big' : 'small')) won = true
 
           const payout = won ? Math.round(b.amount * b.multiplier) : 0
           if (won) {
@@ -529,7 +572,7 @@ export function App() {
     // Try backend placeBet
     try {
       if (serverOnline) {
-        const res = await apiPlaceBet(userId, String(selectedTarget.val), totalBetAmount)
+        const res = await apiPlaceBet(userId, String(selectedTarget.val), totalBetAmount, selectedMode)
         if (res?.newBalance !== undefined) {
           setBalance(res.newBalance)
         } else {
@@ -543,12 +586,17 @@ export function App() {
       setBetSheetOpen(false)
       sound.playBetPlaced()
 
+      const targetLabel =
+        selectedTarget.type === 'color'
+          ? selectedTarget.val.toUpperCase()
+          : selectedTarget.type === 'size'
+          ? selectedTarget.val.toUpperCase()
+          : 'Number ' + selectedTarget.val
+
       setToast({
         type: 'success',
         title: 'Bet Placed Successfully',
-        detail: `₹${formatCredits(totalBetAmount)} on ${
-          selectedTarget.type === 'color' ? selectedTarget.val.toUpperCase() : 'Number ' + selectedTarget.val
-        }`,
+        detail: `₹${formatCredits(totalBetAmount)} on ${targetLabel} (${selectedMode})`,
       })
     } catch (err) {
       setToast({
@@ -625,6 +673,17 @@ export function App() {
               <span className="indicator-label">{serverOnline ? 'Live' : 'Local'}</span>
             </div>
 
+            {/* VIP Daily Check-In Bonus */}
+            <button
+              className="topbar-vip-btn"
+              onClick={handleClaimVIPBonus}
+              disabled={vipBonusLoading}
+              title="Claim Daily VIP Bonus (₹15-₹50)"
+            >
+              <Gift size={13} className="text-amber" />
+              <span>VIP ₹</span>
+            </button>
+
             {/* Audio Mute Toggle */}
             <button
               className="topbar-icon-btn"
@@ -671,11 +730,25 @@ export function App() {
         <main className="mobile-main">
           {activeTab === 'win' && (
             <div className="win-view-content">
+              {/* GAME LEVEL / MODE SELECTOR TABS */}
+              <div className="mode-selector-bar">
+                {GAME_LEVELS.map((m) => (
+                  <button
+                    key={m.id}
+                    className={`mode-tab-btn ${selectedMode === m.id ? 'active' : ''}`}
+                    onClick={() => setSelectedMode(m.id)}
+                  >
+                    <span className="mode-tab-title">{m.label}</span>
+                    <span className="mode-tab-badge">{m.time}</span>
+                  </button>
+                ))}
+              </div>
+
               {/* GAME STAGE & TIMER CARD */}
               <div className={`game-stage-card ${isLocked ? 'is-locked' : ''}`}>
                 <div className="stage-topline">
                   <div className="period-box">
-                    <span className="period-label">Period</span>
+                    <span className="period-label">Period ({activeLevel.label})</span>
                     <strong className="period-num">{formatPeriod(roundNumber)}</strong>
                   </div>
                   <div className={`status-badge-chip ${isLocked ? 'locked' : 'open'}`}>
@@ -704,10 +777,10 @@ export function App() {
                           <span className="time-block">0</span>
                           <span className="time-block">0</span>
                           <span className="time-sep">:</span>
-                          <span className={`time-block ${seconds <= 8 ? 'urgent' : ''}`}>
+                          <span className={`time-block ${seconds <= activeLevel.lock ? 'urgent' : ''}`}>
                             {String(seconds).padStart(2, '0')[0]}
                           </span>
-                          <span className={`time-block ${seconds <= 8 ? 'urgent' : ''}`}>
+                          <span className={`time-block ${seconds <= activeLevel.lock ? 'urgent' : ''}`}>
                             {String(seconds).padStart(2, '0')[1]}
                           </span>
                         </div>
@@ -744,6 +817,26 @@ export function App() {
                     <span className="btn-multiplier">{c.multiplier.toFixed(1)}x</span>
                   </button>
                 ))}
+              </div>
+
+              {/* BIG / SMALL PREDICTION BUTTONS */}
+              <div className="size-action-buttons">
+                <button
+                  className="size-btn btn-big"
+                  disabled={isLocked}
+                  onClick={() => handleSelectTarget('size', 'big', 2.0)}
+                >
+                  <span className="btn-label">Big (5-9)</span>
+                  <span className="btn-multiplier">2.0x</span>
+                </button>
+                <button
+                  className="size-btn btn-small"
+                  disabled={isLocked}
+                  onClick={() => handleSelectTarget('size', 'small', 2.0)}
+                >
+                  <span className="btn-label">Small (0-4)</span>
+                  <span className="btn-multiplier">2.0x</span>
+                </button>
               </div>
 
               {/* NUMBER SELECTION GRID (0-9) */}
@@ -1008,7 +1101,13 @@ export function App() {
                     className="wallet-btn deposit-btn"
                     onClick={() => setDepositModalOpen(true)}
                   >
-                    <QrCode size={16} /> Recharge / Deposit
+                    <QrCode size={16} /> Deposit
+                  </button>
+                  <button
+                    className="wallet-btn withdraw-btn"
+                    onClick={() => setWithdrawModalOpen(true)}
+                  >
+                    <ArrowDownCircle size={16} /> Withdraw
                   </button>
                   <button
                     className="wallet-btn reset-btn"
@@ -1031,6 +1130,20 @@ export function App() {
                   <div className="feature-info">
                     <strong>UPI Fast Deposit</strong>
                     <p>PhonePe, Google Pay, Paytm, BHIM with 12-digit UTR</p>
+                  </div>
+                  <ChevronRight size={16} className="arrow" />
+                </div>
+
+                <div
+                  className="wallet-feature-row"
+                  onClick={() => setWithdrawModalOpen(true)}
+                >
+                  <div className="feature-icon withdraw-icon">
+                    <ArrowDownCircle size={18} />
+                  </div>
+                  <div className="feature-info">
+                    <strong>Withdrawal Payouts</strong>
+                    <p>Direct UPI VPA & IMPS Bank Account Transfers</p>
                   </div>
                   <ChevronRight size={16} className="arrow" />
                 </div>
@@ -1166,9 +1279,9 @@ export function App() {
               <div className="sheet-header">
                 <div>
                   <h3 className="sheet-title">
-                    Select {selectedTarget.type === 'color' ? selectedTarget.val.toUpperCase() : `Number ${selectedTarget.val}`}
+                    Select {selectedTarget.type === 'color' ? selectedTarget.val.toUpperCase() : selectedTarget.type === 'size' ? selectedTarget.val.toUpperCase() : `Number ${selectedTarget.val}`}
                   </h3>
-                  <span className="sheet-payout-tag">{selectedTarget.multiplier.toFixed(1)}x Potential Payout</span>
+                  <span className="sheet-payout-tag">{selectedTarget.multiplier.toFixed(1)}x Potential Payout ({selectedMode})</span>
                 </div>
                 <button className="sheet-close-btn" onClick={() => setBetSheetOpen(false)}>
                   <X size={18} />
@@ -1305,6 +1418,23 @@ export function App() {
           onClose={() => setDepositModalOpen(false)}
           userId={userId}
           onBalanceUpdated={(newBal) => setBalance(newBal)}
+        />
+
+        {/* WITHDRAW MODAL (UPI & BANK PAYOUTS) */}
+        <WithdrawModal
+          isOpen={withdrawModalOpen}
+          onClose={() => setWithdrawModalOpen(false)}
+          user={currentUser || { id: userId, username: 'Guest' }}
+          walletBalance={balance}
+          onWithdrawSuccess={(newBal) => {
+            setBalance(newBal)
+            sound.playWin()
+            setToast({
+              type: 'success',
+              title: 'Withdrawal Submitted',
+              detail: `Request placed. New balance: ₹${formatCredits(newBal)}`,
+            })
+          }}
         />
 
         {/* AUTH MODAL (LOGIN, SIGNUP, FORGOT, RESET) */}

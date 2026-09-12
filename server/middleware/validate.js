@@ -7,6 +7,8 @@ const VALID_BET_SELECTIONS = new Set([
   'green',
   'violet',
   'red',
+  'big',
+  'small',
   '0',
   '1',
   '2',
@@ -18,6 +20,9 @@ const VALID_BET_SELECTIONS = new Set([
   '8',
   '9',
 ])
+
+export const VALID_GAME_MODES = new Set(['PARITY', 'SAPRE', 'BCONE', 'EMERD'])
+
 
 export function validateSignup(req, res, next) {
   const { username, email, password, referralCode } = req.body
@@ -151,8 +156,14 @@ export function validateBetPlacement(req, res, next) {
   const cleanSelection = selection.trim().toLowerCase()
   if (!VALID_BET_SELECTIONS.has(cleanSelection)) {
     return res.status(400).json({
-      error: 'Invalid selection. Must be green, violet, red, or digits 0-9.',
+      error: 'Invalid selection. Must be green, violet, red, big, small, or digits 0-9.',
     })
+  }
+
+  const rawMode = req.body.mode || 'PARITY'
+  const cleanMode = String(rawMode).trim().toUpperCase()
+  if (!VALID_GAME_MODES.has(cleanMode)) {
+    return res.status(400).json({ error: 'Invalid game mode. Must be PARITY, SAPRE, BCONE, or EMERD.' })
   }
 
   const numAmount = Number(amount)
@@ -168,6 +179,69 @@ export function validateBetPlacement(req, res, next) {
     userId: authUserId,
     selection: cleanSelection,
     amount: numAmount,
+    mode: cleanMode,
+  }
+
+  next()
+}
+
+export function validateWithdrawalRequest(req, res, next) {
+  const { amount, payoutMethod, upiId, bankDetails } = req.body
+  const authUserId = req.user ? req.user.id : req.body.userId
+
+  if (!authUserId || typeof authUserId !== 'string') {
+    return res.status(401).json({ error: 'Authenticated user session is required' })
+  }
+
+  if (req.user && req.body.userId && req.user.id !== req.body.userId) {
+    return res.status(403).json({ error: 'Security violation: Cannot request withdrawal for another user' })
+  }
+
+  const numAmount = Number(amount)
+  if (!Number.isFinite(numAmount) || numAmount < 100) {
+    return res.status(400).json({ error: 'Minimum withdrawal amount is ₹100' })
+  }
+
+  if (numAmount > 100000) {
+    return res.status(400).json({ error: 'Maximum withdrawal amount per transaction is ₹100,000' })
+  }
+
+  const method = String(payoutMethod || 'UPI').trim().toUpperCase()
+  if (method !== 'UPI' && method !== 'BANK') {
+    return res.status(400).json({ error: 'Payout method must be UPI or BANK' })
+  }
+
+  const cleanDetails = {}
+
+  if (method === 'UPI') {
+    if (!upiId || typeof upiId !== 'string' || !/^[\w.-]+@[\w.-]+$/.test(upiId.trim())) {
+      return res.status(400).json({ error: 'Valid UPI ID is required (e.g. name@okhdfcbank)' })
+    }
+    cleanDetails.upiId = upiId.trim()
+  } else {
+    if (!bankDetails || typeof bankDetails !== 'object') {
+      return res.status(400).json({ error: 'Bank details object is required' })
+    }
+    const { accountNumber, ifsc, holderName } = bankDetails
+    if (!accountNumber || !/^\d{9,18}$/.test(String(accountNumber).trim())) {
+      return res.status(400).json({ error: 'Bank account number must be 9-18 digits' })
+    }
+    if (!ifsc || !/^[A-Z]{4}0[A-Z0-9]{6}$/.test(String(ifsc).trim().toUpperCase())) {
+      return res.status(400).json({ error: 'Valid 11-character Indian bank IFSC code required (e.g. SBIN0001234)' })
+    }
+    if (!holderName || typeof holderName !== 'string' || holderName.trim().length < 2) {
+      return res.status(400).json({ error: 'Account holder name is required' })
+    }
+    cleanDetails.accountNumber = String(accountNumber).trim()
+    cleanDetails.ifsc = String(ifsc).trim().toUpperCase()
+    cleanDetails.holderName = holderName.trim()
+  }
+
+  req.validatedWithdrawal = {
+    userId: authUserId,
+    amount: Math.floor(numAmount),
+    payoutMethod: method,
+    payoutDetails: cleanDetails,
   }
 
   next()

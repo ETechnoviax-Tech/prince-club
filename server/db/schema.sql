@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     username TEXT NOT NULL UNIQUE,
     email TEXT,
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    last_daily_bonus TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
@@ -76,6 +77,7 @@ CREATE TABLE IF NOT EXISTS public.bets (
     round_id UUID NOT NULL REFERENCES public.game_rounds(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     selection TEXT NOT NULL,
+    game_mode VARCHAR(20) NOT NULL DEFAULT 'PARITY',
     amount NUMERIC(12, 2) NOT NULL CHECK (amount > 0),
     multiplier NUMERIC(4, 2) NOT NULL,
     payout NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
@@ -177,4 +179,21 @@ CREATE INDEX IF NOT EXISTS idx_password_resets_identity ON public.password_reset
 CREATE INDEX IF NOT EXISTS idx_password_resets_code ON public.password_resets(otp_code);
 CREATE INDEX IF NOT EXISTS idx_password_resets_status ON public.password_resets(is_used, expires_at);
 CREATE INDEX IF NOT EXISTS idx_password_resets_channel ON public.password_resets(channel);
+
+-- 9. Withdrawal Requests (UPI / Bank Account Payouts)
+CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    amount NUMERIC(12, 2) NOT NULL CHECK (amount >= 100),
+    payout_method VARCHAR(20) NOT NULL CHECK (payout_method IN ('UPI', 'BANK')),
+    payout_details JSONB NOT NULL,
+    status TEXT NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
+    admin_notes TEXT,
+    processed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+CREATE INDEX IF NOT EXISTS idx_withdrawal_user ON public.withdrawal_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_withdrawal_status ON public.withdrawal_requests(status);
+
 

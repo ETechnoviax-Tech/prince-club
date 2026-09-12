@@ -1,70 +1,78 @@
 # Prince Club
 
-Prince Club is a full-stack, mobile-first real-time color trading and prediction platform built with React 18, Vite, Express.js, and Supabase (PostgreSQL). Designed for production environments with real users, it features an authoritative 45-second round engine, tamper-proof HMAC session tokens, atomic balance deduction, strict input sanitization, rate limiting, and dynamic UPI QR deposit processing with 12-digit UTR verification.
+Prince Club is a full-stack, mobile-first real-time color trading and prediction platform built with React 18, Vite, Express.js, and Supabase (PostgreSQL). Designed for production environments with real users, it features a multi-level synchronized round engine (Parity 30s, Sapre 1m, Bcone 3m, Emerd 5m), Big/Small prediction markets, tamper-proof HMAC session tokens, atomic wallet deductions, sliding-window rate limiting, UPI QR deposits with 12-digit UTR verification, instant UPI/Bank withdrawals, and VIP daily check-in rewards.
 
 ---
 
-## Features
+## Key Features
 
-- **Tamper-Proof Authentication & Sessions**:
-  - Cryptographically signed HMAC-SHA256 session tokens preventing user identity spoofing and unauthorized actions.
-  - User registration with optional referral bonus (₹1,200 initial balance vs. ₹1,000 standard).
-  - Secure login with PBKDF2/SHA-256 salted hashing and instant 1-click Guest Trader mode.
-  - 6-digit OTP password recovery with 15-minute expiration windows.
-- **Multi-Channel OTP Verification (WhatsApp & Email)**:
-  - Deliver 6-digit verification codes directly to player WhatsApp numbers (via Meta WhatsApp Cloud API or Twilio) or Email inboxes (via Resend REST API or SMTP).
-  - Built-in development sandbox simulator that logs formatted message previews when API credentials are not yet configured.
-  - Interactive channel switcher in the frontend modal allowing players to choose between WhatsApp and Email verification.
-- **Strict Zero-Bypass Security Architecture**:
-  - **Identity Verification**: Protected routes verify caller identity against the bearer token to prevent users from placing bets, checking balances, or submitting UTRs on behalf of other accounts.
-  - **Admin Gatekeeper**: Financial approval endpoints (`/api/payments/verify`) are strictly locked behind admin authentication, preventing unauthorized self-approval of balances.
-  - **Anti-Race Condition**: Atomic balance deduction guards (`gte('balance', amount)`) prevent concurrent double-spending attacks.
-  - **Input Sanitization**: Alphanumeric-only username validation, length constraints, bet selection whitelists, and 12-digit numeric UTR enforcement.
-  - **Sliding Window Rate Limiting**: Zero-dependency memory rate limiters for authentication (15 req/min), betting (60 req/min), and deposits (20 req/min).
-- **Authoritative Real-Time Game Engine**:
-  - Synchronized 45-second round cycles with an 8-second countdown lock window enforced both on client and server.
-  - Server-side background loop that automatically settles pending bets, resolves winning multipliers (Green 2.0x, Red 2.0x, Violet 4.5x, Single Digits 9.0x), and credits wallet payouts directly.
-- **Mobile-First User Experience**:
-  - Fluid mobile layout (360px–480px responsive view) with safe-area insets, sticky bottom navigation, bottom-sheet betting drawer, and sound feedback via the Web Audio API.
-- **UPI QR Recharge & UTR Settlement**:
-  - Dynamic QR generation compatible with PhonePe, Google Pay, Paytm, and BHIM.
-  - Server-side deduplication preventing re-submission of previously used UTR numbers.
-  - Atomic PostgreSQL stored procedures for wallet credits upon verification.
+- **Multi-Level Real-Time Game Engine**:
+  - Four parallel game intervals running synchronously:
+    - **Parity**: 30s round cycle (5s lock window) for high-frequency trading.
+    - **Sapre**: 60s (1m) round cycle (10s lock window) for standard parity analysis.
+    - **Bcone**: 180s (3m) round cycle (30s lock window) for mid-paced predictions.
+    - **Emerd**: 300s (5m) round cycle (45s lock window) for high-volume signals.
+  - Independent history roadmaps, period numbers, and server-side background settlement loops for each game mode.
+
+- **Expanded Betting Markets**:
+  - **Colors**: Green (2.0x), Red (2.0x), Violet (4.5x with 1.5x half-payouts on 0 and 5).
+  - **Big / Small**: Big (numbers 5–9, 2.0x payout) and Small (numbers 0–4, 2.0x payout).
+  - **Exact Numbers**: Direct digit predictions from 0 to 9 (9.0x payout).
+
+- **User Wallet, Deposits & Withdrawals**:
+  - **Dynamic UPI QR Deposits**: Real-time QR generation with 12-digit UTR deduplication and atomic wallet crediting.
+  - **Payout Withdrawals**: Instant UPI VPA and IMPS Bank Account withdrawal requests with atomic balance locking to prevent double-spending.
+  - **Admin Financial Controls**: Secure review endpoints allowing administrators to approve or reject withdrawals (with automatic refunds on rejection).
+
+- **VIP Check-In & Rewards**:
+  - 24-hour streak bonus granting ₹15–₹50 daily rewards to active players.
+  - Automated duplicate claim prevention enforced both in-memory and database level.
+
+- **Tamper-Proof Authentication & OTP**:
+  - Cryptographically signed HMAC-SHA256 bearer tokens preventing account spoofing.
+  - Multi-channel OTP verification supporting WhatsApp (Meta Cloud API, Twilio) and Email (Resend REST API, SMTP) with interactive channel switching.
+
+- **Strict Zero-Bypass Security**:
+  - Caller identity validation on all financial, betting, and wallet actions.
+  - Atomic database deduction guards (`gte('balance', amount)`) preventing concurrent race-condition exploits.
+  - Sliding-window rate limiters for authentication, betting, and payments.
 
 ---
 
 ## Project Structure
 
 ```
-├── frontend/                     # Dedicated React frontend application
-│   ├── index.html                # Mobile entry layout with PWA meta tags
-│   ├── vite.config.js            # Vite build and dev server configuration
-│   ├── package.json              # Frontend dependencies and scripts
-│   ├── .env.example              # Frontend environment template
+├── frontend/                     # React 18 / Vite client application
+│   ├── index.html                # Mobile-first viewport layout with PWA meta tags
+│   ├── vite.config.js            # Vite bundler and dev server configuration
+│   ├── package.json              # Frontend dependencies and build scripts
+│   ├── .env.example              # Frontend environment variables template
 │   └── src/
-│       ├── api/client.js         # Unified API client with automatic bearer token attachment
+│       ├── api/client.js         # Unified API client with automatic bearer tokens
 │       ├── components/
-│       │   ├── AuthModal.jsx     # Login, Register, Forgot, and Reset password dialog
-│       │   └── DepositModal.jsx  # Dynamic UPI QR payment and UTR submission dialog
-│       ├── utils/audio.js        # Web Audio API sound synthesizer
-│       ├── App.jsx               # Mobile application shell and real-time state machine
+│       │   ├── AuthModal.jsx     # Login, Signup, and multi-channel OTP dialog
+│       │   ├── DepositModal.jsx  # Dynamic UPI QR payment and UTR submission dialog
+│       │   └── WithdrawModal.jsx # UPI & Bank withdrawal payout dialog
+│       ├── utils/audio.js        # Zero-dependency Web Audio API synthesizer
+│       ├── App.jsx               # Mobile shell, multi-game engine tabs, and betting sheet
 │       └── styles.css            # Dark theme, glassmorphism, and responsive layout
-├── server/                       # Node.js / Express backend service
-│   ├── index.js                  # Express server entry point (port 5000)
-│   ├── config/supabase.js        # Supabase database connection and status
-│   ├── controllers/              # Auth, game, wallet, and payment logic
+├── server/                       # Express.js REST API service
+│   ├── index.js                  # Server entry point (port 5000)
+│   ├── config/supabase.js        # Supabase database client and connectivity
+│   ├── controllers/              # Game engine, auth, wallet, and payment logic
 │   ├── middleware/
-│   │   ├── auth.js               # Token generation, verification, and admin guards
-│   │   ├── validate.js           # Strict request payload validators
+│   │   ├── auth.js               # HMAC token generation, verification, and admin guards
+│   │   ├── validate.js           # Request payload sanitization and validators
 │   │   └── rateLimit.js          # Sliding-window rate limiters
 │   ├── services/
-│   │   └── notificationService.js # Multi-channel WhatsApp & Email OTP dispatcher
-│   └── routes/                   # Express route declarations
+│   │   └── notificationService.js # WhatsApp and Email OTP dispatch engine
+│   └── routes/                   # Route declarations
 └── tests/
-    ├── clean_db.js               # Script to wipe database records for fresh deployment
-    ├── test_auth_flows.js        # Verification of signup, login, OTP, and reset
-    ├── test_realtime_game.js     # Live round sync & authoritative payout loop tests
-    └── test_whatsapp_email_otp.js # Multi-channel OTP verification suite
+    ├── test_multi_game_modes.js  # Parity, Sapre, Bcone, Emerd, and Big/Small tests
+    ├── test_withdrawal_vip.js    # Withdrawal requests, refunds, and VIP bonus tests
+    ├── test_whatsapp_email_otp.js # WhatsApp and Email OTP delivery tests
+    ├── test_auth_flows.js        # Authentication lifecycle tests
+    └── clean_db.js               # Database cleanup utility
 ```
 
 ---
@@ -83,7 +91,7 @@ npm install
 ```
 
 ### 3. Environment Configuration
-Copy `.env.example` to `.env` in the root and `frontend/.env.example` to `frontend/.env`:
+Create `.env` in the root and `frontend/.env`:
 ```bash
 cp .env.example .env
 cp frontend/.env.example frontend/.env
@@ -101,51 +109,41 @@ MERCHANT_NAME=Prince Club
 AUTO_APPROVE_UTR=false
 ```
 
-### 4. Database Setup
-Execute the SQL script in `server/db/schema.sql` inside your Supabase SQL editor to create all required tables, foreign keys, indexes, and atomic stored procedures.
-
-To wipe test data and prepare the database for real users:
-```bash
-node tests/clean_db.js
-```
+### 4. Database Schema
+Execute `server/db/schema.sql` in your Supabase SQL editor to create all required tables (`profiles`, `wallets`, `bets`, `deposit_requests`, `withdrawal_requests`, `password_resets`) and atomic stored procedures.
 
 ### 5. Running the Application
 
-**Start the API Server:**
+**Run Express API Server:**
 ```bash
 npm run server
-# Express API runs on http://localhost:5000
+# API runs on http://localhost:5000
 ```
 
-**Start the Frontend:**
+**Run Frontend:**
 ```bash
 npm run dev
-# Frontend runs on http://localhost:5173
-```
-Alternatively, navigate to `frontend` and run directly:
-```bash
-cd frontend
-npm run dev
+# Vite client runs on http://localhost:5173
 ```
 
 ---
 
-## Testing & Quality Assurance
+## Automated Test Suites
 
-Run the test suites to verify system integrity:
+Verify all system components before deployment:
 
 ```bash
-# Verify authentication flows (Signup, Login, OTP, Reset)
-node tests/test_auth_flows.js
+# Verify 4 game modes (Parity, Sapre, Bcone, Emerd) and Big/Small bets
+node tests/test_multi_game_modes.js
 
-# Verify WhatsApp and Email OTP delivery
+# Verify UPI/Bank withdrawals, refunds, and 24h VIP bonus
+node tests/test_withdrawal_vip.js
+
+# Verify multi-channel WhatsApp and Email OTP dispatch
 node tests/test_whatsapp_email_otp.js
 
-# Verify real-time 45s round engine and background settlement
-node tests/test_realtime_game.js
-
-# Run full backend suite
-npm test
+# Verify authentication lifecycle
+node tests/test_auth_flows.js
 ```
 
 ---
@@ -156,7 +154,7 @@ Compile optimized production client assets:
 ```bash
 npm run build
 ```
-The output will be placed in `frontend/dist/`, ready to be served by any static host (Vercel, Netlify, Cloudflare Pages, or Nginx) while the Express API runs on your backend server.
+The output is written to `frontend/dist/`, ready for hosting on Vercel, Netlify, Cloudflare Pages, or Nginx.
 
 ---
 
