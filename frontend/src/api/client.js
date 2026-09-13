@@ -299,3 +299,165 @@ export async function fetchUserBets(userId) {
   return res.json()
 }
 
+// Aviator Crash Game API
+export async function fetchAviatorState(userId) {
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+  const res = await fetch(`${API_BASE}/game/aviator/state${query}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Aviator state')
+  return res.json()
+}
+
+export async function placeAviatorBet(userId, amount, autoCashOut = null) {
+  const res = await fetch(`${API_BASE}/game/aviator/bet`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, amount, autoCashOut }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to place Aviator bet')
+  }
+  return json
+}
+
+export async function cashoutAviatorBet(userId, betId = null) {
+  const res = await fetch(`${API_BASE}/game/aviator/cashout`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, betId }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to cash out')
+  }
+  return json
+}
+
+// Coin Flip API
+export async function playCoinFlip(userId, side, amount) {
+  const res = await fetch(`${API_BASE}/game/coinflip/play`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, side, amount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to play Coin Flip')
+  }
+  return json
+}
+
+export async function fetchCoinFlipHistory() {
+  const res = await fetch(`${API_BASE}/game/coinflip/history`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Coin Flip history')
+  return res.json()
+}
+
+// Andar Bahar API
+export async function playAndarBahar(userId, side, amount) {
+  const res = await fetch(`${API_BASE}/game/andarbahar/play`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, side, amount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to play Andar Bahar')
+  }
+  return json
+}
+
+export async function fetchAndarBaharHistory() {
+  const res = await fetch(`${API_BASE}/game/andarbahar/history`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Andar Bahar history')
+  return res.json()
+}
+
+// Vortex API
+export async function playVortex(userId, ring, amount) {
+  const res = await fetch(`${API_BASE}/game/vortex/play`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, ring, amount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to play Vortex')
+  return json
+}
+
+export async function fetchVortexHistory() {
+  const res = await fetch(`${API_BASE}/game/vortex/history`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Vortex history')
+  return res.json()
+}
+
+// Cricket API
+export async function playCricket(userId, prediction, amount) {
+  const res = await fetch(`${API_BASE}/game/cricket/play`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, prediction, amount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to play Cricket')
+  return json
+}
+
+export async function fetchCricketHistory() {
+  const res = await fetch(`${API_BASE}/game/cricket/history`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Cricket history')
+  return res.json()
+}
+
+// PUBG 1Min API
+export async function playPubg(userId, zone, amount) {
+  const res = await fetch(`${API_BASE}/game/pubg/play`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, zone, amount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to play PUBG 1Min')
+  return json
+}
+
+export async function fetchPubgHistory() {
+  const res = await fetch(`${API_BASE}/game/pubg/history`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch PUBG history')
+  return res.json()
+}
+
+// Fortune Spin Wheel ("Get ₹500") API
+export async function claimSpinWheel(userId) {
+  const res = await fetch(`${API_BASE}/game/spin/claim`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to claim spin')
+  return json
+}
+
+export async function fetchSpinStatus(userId) {
+  const res = await fetch(`${API_BASE}/game/spin/status?userId=${encodeURIComponent(userId || '')}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch spin status')
+  return res.json()
+}
+
+
+

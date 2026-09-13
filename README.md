@@ -36,6 +36,17 @@ A full-stack, mobile-first real-time color trading and prediction platform built
   - Authentic Win Go layout with live countdown, recent draw outcome balls, dual split balls for 0 and 5, quick multipliers (X1–X100), and trend charts.
   - Zero-dependency Web Audio API synthesizer for sound effects.
 
+- **Multi-Game Arcade Hub**
+  - **Arcade Lobby**: 3-column mobile layout with Recommended Games, Top Games, and live RTP% pills.
+  - **Aviator (Crash Game)**: Real-time flight canvas animation with exponential multiplier (1.00x → 200x+) and auto-cashout.
+  - **Vortex**: Cosmic multi-ring multiplier wheel (Inner, Middle, Outer) with up to 50x payouts.
+  - **Cricket Live**: Interactive 6-ball over prediction (Dot, 1-2 Runs, 4 Boundary, 6 Maximum, Wicket) with stadium turf visuals.
+  - **PUBG 1MIN**: 1-minute battle royale survival zone predictions with weapon and helmet loot.
+  - **3D Coin Flip**: Physics-based 3D spinning coin with Heads/Tails selection and 1.96x payout.
+  - **Andar Bahar**: Traditional 52-card table game with dealer Joker card and step-by-step deal sequence.
+  - **Fortune Spin Wheel ("Get ₹500")**: Floating center navigation wheel granting daily cash bonuses up to ₹500.
+  - **Bottom Navigation**: 5-tab bar (Home, Activity, Center Wheel, Promotion, Account).
+
 ---
 
 ## Project Structure
@@ -51,14 +62,33 @@ A full-stack, mobile-first real-time color trading and prediction platform built
 │       ├── components/
 │       │   ├── AuthModal.jsx     # Login, Signup, and multi-channel OTP dialog
 │       │   ├── DepositModal.jsx  # Dynamic UPI QR payment and UTR submission dialog
-│       │   └── WithdrawModal.jsx # UPI & Bank withdrawal payout dialog
+│       │   ├── WithdrawModal.jsx # UPI & Bank withdrawal payout dialog
+│       │   ├── GameLobby.jsx     # 3-column arcade hub with Recommended & Top Games
+│       │   ├── AviatorGame.jsx   # Crash game with canvas trajectory and live multiplier
+│       │   ├── VortexGame.jsx    # Cosmic multiplier wheel with risk ring tiers
+│       │   ├── CricketGame.jsx   # Live ball prediction game with stadium pitch
+│       │   ├── PubgGame.jsx      # 1-minute battle royale drop zone survival game
+│       │   ├── CoinFlipGame.jsx  # 3D spinning coin flip with streak tracking
+│       │   ├── AndarBaharGame.jsx# Indian card game with step-by-step deal animation
+│       │   └── SpinWheelModal.jsx# "Get ₹500" Fortune Spin Wheel modal
 │       ├── utils/audio.js        # Web Audio API synthesizer
-│       ├── App.jsx               # Main application shell and state management
+│       ├── App.jsx               # Main application shell and tab routing
 │       └── styles.css            # Responsive layout and theme styling
 ├── server/                       # Express.js backend
 │   ├── index.js                  # Server entry point (port 5000)
 │   ├── config/supabase.js        # Supabase database client
-│   ├── controllers/              # Game, Auth, Payment, and Wallet handlers
+│   ├── controllers/
+│   │   ├── gameController.js     # Win Go multi-mode game engine
+│   │   ├── aviatorController.js  # Aviator crash flight engine
+│   │   ├── vortexController.js   # Vortex ring multiplier engine
+│   │   ├── cricketController.js  # Cricket live ball outcome engine
+│   │   ├── pubgController.js     # PUBG 1Min battle drop engine
+│   │   ├── spinWheelController.js# Daily Fortune Wheel reward engine
+│   │   ├── coinFlipController.js # Provably-fair instant coin toss engine
+│   │   ├── andarBaharController.js # 52-card Andar Bahar deal engine
+│   │   ├── authController.js     # Authentication and OTP flows
+│   │   ├── paymentController.js  # UPI deposit and UTR verification
+│   │   └── walletController.js   # Balance, withdrawals, and VIP bonuses
 │   ├── middleware/               # Auth, validation, and rate limiting
 │   ├── routes/                   # Express route declarations
 │   └── services/

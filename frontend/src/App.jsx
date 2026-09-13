@@ -42,10 +42,21 @@ import {
   Zap,
   Gift,
   ArrowDownCircle,
+  Heart,
+  Share2,
+  FileText,
 } from 'lucide-react'
 import { DepositModal } from './components/DepositModal'
 import { AuthModal } from './components/AuthModal'
 import WithdrawModal from './components/WithdrawModal'
+import { GameLobby } from './components/GameLobby'
+import { AviatorGame } from './components/AviatorGame'
+import { CoinFlipGame } from './components/CoinFlipGame'
+import { AndarBaharGame } from './components/AndarBaharGame'
+import { VortexGame } from './components/VortexGame'
+import { CricketGame } from './components/CricketGame'
+import { PubgGame } from './components/PubgGame'
+import { SpinWheelModal } from './components/SpinWheelModal'
 import {
   clearAuthToken,
   fetchCurrentRound,
@@ -200,9 +211,10 @@ function initialSeedBets() {
 
 export function App() {
   // Navigation & Core State
-  const [activeTab, setActiveTab] = useState('win') // 'win', 'trend', 'wallet', 'rules'
+  const [activeTab, setActiveTab] = useState('lobby') // 'lobby', 'win', 'aviator', 'vortex', 'cricket', 'pubg', 'coinflip', 'andarbahar', 'activity', 'promotion', 'account'
   const [activeSubTab, setActiveSubTab] = useState('record') // 'record', 'chart', 'mybets'
   const [depositModalOpen, setDepositModalOpen] = useState(false)
+  const [spinWheelOpen, setSpinWheelOpen] = useState(false)
   const [isMuted, setIsMuted] = useState(sound.isMuted)
   const [serverOnline, setServerOnline] = useState(false)
 
@@ -736,9 +748,9 @@ export function App() {
             <ChevronLeft size={22} />
           </button>
           
-          <div className="raja-brand">
+          <div className="raja-brand" onClick={() => setActiveTab('lobby')} style={{ cursor: 'pointer' }}>
             <span className="raja-crown">👑</span>
-            <span className="raja-brand-name">VEERGAME</span>
+            <span className="raja-brand-name">PRINCE CLUB</span>
           </div>
 
           <div className="raja-header-actions">
@@ -790,8 +802,176 @@ export function App() {
 
         {/* MAIN BODY BASED ON ACTIVE TAB */}
         <main className="mobile-main">
+          {/* LOBBY VIEW */}
+          {activeTab === 'lobby' && (
+            <GameLobby
+              onSelectGame={(g) => setActiveTab(g === 'wingo' ? 'win' : g)}
+              userBalance={balance}
+              onOpenDeposit={() => setDepositModalOpen(true)}
+              onOpenWithdraw={() => setWithdrawModalOpen(true)}
+            />
+          )}
+
+          {/* AVIATOR CRASH GAME */}
+          {activeTab === 'aviator' && (
+            <div className="game-view-wrapper">
+              <div className="game-view-header">
+                <button className="game-back-btn" onClick={() => setActiveTab('lobby')}>
+                  <ChevronLeft size={18} /> <span>Lobby</span>
+                </button>
+                <div className="game-title-badge">
+                  <Zap size={16} className="text-amber-400" />
+                  <span>AVIATOR CRASH</span>
+                </div>
+                <div className="game-balance-pill">
+                  <span className="pill-bal">₹{balance.toFixed(2)}</span>
+                  <button className="pill-add-btn" onClick={() => setDepositModalOpen(true)} title="Deposit">+</button>
+                </div>
+              </div>
+              <AviatorGame
+                user={currentUser || { id: userId, username: 'Guest' }}
+                userBalance={balance}
+                onBalanceUpdate={(newBal) => setBalance(newBal)}
+              />
+            </div>
+          )}
+
+          {/* COIN FLIP 3D GAME */}
+          {activeTab === 'coinflip' && (
+            <div className="game-view-wrapper">
+              <div className="game-view-header">
+                <button className="game-back-btn" onClick={() => setActiveTab('lobby')}>
+                  <ChevronLeft size={18} /> <span>Lobby</span>
+                </button>
+                <div className="game-title-badge">
+                  <Coins size={16} className="text-amber-400" />
+                  <span>3D COIN FLIP</span>
+                </div>
+                <div className="game-balance-pill">
+                  <span className="pill-bal">₹{balance.toFixed(2)}</span>
+                  <button className="pill-add-btn" onClick={() => setDepositModalOpen(true)} title="Deposit">+</button>
+                </div>
+              </div>
+              <CoinFlipGame
+                user={currentUser || { id: userId, username: 'Guest' }}
+                userBalance={balance}
+                onBalanceUpdate={(newBal) => setBalance(newBal)}
+              />
+            </div>
+          )}
+
+          {/* ANDAR BAHAR CARD GAME */}
+          {activeTab === 'andarbahar' && (
+            <div className="game-view-wrapper">
+              <div className="game-view-header">
+                <button className="game-back-btn" onClick={() => setActiveTab('lobby')}>
+                  <ChevronLeft size={18} /> <span>Lobby</span>
+                </button>
+                <div className="game-title-badge">
+                  <Trophy size={16} className="text-purple-400" />
+                  <span>ANDAR BAHAR</span>
+                </div>
+                <div className="game-balance-pill">
+                  <span className="pill-bal">₹{balance.toFixed(2)}</span>
+                  <button className="pill-add-btn" onClick={() => setDepositModalOpen(true)} title="Deposit">+</button>
+                </div>
+              </div>
+              <AndarBaharGame
+                user={currentUser || { id: userId, username: 'Guest' }}
+                userBalance={balance}
+                onBalanceUpdate={(newBal) => setBalance(newBal)}
+              />
+            </div>
+          )}
+
+          {/* VORTEX COSMIC GAME */}
+          {activeTab === 'vortex' && (
+            <div className="game-view-wrapper">
+              <div className="game-view-header">
+                <button className="game-back-btn" onClick={() => setActiveTab('lobby')}>
+                  <ChevronLeft size={18} /> <span>Lobby</span>
+                </button>
+                <div className="game-title-badge">
+                  <Flame size={16} className="text-purple-400" />
+                  <span>VORTEX</span>
+                </div>
+                <div className="game-balance-pill">
+                  <span className="pill-bal">₹{balance.toFixed(2)}</span>
+                  <button className="pill-add-btn" onClick={() => setDepositModalOpen(true)} title="Deposit">+</button>
+                </div>
+              </div>
+              <VortexGame
+                user={currentUser || { id: userId, username: 'Guest' }}
+                userBalance={balance}
+                onBalanceUpdate={(newBal) => setBalance(newBal)}
+              />
+            </div>
+          )}
+
+          {/* CRICKET LIVE PREDICTION */}
+          {activeTab === 'cricket' && (
+            <div className="game-view-wrapper">
+              <div className="game-view-header">
+                <button className="game-back-btn" onClick={() => setActiveTab('lobby')}>
+                  <ChevronLeft size={18} /> <span>Lobby</span>
+                </button>
+                <div className="game-title-badge">
+                  <Trophy size={16} className="text-lime-400" />
+                  <span>CRICKET LIVE</span>
+                </div>
+                <div className="game-balance-pill">
+                  <span className="pill-bal">₹{balance.toFixed(2)}</span>
+                  <button className="pill-add-btn" onClick={() => setDepositModalOpen(true)} title="Deposit">+</button>
+                </div>
+              </div>
+              <CricketGame
+                user={currentUser || { id: userId, username: 'Guest' }}
+                userBalance={balance}
+                onBalanceUpdate={(newBal) => setBalance(newBal)}
+              />
+            </div>
+          )}
+
+          {/* PUBG 1MIN BATTLE */}
+          {activeTab === 'pubg' && (
+            <div className="game-view-wrapper">
+              <div className="game-view-header">
+                <button className="game-back-btn" onClick={() => setActiveTab('lobby')}>
+                  <ChevronLeft size={18} /> <span>Lobby</span>
+                </button>
+                <div className="game-title-badge">
+                  <Flame size={16} className="text-amber-400" />
+                  <span>PUBG 1MIN</span>
+                </div>
+                <div className="game-balance-pill">
+                  <span className="pill-bal">₹{balance.toFixed(2)}</span>
+                  <button className="pill-add-btn" onClick={() => setDepositModalOpen(true)} title="Deposit">+</button>
+                </div>
+              </div>
+              <PubgGame
+                user={currentUser || { id: userId, username: 'Guest' }}
+                userBalance={balance}
+                onBalanceUpdate={(newBal) => setBalance(newBal)}
+              />
+            </div>
+          )}
+
+          {/* WIN GO (COLOR TRADING) */}
           {activeTab === 'win' && (
             <div className="win-view-content">
+              <div className="game-view-header win-header-extra">
+                <button className="game-back-btn" onClick={() => setActiveTab('lobby')}>
+                  <ChevronLeft size={18} /> <span>Lobby</span>
+                </button>
+                <div className="game-title-badge">
+                  <Activity size={16} className="text-emerald-400" />
+                  <span>WIN GO LOTTERY</span>
+                </div>
+                <div className="game-balance-pill">
+                  <span className="pill-bal">₹{balance.toFixed(2)}</span>
+                  <button className="pill-add-btn" onClick={() => setDepositModalOpen(true)} title="Deposit">+</button>
+                </div>
+              </div>
               {/* RAJALUCK HERO WALLET CARD */}
               <div className="raja-wallet-card">
                 <div className="raja-wallet-header">
@@ -1292,6 +1472,199 @@ export function App() {
             </div>
           )}
 
+          {/* ACTIVITY TAB */}
+          {activeTab === 'activity' && (
+            <div className="tab-view-container">
+              <div className="view-title-header">
+                <h2>Activity & Missions</h2>
+                <p>Track your daily login streak, active missions, and bet history.</p>
+              </div>
+
+              {/* VIP Daily Check-In Card */}
+              <div className="activity-vip-card">
+                <div className="vip-badge-row">
+                  <Sparkles size={16} className="text-amber-400" />
+                  <span>VIP DAILY STREAK</span>
+                </div>
+                <h3>Daily Attendance Bonus</h3>
+                <p>Check in every 24 hours to claim up to ₹50 instant wallet cash!</p>
+                <button
+                  className="activity-claim-btn"
+                  disabled={vipBonusLoading}
+                  onClick={handleClaimVIP}
+                >
+                  <Gift size={16} />
+                  <span>{vipBonusLoading ? 'Claiming...' : 'Claim Daily Bonus (₹15 - ₹50)'}</span>
+                </button>
+              </div>
+
+              {/* Recent Activity List */}
+              <div className="activity-history-box">
+                <h3 className="section-title">My Recent Activity</h3>
+                <div className="activity-item-list">
+                  {bets.length === 0 ? (
+                    <div className="empty-state">No recent bets. Play a round to start your streak!</div>
+                  ) : (
+                    bets.slice(0, 10).map((b) => (
+                      <div key={b.id} className="activity-item-row">
+                        <div className="act-item-left">
+                          <span className={`act-type-tag ${b.type}`}>{b.type.toUpperCase()}</span>
+                          <span className="act-detail">Picked: {b.selection}</span>
+                        </div>
+                        <div className="act-item-right">
+                          <span className={`act-status ${b.status}`}>{b.status === 'won' ? `+₹${b.payout}` : `-₹${b.amount}`}</span>
+                          <span className="act-time">{b.createdAt || 'Just now'}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* PROMOTION TAB */}
+          {activeTab === 'promotion' && (
+            <div className="tab-view-container">
+              <div className="view-title-header">
+                <h2>Promotion Partner</h2>
+                <p>Invite friends and earn lifetime betting commissions!</p>
+              </div>
+
+              {/* Referral Link Box */}
+              <div className="promo-referral-card">
+                <div className="promo-tag">TIER 1 REWARDS</div>
+                <h3>Invite & Earn 10% Commission</h3>
+                <p>Earn daily rebate on all bets placed by your invited friends.</p>
+
+                <div className="promo-code-field">
+                  <span className="code-label">Referral Code:</span>
+                  <strong className="code-val">{userId.slice(0, 8).toUpperCase()}</strong>
+                  <button
+                    className="copy-btn"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`https://princeclub.vip/join?ref=${userId.slice(0, 8).toUpperCase()}`)
+                      setToast({ type: 'success', title: 'Copied!', detail: 'Invitation link copied to clipboard.' })
+                    }}
+                  >
+                    <Copy size={14} /> Copy Link
+                  </button>
+                </div>
+              </div>
+
+              {/* Commission Tier Breakdown */}
+              <div className="promo-tier-grid">
+                <div className="promo-tier-item">
+                  <span className="tier-pct">10%</span>
+                  <span className="tier-name">Direct Ref (Tier 1)</span>
+                </div>
+                <div className="promo-tier-item">
+                  <span className="tier-pct">5%</span>
+                  <span className="tier-name">Sub-Agents (Tier 2)</span>
+                </div>
+                <div className="promo-tier-item">
+                  <span className="tier-pct">₹500</span>
+                  <span className="tier-name">Milestone Bonus</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ACCOUNT TAB (COMBINED WALLET & PROFILE) */}
+          {activeTab === 'account' && (
+            <div className="tab-view-container">
+              <div className="view-title-header">
+                <h2>Member Center</h2>
+                <p>Wallet management, authentication, and security settings.</p>
+              </div>
+
+              {/* Account Profile Card */}
+              <div className="rules-section-card" style={{ marginBottom: '14px' }}>
+                <div className="profile-hero-row">
+                  <div className="profile-avatar">
+                    <User size={28} />
+                  </div>
+                  <div className="profile-info-block">
+                    <h3>{currentUser ? currentUser.username : 'Guest Player'}</h3>
+                    <span className="profile-badge-pill">{currentUser?.role || 'VIP 1 Member'}</span>
+                    <p className="profile-id-text">ID: {userId}</p>
+                  </div>
+                </div>
+
+                <div className="account-quick-balance-box">
+                  <div className="bal-tag">Wallet Balance</div>
+                  <div className="bal-num">₹{formatCredits(balance)}</div>
+                  <div className="bal-actions-row">
+                    <button className="bal-btn deposit" onClick={() => setDepositModalOpen(true)}>
+                      <PlusCircle size={16} /> Deposit
+                    </button>
+                    <button className="bal-btn withdraw" onClick={() => setWithdrawModalOpen(true)}>
+                      <ArrowDownCircle size={16} /> Withdraw
+                    </button>
+                    <button className="bal-btn reset" onClick={handleResetCredits}>
+                      <RotateCcw size={16} /> Reset
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '14px' }}>
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    style={{ background: '#2563eb', color: '#fff', border: 'none' }}
+                    onClick={() => {
+                      setAuthMode('login')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    {currentUser ? 'Switch Account' : 'Sign In'}
+                  </button>
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    style={{ background: '#10b981', color: '#fff', border: 'none' }}
+                    onClick={() => {
+                      setAuthMode('signup')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    Register / Sign Up
+                  </button>
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    onClick={() => {
+                      setAuthMode('forgot')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    Forgot Password
+                  </button>
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    onClick={() => {
+                      setAuthMode('reset')
+                      setAuthModalOpen(true)
+                    }}
+                  >
+                    Reset Password
+                  </button>
+                </div>
+                {currentUser && (
+                  <button
+                    type="button"
+                    className="preset-btn"
+                    style={{ marginTop: '8px', width: '100%', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444' }}
+                    onClick={handleLogout}
+                  >
+                    Sign Out ({currentUser.username})
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* TAB 4: RULES / PROFILE VIEW */}
           {activeTab === 'rules' && (
             <div className="tab-view-container">
@@ -1510,37 +1883,71 @@ export function App() {
           </div>
         )}
 
-        {/* FIXED BOTTOM NAVIGATION BAR */}
-        <nav className="mobile-bottom-nav">
+        {/* FIXED BOTTOM NAVIGATION BAR (MATCHING USER SCREENSHOT) */}
+        <nav className="mobile-bottom-nav arcade-nav">
           <button
-            className={`nav-tab-item ${activeTab === 'win' ? 'active' : ''}`}
-            onClick={() => setActiveTab('win')}
+            className={`nav-tab-item ${activeTab === 'lobby' ? 'active' : ''}`}
+            onClick={() => setActiveTab('lobby')}
           >
-            <Trophy size={20} />
-            <span>Win</span>
+            <Heart size={20} className={activeTab === 'lobby' ? 'fill-current' : ''} />
+            <span>Home</span>
           </button>
+
           <button
-            className={`nav-tab-item ${activeTab === 'trend' ? 'active' : ''}`}
-            onClick={() => setActiveTab('trend')}
+            className={`nav-tab-item ${activeTab === 'activity' ? 'active' : ''}`}
+            onClick={() => setActiveTab('activity')}
           >
-            <TrendingUp size={20} />
-            <span>Trend</span>
+            <div className="nav-badge-wrap">
+              <Award size={20} />
+              <span className="nav-count-badge">1</span>
+            </div>
+            <span>Activity</span>
           </button>
+
+          {/* Center Floating Fortune Spin Wheel ("Get ₹500") */}
           <button
-            className={`nav-tab-item ${activeTab === 'wallet' ? 'active' : ''}`}
-            onClick={() => setActiveTab('wallet')}
+            className="nav-center-wheel-btn"
+            onClick={() => setSpinWheelOpen(true)}
+            title="Spin & Get ₹500"
           >
-            <Wallet size={20} />
-            <span>Wallet</span>
+            <div className="wheel-btn-spin-disc">
+              <div className="wheel-spin-colors" />
+              <span className="wheel-spin-hub">SPIN</span>
+            </div>
+            <span className="wheel-btn-pill">Get ₹500</span>
           </button>
+
           <button
-            className={`nav-tab-item ${activeTab === 'rules' ? 'active' : ''}`}
-            onClick={() => setActiveTab('rules')}
+            className={`nav-tab-item ${activeTab === 'promotion' ? 'active' : ''}`}
+            onClick={() => setActiveTab('promotion')}
           >
-            <CircleHelp size={20} />
-            <span>Rules</span>
+            <Gift size={20} />
+            <span>Promotion</span>
+          </button>
+
+          <button
+            className={`nav-tab-item ${activeTab === 'account' ? 'active' : ''}`}
+            onClick={() => setActiveTab('account')}
+          >
+            <User size={20} />
+            <span>Account</span>
           </button>
         </nav>
+
+        {/* LUCKY FORTUNE SPIN WHEEL MODAL */}
+        <SpinWheelModal
+          isOpen={spinWheelOpen}
+          onClose={() => setSpinWheelOpen(false)}
+          userId={userId}
+          onRewardClaimed={(newBal) => {
+            setBalance(newBal)
+            setToast({
+              type: 'success',
+              title: 'Bonus Claimed!',
+              detail: `Credited to balance. New balance: ₹${formatCredits(newBal)}`,
+            })
+          }}
+        />
 
         {/* UPI DEPOSIT MODAL */}
         <DepositModal
