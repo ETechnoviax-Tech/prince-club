@@ -299,3 +299,46 @@ export async function fetchUserBets(userId) {
   return res.json()
 }
 
+export async function fetchAviatorState() {
+  const res = await fetch(`${API_BASE}/game/aviator/state`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Aviator state')
+  return res.json()
+}
+
+export async function placeAviatorBet(userId, amount, autoCashout = null) {
+  const res = await fetch(`${API_BASE}/game/aviator/bet`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, amount, autoCashout }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to place Aviator bet')
+  }
+  return json
+}
+
+export async function cashoutAviator(userId, betId) {
+  const res = await fetch(`${API_BASE}/game/aviator/cashout`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, betId }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to cash out')
+  }
+  return json
+}
+
+export async function fetchAviatorHistory() {
+  const res = await fetch(`${API_BASE}/game/aviator/history`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Aviator history')
+  return res.json()
+}
+
+

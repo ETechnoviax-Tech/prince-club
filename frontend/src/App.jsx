@@ -42,10 +42,17 @@ import {
   Zap,
   Gift,
   ArrowDownCircle,
+  ArrowLeft,
 } from 'lucide-react'
 import { DepositModal } from './components/DepositModal'
 import { AuthModal } from './components/AuthModal'
 import WithdrawModal from './components/WithdrawModal'
+import HomeLobby from './components/HomeLobby'
+import AviatorGame from './components/AviatorGame'
+import FortuneWheelModal from './components/FortuneWheelModal'
+import ActivityView from './components/ActivityView'
+import PromotionView from './components/PromotionView'
+import AccountView from './components/AccountView'
 import {
   clearAuthToken,
   fetchCurrentRound,
@@ -205,6 +212,9 @@ export function App() {
   const [depositModalOpen, setDepositModalOpen] = useState(false)
   const [isMuted, setIsMuted] = useState(sound.isMuted)
   const [serverOnline, setServerOnline] = useState(false)
+  const [currentGame, setCurrentGame] = useState(null) // null = 55 Club Lobby, 'wingo', 'aviator'
+  const [activeNav, setActiveNav] = useState('home') // 'home', 'activity', 'promotion', 'account'
+  const [fortuneWheelOpen, setFortuneWheelOpen] = useState(false)
 
   // User & Wallet
   const [currentUser, setCurrentUser] = useState(() => {
@@ -723,23 +733,130 @@ export function App() {
   return (
     <div className="mobile-app-wrapper">
       <div className="mobile-app-container">
-        {/* TOP STATUS BAR - RAJALUCK HEADER */}
-        <header className="raja-header">
-          <button
-            className="raja-circle-btn"
-            onClick={() => {
-              setAuthMode('login')
+        {/* MAIN SCROLLABLE VIEWPORT */}
+        <div className="app-main-viewport">
+          {/* 1. Aviator Game Arena */}
+          {currentGame === 'aviator' && (
+          <AviatorGame
+            userId={currentUser?.id || userId}
+            balance={balance}
+            onBalanceUpdate={(newBal) => setBalance(newBal)}
+            onBackToLobby={() => setCurrentGame(null)}
+          />
+        )}
+
+        {/* 2. PRINCE CLUB Main Pages */}
+        {currentGame === null && activeNav === 'home' && (
+          <HomeLobby
+            balance={balance}
+            onRefreshBalance={syncWithBackend}
+            onOpenWithdraw={() => setWithdrawModalOpen(true)}
+            onOpenDeposit={() => setDepositModalOpen(true)}
+            onOpenFortuneWheel={() => setFortuneWheelOpen(true)}
+            onOpenVIP={handleClaimVIPBonus}
+            onSelectGame={(gameId, modeId) => {
+              if (modeId) setSelectedMode(modeId)
+              setCurrentGame(gameId)
+              sound.playTick()
+            }}
+            onDownloadApp={() => {
+              setToast({
+                type: 'success',
+                title: 'Official App APK',
+                detail: 'Prince Club Android APK download started.',
+              })
+            }}
+            onMessages={() => {
+              setToast({
+                type: 'neutral',
+                title: 'System Notice',
+                detail: 'All games, UPI payments & withdrawals are 100% operational.',
+              })
+            }}
+            onAddToDesktop={() => {
+              setToast({
+                type: 'success',
+                title: 'PWA Installed',
+                detail: 'Prince Club shortcut successfully pinned to your screen.',
+              })
+            }}
+          />
+        )}
+
+        {currentGame === null && activeNav === 'activity' && (
+          <ActivityView
+            onOpenFortuneWheel={() => setFortuneWheelOpen(true)}
+            onClaimVIP={handleClaimVIPBonus}
+            vipLoading={vipBonusLoading}
+            onOpenDeposit={() => setDepositModalOpen(true)}
+            onGoToPromotion={() => {
+              setActiveNav('promotion')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {currentGame === null && activeNav === 'promotion' && (
+          <PromotionView
+            userId={currentUser?.id || userId}
+            onCopyNotification={(msg) => {
+              setToast({
+                type: 'success',
+                title: 'Referral System',
+                detail: msg,
+              })
+            }}
+          />
+        )}
+
+        {currentGame === null && activeNav === 'account' && (
+          <AccountView
+            currentUser={currentUser}
+            userId={currentUser?.id || userId}
+            balance={balance}
+            onRefreshBalance={syncWithBackend}
+            onOpenDeposit={() => setDepositModalOpen(true)}
+            onOpenWithdraw={() => setWithdrawModalOpen(true)}
+            onOpenFortuneWheel={() => setFortuneWheelOpen(true)}
+            onOpenVIP={handleClaimVIPBonus}
+            onOpenRules={() => {
+              setCurrentGame('wingo')
+              setActiveTab('rules')
+              sound.playTick()
+            }}
+            onOpenBets={() => {
+              setCurrentGame('wingo')
+              setActiveTab('win')
+              sound.playTick()
+            }}
+            onOpenSupport={() => setHowToPlayOpen(true)}
+            onOpenAuth={(mode) => {
+              setAuthMode(mode)
               setAuthModalOpen(true)
             }}
-            title={currentUser ? `User: ${currentUser.username}` : "Sign In / Switch Account"}
-          >
-            <ChevronLeft size={22} />
-          </button>
-          
-          <div className="raja-brand">
-            <span className="raja-crown">👑</span>
-            <span className="raja-brand-name">VEERGAME</span>
-          </div>
+            onLogout={handleLogout}
+          />
+        )}
+
+        {/* 3. Win Go Game Arena */}
+        {currentGame === 'wingo' && (
+          <>
+            <header className="raja-header">
+              <button
+                className="raja-circle-btn"
+                onClick={() => {
+                  setCurrentGame(null)
+                  setActiveNav('home')
+                }}
+                title="Back to Prince Club Lobby"
+              >
+                <ArrowLeft size={20} />
+              </button>
+              
+              <div className="raja-brand">
+                <span className="raja-crown">👑</span>
+                <span className="raja-brand-name">WIN GO</span>
+              </div>
 
           <div className="raja-header-actions">
             {/* Live Server Indicator */}
@@ -786,6 +903,46 @@ export function App() {
             <span>{WINNER_TICKERS[tickerIndex]}</span>
           </div>
           <ShieldCheck size={14} className="ticker-shield" />
+        </div>
+
+        {/* WIN GO IN-GAME SUBNAV TABS */}
+        <div className="wingo-subnav-bar">
+          <button
+            className={`wingo-subnav-pill ${activeTab === 'win' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('win')
+              sound.playTick()
+            }}
+          >
+            🎮 Game
+          </button>
+          <button
+            className={`wingo-subnav-pill ${activeTab === 'trend' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('trend')
+              sound.playTick()
+            }}
+          >
+            📊 Trend
+          </button>
+          <button
+            className={`wingo-subnav-pill ${activeTab === 'wallet' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('wallet')
+              sound.playTick()
+            }}
+          >
+            👛 Wallet
+          </button>
+          <button
+            className={`wingo-subnav-pill ${activeTab === 'rules' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('rules')
+              sound.playTick()
+            }}
+          >
+            📜 Rules
+          </button>
         </div>
 
         {/* MAIN BODY BASED ON ACTIVE TAB */}
@@ -1509,38 +1666,89 @@ export function App() {
             </div>
           </div>
         )}
+      </>
+    )}
+        </div>
 
-        {/* FIXED BOTTOM NAVIGATION BAR */}
-        <nav className="mobile-bottom-nav">
+        {/* PRINCE CLUB BOTTOM NAVIGATION BAR */}
+        <nav className="home-55-bottom-nav">
           <button
-            className={`nav-tab-item ${activeTab === 'win' ? 'active' : ''}`}
-            onClick={() => setActiveTab('win')}
+            className={`nav-55-item ${currentGame === null && activeNav === 'home' ? 'active' : ''}`}
+            onClick={() => {
+              setCurrentGame(null)
+              setActiveNav('home')
+              sound.playTick()
+            }}
+          >
+            <Home size={20} />
+            <span className="nav-55-label">Home</span>
+          </button>
+
+          <button
+            className={`nav-55-item ${currentGame === null && activeNav === 'activity' ? 'active' : ''}`}
+            onClick={() => {
+              setCurrentGame(null)
+              setActiveNav('activity')
+              sound.playTick()
+            }}
+          >
+            <Sparkles size={20} />
+            <span className="nav-red-dot" />
+            <span className="nav-55-label">Activity</span>
+          </button>
+
+          {/* Elevated Center Wheel Button */}
+          <button
+            className="nav-center-wheel-item"
+            onClick={() => {
+              setFortuneWheelOpen(true)
+              sound.playTick()
+            }}
+            title="Spin Lucky Wheel for up to ₹500"
+          >
+            <div className="elevated-wheel-circle">🎡</div>
+            <span className="elevated-wheel-text">Get ₹500</span>
+          </button>
+
+          <button
+            className={`nav-55-item ${currentGame === null && activeNav === 'promotion' ? 'active' : ''}`}
+            onClick={() => {
+              setCurrentGame(null)
+              setActiveNav('promotion')
+              sound.playTick()
+            }}
           >
             <Trophy size={20} />
-            <span>Win</span>
+            <span className="nav-55-label">Promotion</span>
           </button>
+
           <button
-            className={`nav-tab-item ${activeTab === 'trend' ? 'active' : ''}`}
-            onClick={() => setActiveTab('trend')}
+            className={`nav-55-item ${currentGame === null && activeNav === 'account' ? 'active' : ''}`}
+            onClick={() => {
+              setCurrentGame(null)
+              setActiveNav('account')
+              sound.playTick()
+            }}
           >
-            <TrendingUp size={20} />
-            <span>Trend</span>
-          </button>
-          <button
-            className={`nav-tab-item ${activeTab === 'wallet' ? 'active' : ''}`}
-            onClick={() => setActiveTab('wallet')}
-          >
-            <Wallet size={20} />
-            <span>Wallet</span>
-          </button>
-          <button
-            className={`nav-tab-item ${activeTab === 'rules' ? 'active' : ''}`}
-            onClick={() => setActiveTab('rules')}
-          >
-            <CircleHelp size={20} />
-            <span>Rules</span>
+            <User size={20} />
+            <span className="nav-55-label">Account</span>
           </button>
         </nav>
+
+        {/* FORTUNE WHEEL MODAL */}
+        <FortuneWheelModal
+          isOpen={fortuneWheelOpen}
+          onClose={() => setFortuneWheelOpen(false)}
+          userId={currentUser?.id || userId}
+          onRewardClaimed={(newBal, amt) => {
+            if (newBal !== undefined) setBalance(newBal)
+            setToast({
+              type: 'success',
+              title: 'Lucky Wheel Bonus!',
+              detail: `+₹${amt} credited to your wallet!`,
+            })
+          }}
+        />
 
         {/* UPI DEPOSIT MODAL */}
         <DepositModal
