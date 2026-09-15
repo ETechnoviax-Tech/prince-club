@@ -10,6 +10,13 @@ import { optionalAuth } from '../middleware/auth.js'
 import { betRateLimit } from '../middleware/rateLimit.js'
 import { validateBetPlacement } from '../middleware/validate.js'
 
+import {
+  getGameCatalog,
+  getProviders,
+  launchGame,
+  playGameRound,
+} from '../controllers/thirdPartyGameController.js'
+
 const router = Router()
 
 // Win Go Round State
@@ -18,6 +25,12 @@ router.get('/round/current', optionalAuth, getCurrentRound)
 // Live VeerGame Proxy Endpoints
 router.get('/veer/issue', getVeerIssue)
 router.get('/veer/history', getVeerHistory)
+
+// Third-Party Game Providers (JILI, EVO, PG, SPRIBE, JDB, CQ9)
+router.get('/providers', getProviders)
+router.get('/third-party/catalog', getGameCatalog)
+router.get('/third-party/launch', optionalAuth, launchGame)
+router.post('/third-party/play', optionalAuth, betRateLimit, playGameRound)
 
 // Win Go Betting
 router.post('/bet', optionalAuth, betRateLimit, validateBetPlacement, placeBet)

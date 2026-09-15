@@ -49,6 +49,10 @@ import { AuthModal } from './components/AuthModal'
 import WithdrawModal from './components/WithdrawModal'
 import HomeLobby from './components/HomeLobby'
 import AviatorGame from './components/AviatorGame'
+import K3Game from './components/K3Game'
+import FiveDGame from './components/FiveDGame'
+import TrxGame from './components/TrxGame'
+import ThirdPartyGameModal from './components/ThirdPartyGameModal'
 import FortuneWheelModal from './components/FortuneWheelModal'
 import ActivityView from './components/ActivityView'
 import PromotionView from './components/PromotionView'
@@ -215,6 +219,7 @@ export function App() {
   const [currentGame, setCurrentGame] = useState(null) // null = 55 Club Lobby, 'wingo', 'aviator'
   const [activeNav, setActiveNav] = useState('home') // 'home', 'activity', 'promotion', 'account'
   const [fortuneWheelOpen, setFortuneWheelOpen] = useState(false)
+  const [activeThirdPartyGame, setActiveThirdPartyGame] = useState(null)
 
   // User & Wallet
   const [currentUser, setCurrentUser] = useState(() => {
@@ -737,13 +742,52 @@ export function App() {
         <div className="app-main-viewport">
           {/* 1. Aviator Game Arena */}
           {currentGame === 'aviator' && (
-          <AviatorGame
-            userId={currentUser?.id || userId}
-            balance={balance}
-            onBalanceUpdate={(newBal) => setBalance(newBal)}
-            onBackToLobby={() => setCurrentGame(null)}
-          />
-        )}
+            <AviatorGame
+              userId={currentUser?.id || userId}
+              balance={balance}
+              onBalanceUpdate={(newBal) => setBalance(newBal)}
+              onBackToLobby={() => setCurrentGame(null)}
+            />
+          )}
+
+          {/* 1b. K3 Lottery Arena */}
+          {currentGame === 'k3' && (
+            <K3Game
+              userId={currentUser?.id || userId}
+              balance={balance}
+              onBalanceUpdate={(newBal) => setBalance(newBal)}
+              onBackToLobby={() => setCurrentGame(null)}
+              onOpenDeposit={() => setDepositModalOpen(true)}
+              onOpenWithdraw={() => setWithdrawModalOpen(true)}
+              setToast={setToast}
+            />
+          )}
+
+          {/* 1c. 5D Lottery Arena */}
+          {currentGame === '5d' && (
+            <FiveDGame
+              userId={currentUser?.id || userId}
+              balance={balance}
+              onBalanceUpdate={(newBal) => setBalance(newBal)}
+              onBackToLobby={() => setCurrentGame(null)}
+              onOpenDeposit={() => setDepositModalOpen(true)}
+              onOpenWithdraw={() => setWithdrawModalOpen(true)}
+              setToast={setToast}
+            />
+          )}
+
+          {/* 1d. TRX Win Go Arena */}
+          {currentGame === 'trx' && (
+            <TrxGame
+              userId={currentUser?.id || userId}
+              balance={balance}
+              onBalanceUpdate={(newBal) => setBalance(newBal)}
+              onBackToLobby={() => setCurrentGame(null)}
+              onOpenDeposit={() => setDepositModalOpen(true)}
+              onOpenWithdraw={() => setWithdrawModalOpen(true)}
+              setToast={setToast}
+            />
+          )}
 
         {/* 2. PRINCE CLUB Main Pages */}
         {currentGame === null && activeNav === 'home' && (
@@ -757,6 +801,10 @@ export function App() {
             onSelectGame={(gameId, modeId) => {
               if (modeId) setSelectedMode(modeId)
               setCurrentGame(gameId)
+              sound.playTick()
+            }}
+            onLaunchThirdPartyGame={(game) => {
+              setActiveThirdPartyGame(game)
               sound.playTick()
             }}
             onDownloadApp={() => {
@@ -1748,6 +1796,17 @@ export function App() {
               detail: `+₹${amt} credited to your wallet!`,
             })
           }}
+        />
+
+        {/* THIRD-PARTY GAME LAUNCHER MODAL (JILI, EVO, PG SOFT, SPRIBE) */}
+        <ThirdPartyGameModal
+          game={activeThirdPartyGame}
+          isOpen={!!activeThirdPartyGame}
+          onClose={() => setActiveThirdPartyGame(null)}
+          balance={balance}
+          onBalanceUpdate={(newBal) => setBalance(newBal)}
+          userId={currentUser?.id || userId}
+          setToast={setToast}
         />
 
         {/* UPI DEPOSIT MODAL */}

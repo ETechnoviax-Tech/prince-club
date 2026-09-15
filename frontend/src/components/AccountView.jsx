@@ -1,28 +1,33 @@
-import React from 'react'
+import React, { useState } from 'react'
 import {
   User,
-  Crown,
+  Copy,
+  Check,
   RefreshCw,
-  ArrowUp,
-  ArrowDown,
-  History,
+  Wallet,
+  Coins,
   CreditCard,
+  Crown,
+  History,
+  FileText,
+  Bookmark,
+  ArrowDownCircle,
+  Bell,
   Gift,
-  HelpCircle,
+  Ticket,
+  Shield,
   Headphones,
-  Lock,
+  ChevronRight,
   LogOut,
   LogIn,
-  ChevronRight,
-  ShieldCheck,
-  Smartphone,
-  Sparkles,
+  Lock,
 } from 'lucide-react'
+import { sound } from '../utils/audio'
 
 export function AccountView({
   currentUser,
   userId,
-  balance,
+  balance = 0,
   onRefreshBalance,
   onOpenDeposit,
   onOpenWithdraw,
@@ -34,155 +39,269 @@ export function AccountView({
   onOpenAuth,
   onLogout,
 }) {
-  const displayId = currentUser?.id || userId || '98721'
-  const username = currentUser?.username || 'Guest Player'
-  const phone = currentUser?.phone || currentUser?.mobile || '+91 98••••••21'
+  const [copied, setCopied] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [avatarError, setAvatarError] = useState(false)
+
+  // Generate or format consistent display data matching user screenshot
+  const username = currentUser?.username || 'MEMBERNNG5EZDK'
+  const displayUid = currentUser?.id
+    ? String(currentUser.id).replace(/\D/g, '').slice(-7) || '1015140'
+    : '1015140'
+  const lastLogin = currentUser?.last_login || '2026-09-13 17:41:23'
+
+  const handleCopyUid = () => {
+    try {
+      navigator.clipboard.writeText(displayUid)
+      setCopied(true)
+      sound.playTick()
+      setTimeout(() => setCopied(false), 2000)
+    } catch {}
+  }
+
+  const handleRefresh = async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    sound.playTick()
+    if (onRefreshBalance) {
+      await onRefreshBalance()
+    }
+    setTimeout(() => setRefreshing(false), 800)
+  }
 
   return (
-    <div className="account-page-container">
-      {/* Top Profile Header */}
-      <div className="account-hero-card">
-        <div className="account-avatar-row">
-          <div className="account-avatar-wrap">
-            <div className="avatar-circle">
-              <User size={28} className="text-white" />
-            </div>
-            <div className="avatar-crown-badge">👑</div>
-          </div>
-          <div className="account-meta">
-            <div className="account-name-row">
-              <strong className="account-name">{username}</strong>
-              <span className="vip-tag-pill">
-                <Crown size={12} /> VIP 1
-              </span>
-            </div>
-            <div className="account-id-row">
-              <span>UID: {String(displayId).substring(0, 12)}</span>
-              <span className="divider">•</span>
-              <span className="phone-hidden">{phone}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Balance Card within Profile */}
-        <div className="account-balance-card">
-          <div className="bal-top">
-            <span className="bal-label">Total Game Balance</span>
-            <button className="bal-refresh" onClick={onRefreshBalance} title="Refresh balance">
-              <RefreshCw size={14} />
-            </button>
-          </div>
-          <div className="bal-amount-row">
-            <span className="bal-currency">₹</span>
-            <strong className="bal-digits">{Number(balance).toFixed(2)}</strong>
+    <div className="account-view-wrapper">
+      {/* 1. TOP PROFILE BANNER (Purple Gradient) */}
+      <div className="account-profile-header">
+        <div className="account-profile-main">
+          {/* Avatar */}
+          <div className="account-avatar-container">
+            {!avatarError ? (
+              <img
+                src="/avatar.jpg"
+                alt="User Avatar"
+                className="account-avatar-img"
+                onError={() => setAvatarError(true)}
+              />
+            ) : (
+              <div className="account-avatar-fallback">
+                <User size={36} className="text-white" />
+              </div>
+            )}
           </div>
 
-          <div className="account-actions-row">
-            <button className="btn-acct-withdraw" onClick={onOpenWithdraw}>
-              <div className="action-circle-icon"><ArrowUp size={14} /></div>
-              <span>Withdraw</span>
-            </button>
-            <button className="btn-acct-deposit" onClick={onOpenDeposit}>
-              <div className="action-circle-icon"><ArrowDown size={14} /></div>
-              <span>Deposit</span>
-            </button>
+          {/* User Info */}
+          <div className="account-profile-info">
+            <div className="profile-name-row">
+              <h2 className="profile-username">{username}</h2>
+              <div className="profile-vip-medal">
+                <span className="vip-medal-star">⭐</span>
+                <span className="vip-medal-text">VIP0</span>
+              </div>
+            </div>
+
+            <div className="profile-uid-row">
+              <button className="profile-uid-pill" onClick={handleCopyUid} title="Copy UID">
+                <span className="uid-label">UID</span>
+                <span className="uid-divider">|</span>
+                <span className="uid-number">{displayUid}</span>
+                {copied ? <Check size={12} className="text-white" /> : <Copy size={12} className="text-white opacity-80" />}
+              </button>
+            </div>
+
+            <div className="profile-login-time">
+              Last login: {lastLogin}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Services Grid (8 items) */}
-      <div className="account-services-panel">
-        <h4 className="services-heading">Quick Services</h4>
-        <div className="services-grid-list">
-          <div className="service-tile" onClick={onOpenBets}>
-            <div className="service-icon-wrap icon-bets">
-              <History size={20} />
+      {/* 2. TOTAL BALANCE FLOATING CARD */}
+      <div className="account-balance-card">
+        <div className="balance-card-top">
+          <div className="balance-left">
+            <span className="balance-label">Total balance</span>
+            <div className="balance-amount-row">
+              <span className="balance-value">₹{Number(balance).toFixed(2)}</span>
+              <button
+                className={`balance-refresh-btn ${refreshing ? 'spinning' : ''}`}
+                onClick={handleRefresh}
+                title="Refresh Balance"
+              >
+                <RefreshCw size={15} />
+              </button>
             </div>
-            <span className="service-title">Bet Records</span>
           </div>
 
-          <div className="service-tile" onClick={onOpenDeposit}>
-            <div className="service-icon-wrap icon-recharge">
+          <button
+            className="enter-wallet-btn"
+            onClick={onOpenDeposit}
+            title="Enter Wallet"
+          >
+            Enter wallet
+          </button>
+        </div>
+
+        {/* 4 Action Icons Row */}
+        <div className="balance-actions-grid">
+          <div className="action-item" onClick={onOpenDeposit}>
+            <div className="action-icon-circle bg-arwallet">
+              <Wallet size={20} />
+            </div>
+            <span className="action-name">ARWallet</span>
+          </div>
+
+          <div className="action-item" onClick={onOpenDeposit}>
+            <div className="action-icon-circle bg-deposit">
+              <Coins size={20} />
+            </div>
+            <span className="action-name">Deposit</span>
+          </div>
+
+          <div className="action-item" onClick={onOpenWithdraw}>
+            <div className="action-icon-circle bg-withdraw">
               <CreditCard size={20} />
             </div>
-            <span className="service-title">Deposit Records</span>
+            <span className="action-name">Withdraw</span>
           </div>
 
-          <div className="service-tile" onClick={onOpenWithdraw}>
-            <div className="service-icon-wrap icon-withdraw">
-              <ArrowUp size={20} />
+          <div className="action-item" onClick={onOpenVIP}>
+            <div className="action-icon-circle bg-vip">
+              <Crown size={20} />
             </div>
-            <span className="service-title">Withdrawal</span>
-          </div>
-
-          <div className="service-tile" onClick={onOpenFortuneWheel}>
-            <div className="service-icon-wrap icon-wheel">
-              <Sparkles size={20} />
-            </div>
-            <span className="service-title">Lucky Spin</span>
-          </div>
-
-          <div className="service-tile" onClick={onOpenVIP}>
-            <div className="service-icon-wrap icon-vip">
-              <Gift size={20} />
-            </div>
-            <span className="service-title">VIP Privileges</span>
-          </div>
-
-          <div className="service-tile" onClick={onOpenRules}>
-            <div className="service-icon-wrap icon-rules">
-              <HelpCircle size={20} />
-            </div>
-            <span className="service-title">Game Rules</span>
-          </div>
-
-          <div className="service-tile" onClick={onOpenSupport}>
-            <div className="service-icon-wrap icon-support">
-              <Headphones size={20} />
-            </div>
-            <span className="service-title">Live Support</span>
-          </div>
-
-          <div className="service-tile" onClick={() => onOpenAuth('forgot')}>
-            <div className="service-icon-wrap icon-security">
-              <Lock size={20} />
-            </div>
-            <span className="service-title">Security Center</span>
+            <span className="action-name">VIP</span>
           </div>
         </div>
       </div>
 
-      {/* Account Management & Session */}
-      <div className="account-options-list">
-        <div className="option-row" onClick={() => onOpenAuth('forgot')}>
-          <div className="option-left">
-            <Lock size={16} className="text-slate" />
-            <span>Change Login Password</span>
+      {/* 3. 2x2 QUICK HISTORY CARDS GRID */}
+      <div className="account-history-grid">
+        <div className="history-card-tile" onClick={onOpenBets}>
+          <div className="history-icon-box bg-blue-history">
+            <FileText size={18} />
           </div>
-          <ChevronRight size={16} className="text-slate" />
+          <div className="history-text-col">
+            <h4 className="history-title">Game History</h4>
+            <span className="history-sub">My game history</span>
+          </div>
         </div>
 
-        <div className="option-row" onClick={onOpenSupport}>
-          <div className="option-left">
-            <ShieldCheck size={16} className="text-emerald" />
-            <span>Customer Service & Safety Center</span>
+        <div className="history-card-tile" onClick={onOpenBets}>
+          <div className="history-icon-box bg-green-transaction">
+            <History size={18} />
           </div>
-          <ChevronRight size={16} className="text-slate" />
+          <div className="history-text-col">
+            <h4 className="history-title">Transaction</h4>
+            <span className="history-sub">My transaction history</span>
+          </div>
         </div>
 
+        <div className="history-card-tile" onClick={onOpenDeposit}>
+          <div className="history-icon-box bg-coral-deposit">
+            <Bookmark size={18} />
+          </div>
+          <div className="history-text-col">
+            <h4 className="history-title">Deposit</h4>
+            <span className="history-sub">My deposit history</span>
+          </div>
+        </div>
+
+        <div className="history-card-tile" onClick={onOpenWithdraw}>
+          <div className="history-icon-box bg-orange-withdraw">
+            <ArrowDownCircle size={18} />
+          </div>
+          <div className="history-text-col">
+            <h4 className="history-title">Withdraw</h4>
+            <span className="history-sub">My withdraw history</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. VERTICAL MENU LIST */}
+      <div className="account-menu-card">
+        {/* Notification */}
+        <div className="menu-list-row" onClick={onOpenSupport}>
+          <div className="menu-row-left">
+            <div className="menu-icon-box bg-menu-indigo">
+              <Bell size={16} />
+            </div>
+            <span className="menu-row-title">Notification</span>
+          </div>
+          <div className="menu-row-right">
+            <span className="menu-count-badge">6</span>
+            <ChevronRight size={16} className="text-slate-500" />
+          </div>
+        </div>
+
+        {/* Gifts */}
+        <div className="menu-list-row" onClick={onOpenFortuneWheel}>
+          <div className="menu-row-left">
+            <div className="menu-icon-box bg-menu-purple">
+              <Gift size={16} />
+            </div>
+            <span className="menu-row-title">Gifts</span>
+          </div>
+          <div className="menu-row-right">
+            <ChevronRight size={16} className="text-slate-500" />
+          </div>
+        </div>
+
+        {/* My Top-Up Coupons */}
+        <div className="menu-list-row" onClick={onOpenDeposit}>
+          <div className="menu-row-left">
+            <div className="menu-icon-box bg-menu-lavender">
+              <Ticket size={16} />
+            </div>
+            <span className="menu-row-title">My Top-Up Coupons</span>
+          </div>
+          <div className="menu-row-right">
+            <ChevronRight size={16} className="text-slate-500" />
+          </div>
+        </div>
+
+        {/* Security Center */}
+        <div className="menu-list-row" onClick={() => onOpenAuth && onOpenAuth('forgot')}>
+          <div className="menu-row-left">
+            <div className="menu-icon-box bg-menu-cyan">
+              <Shield size={16} />
+            </div>
+            <span className="menu-row-title">Security Center</span>
+          </div>
+          <div className="menu-row-right">
+            <ChevronRight size={16} className="text-slate-500" />
+          </div>
+        </div>
+
+        {/* Live Support */}
+        <div className="menu-list-row" onClick={onOpenSupport}>
+          <div className="menu-row-left">
+            <div className="menu-icon-box bg-menu-amber">
+              <Headphones size={16} />
+            </div>
+            <span className="menu-row-title">Customer Service</span>
+          </div>
+          <div className="menu-row-right">
+            <ChevronRight size={16} className="text-slate-500" />
+          </div>
+        </div>
+      </div>
+
+      {/* 5. AUTH / LOGOUT BUTTON */}
+      <div className="account-footer-actions">
         {currentUser ? (
-          <button className="btn-logout-full" onClick={onLogout}>
+          <button className="account-auth-action-btn logout-style" onClick={onLogout}>
             <LogOut size={16} />
-            <span>Sign Out / Switch Account</span>
+            <span>Sign Out ({currentUser.username})</span>
           </button>
         ) : (
-          <button className="btn-login-full" onClick={() => onOpenAuth('login')}>
+          <button className="account-auth-action-btn login-style" onClick={() => onOpenAuth && onOpenAuth('login')}>
             <LogIn size={16} />
-            <span>Log In / Register Account</span>
+            <span>Log In / Register</span>
           </button>
         )}
       </div>
     </div>
   )
 }
+
 export default AccountView

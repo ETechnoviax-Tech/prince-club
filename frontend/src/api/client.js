@@ -341,4 +341,52 @@ export async function fetchAviatorHistory() {
   return res.json()
 }
 
+export async function fetchGameProviders() {
+  const res = await fetch(`${API_BASE}/game/providers`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch game providers')
+  return res.json()
+}
+
+export async function fetchGameCatalog(params = {}) {
+  const q = new URLSearchParams()
+  if (params.provider) q.set('provider', params.provider)
+  if (params.category) q.set('category', params.category)
+  if (params.search) q.set('search', params.search)
+  if (params.page) q.set('page', params.page)
+  if (params.limit) q.set('limit', params.limit)
+
+  const res = await fetch(`${API_BASE}/game/third-party/catalog?${q.toString()}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch game catalog')
+  return res.json()
+}
+
+export async function playThirdPartyRound(userId, gameId, provider, betAmount) {
+  const res = await fetch(`${API_BASE}/game/third-party/play`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, gameId, provider, betAmount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Game round failed')
+  }
+  return json
+}
+
+export async function fetchGameLaunchUrl(gameId, provider, userId = null) {
+  const q = new URLSearchParams({ gameId, provider })
+  if (userId) q.set('userId', userId)
+  const res = await fetch(`${API_BASE}/game/third-party/launch?${q.toString()}`, {
+    headers: authHeaders(),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to get game URL')
+  return json
+}
+
+
 

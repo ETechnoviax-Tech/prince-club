@@ -1,7 +1,16 @@
 import crypto from 'crypto'
 
+// 1. Official 55CLUB WebAPI Endpoint & Origin
+const CLUB55_API_BASE = 'https://api.api55clubapi.com/api/webapi'
+const CLUB55_ORIGIN = 'https://ayhbaw55.com'
+
+// 2. Secondary High-Availability Backup API
 const VEER_API_BASE = 'https://api.veergameapi.com/api/webapi'
 const VEER_ORIGIN = 'https://www.veergame32.com'
+
+// 3. Tertiary mirror
+const MIRROR3_API_BASE = 'https://api.55clubapi.net/api/webapi'
+const MIRROR3_ORIGIN = 'https://www.55club.io'
 
 function generateRandomHex() {
   return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function (e) {
@@ -41,38 +50,64 @@ function signPayload(data = {}) {
   return payload
 }
 
-export async function callVeerAPI(endpoint, data = {}) {
+/**
+ * Call 55CLUB WebAPI with automatic failover to secondary gateway
+ */
+export async function call55ClubAPI(endpoint, data = {}) {
   const signed = signPayload(data)
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 6000)
+  const servers = [
+    { base: CLUB55_API_BASE, origin: CLUB55_ORIGIN, name: '55club' },
+    { base: VEER_API_BASE, origin: VEER_ORIGIN, name: 'veergame' },
+    { base: MIRROR3_API_BASE, origin: MIRROR3_ORIGIN, name: '55club_mirror3' },
+  ]
 
-  try {
-    const res = await fetch(`${VEER_API_BASE}${endpoint}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json;charset=UTF-8',
-        'Ar-Origin': VEER_ORIGIN,
-        Referer: `${VEER_ORIGIN}/`,
-        Origin: VEER_ORIGIN,
-      },
-      body: JSON.stringify(signed),
-      signal: controller.signal,
-    })
-    clearTimeout(timeoutId)
+  let lastErr = null
+  for (const s of servers) {
+    // Each server gets up to 2 attempts before moving on
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 8000)
+      try {
+        const res = await fetch(`${s.base}${endpoint}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json;charset=UTF-8',
+            'Ar-Origin': s.origin,
+            Referer: `${s.origin}/`,
+            Origin: s.origin,
+          },
+          body: JSON.stringify(signed),
+          signal: controller.signal,
+        })
+        clearTimeout(timeoutId)
 
-    if (!res.ok) {
-      throw new Error(`Veer API returned status ${res.status}`)
+        if (res.ok) {
+          const json = await res.json()
+          if (json && (json.code === 0 || json.data)) {
+            json._serverSource = s.name
+            return json
+          }
+        }
+        // Non-200 or bad JSON — don't retry this server
+        break
+      } catch (err) {
+        clearTimeout(timeoutId)
+        lastErr = err
+        // Only retry on abort/network errors, not on logic errors
+        if (err.name !== 'AbortError') break
+        // Small back-off before retry
+        await new Promise((r) => setTimeout(r, 300))
+      }
     }
-
-    const json = await res.json()
-    return json
-  } catch (err) {
-    clearTimeout(timeoutId)
-    throw err
   }
+
+  throw lastErr || new Error(`All 55club API servers failed for ${endpoint}`)
 }
 
-// Map game mode string to VeerGame typeId
+// Backward-compatibility alias
+export const callVeerAPI = call55ClubAPI
+
+// Map game mode string to 55CLUB / Win Go typeId
 export const MODE_TO_TYPE_ID = {
   '30s': 30,
   '1m': 1,
@@ -91,7 +126,7 @@ const issueCache = new Map()
 const historyCache = new Map()
 const inFlightRequests = new Map()
 
-// 1. Fetch current live game issue/round from VeerGame
+// 1. Fetch current live game issue/round from 55CLUB
 export async function getLiveIssue(typeId = 30) {
   const cached = issueCache.get(typeId)
   if (cached && Date.now() - cached.timestamp < 1500) {
@@ -105,8 +140,8 @@ export async function getLiveIssue(typeId = 30) {
 
   const promise = (async () => {
     try {
-      const res = await callVeerAPI('/GetGameIssue', { typeId })
-      if (res && res.code === 0 && res.data) {
+      const res = await call55ClubAPI('/GetGameIssue', { typeId })
+      if (res && (res.code === 0 || res.data) && res.data) {
         const { issueNumber, startTime, endTime, serviceTime } = res.data
         const endTimestamp = new Date(endTime.replace(/-/g, '/')).getTime()
         const currentTimestamp = serviceTime
@@ -117,7 +152,7 @@ export async function getLiveIssue(typeId = 30) {
 
         const result = {
           success: true,
-          source: 'veergame',
+          source: res._serverSource || '55club',
           typeId,
           issueNumber,
           startTime,
@@ -129,7 +164,7 @@ export async function getLiveIssue(typeId = 30) {
         return result
       }
     } catch (err) {
-      console.warn('[VeerGame API] Live issue fetch error:', err.message)
+      console.warn('[55CLUB API] Live issue fetch error:', err.message)
     } finally {
       inFlightRequests.delete(inFlightKey)
     }
@@ -160,7 +195,7 @@ export async function getLiveIssue(typeId = 30) {
   return promise
 }
 
-// 2. Fetch live official draw history from VeerGame
+// 2. Fetch live official draw history from 55CLUB
 export async function getLiveHistory(typeId = 30, page = 1) {
   const cacheKey = `${typeId}_${page}`
   const cached = historyCache.get(cacheKey)
@@ -175,8 +210,8 @@ export async function getLiveHistory(typeId = 30, page = 1) {
 
   const promise = (async () => {
     try {
-      const res = await callVeerAPI('/GetNoaverageEmerdList', { typeId, pageno: page })
-      if (res && res.code === 0 && res.data?.list) {
+      const res = await call55ClubAPI('/GetNoaverageEmerdList', { typeId, pageno: page })
+      if (res && (res.code === 0 || res.data) && res.data?.list) {
         const list = res.data.list.map((item) => {
           const digit = Number(item.number)
           let color = 'red'
@@ -197,7 +232,7 @@ export async function getLiveHistory(typeId = 30, page = 1) {
 
         const result = {
           success: true,
-          source: 'veergame',
+          source: res._serverSource || '55club',
           typeId,
           list,
         }
@@ -205,7 +240,7 @@ export async function getLiveHistory(typeId = 30, page = 1) {
         return result
       }
     } catch (err) {
-      console.warn('[VeerGame API] History fetch error:', err.message)
+      console.warn('[55CLUB API] History fetch error:', err.message)
     } finally {
       inFlightRequests.delete(inFlightKey)
     }

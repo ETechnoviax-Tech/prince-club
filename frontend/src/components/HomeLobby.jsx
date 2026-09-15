@@ -17,6 +17,8 @@ import {
   Crown,
 } from 'lucide-react'
 
+import { fetchGameCatalog, fetchGameProviders } from '../api/client'
+
 export function HomeLobby({
   balance,
   onRefreshBalance,
@@ -25,6 +27,7 @@ export function HomeLobby({
   onOpenFortuneWheel,
   onOpenVIP,
   onSelectGame,
+  onLaunchThirdPartyGame,
   onDownloadApp,
   onMessages,
   onAddToDesktop,
@@ -32,6 +35,54 @@ export function HomeLobby({
   const [activeCategory, setActiveCategory] = useState('lobby')
   const [marqueeIndex, setMarqueeIndex] = useState(0)
   const [showDesktopPill, setShowDesktopPill] = useState(true)
+
+  // Third-party provider state (JILI, EVO, PG, SPRIBE, etc.)
+  const [providers, setProviders] = useState([
+    { id: 'ALL', name: 'All Games', icon: '🔥', count: '2,100+' },
+    { id: 'JILI', name: 'JILI', icon: '💎', count: '259' },
+    { id: 'EVO', name: 'EVOLUTION', icon: '♠️', count: '1,243' },
+    { id: 'PG', name: 'PG SOFT', icon: '🐯', count: '144' },
+    { id: 'SPRIBE', name: 'SPRIBE', icon: '🚀', count: '120' },
+    { id: 'JDB', name: 'JDB', icon: '🐉', count: '88' },
+    { id: 'CQ9', name: 'CQ9', icon: '🎰', count: '179' },
+  ])
+  const [selectedProvider, setSelectedProvider] = useState('ALL')
+  const [thirdPartyGames, setThirdPartyGames] = useState([])
+  const [catalogLoading, setCatalogLoading] = useState(false)
+
+  useEffect(() => {
+    fetchGameProviders()
+      .then((res) => {
+        if (Array.isArray(res?.providers) && res.providers.length > 0) {
+          setProviders(res.providers)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    setCatalogLoading(true)
+    const catMap = {
+      lobby: null,
+      minigame: 'mini',
+      slots: 'slots',
+      card: 'live',
+      fishing: 'fishing',
+      original: null,
+    }
+    fetchGameCatalog({
+      provider: selectedProvider,
+      category: catMap[activeCategory] || null,
+      limit: 30,
+    })
+      .then((res) => {
+        if (Array.isArray(res?.games) && res.games.length > 0) {
+          setThirdPartyGames(res.games)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCatalogLoading(false))
+  }, [selectedProvider, activeCategory])
 
   const announcements = [
     'All players registered on this platform must bind their bank data. If a non-personal bank account is bound, please withdraw all your balance and re-register.',
@@ -211,6 +262,22 @@ export function HomeLobby({
         </div>
       </div>
 
+      {/* 6b. Horizontal Provider Filter Bar (JILI, EVO, PG, SPRIBE, etc.) */}
+      <div className="home-providers-bar">
+        <div className="providers-scroll-track">
+          {providers.map((p) => (
+            <button
+              key={p.id}
+              className={`prov-chip-btn ${selectedProvider === p.id ? 'active' : ''}`}
+              onClick={() => setSelectedProvider(p.id)}
+            >
+              <span className="prov-chip-icon">{p.icon}</span>
+              <span className="prov-chip-name">{p.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* 7. ⭐ Recommended Games Section */}
       <div className="home-55-section" id="section-recommended">
         <div className="section-55-header">
@@ -276,40 +343,40 @@ export function HomeLobby({
             </div>
             <div className="item-info">
               <strong className="item-title">WIN GO</strong>
-              <span className="item-tag">POPULAR</span>
+              <span className="item-tag">30s / 1m / 3m / 5m</span>
             </div>
           </div>
 
           {/* K3 */}
-          <div className="lottery-item-card item-k3" onClick={() => onSelectGame('wingo', 'SAPRE')}>
+          <div className="lottery-item-card item-k3" onClick={() => onSelectGame('k3')}>
             <div className="item-art-left">
               <span className="dice-art">🎲</span>
             </div>
             <div className="item-info">
-              <strong className="item-title">K3</strong>
-              <span className="item-tag">DICE</span>
+              <strong className="item-title">K3 LOTTERY</strong>
+              <span className="item-tag">DICE SUM</span>
             </div>
           </div>
 
           {/* 5D */}
-          <div className="lottery-item-card item-5d" onClick={() => onSelectGame('wingo', 'BCONE')}>
+          <div className="lottery-item-card item-5d" onClick={() => onSelectGame('5d')}>
             <div className="item-art-left">
               <span className="drawbox-art">🎰</span>
             </div>
             <div className="item-info">
-              <strong className="item-title">5D</strong>
-              <span className="item-tag">LOTTERY</span>
+              <strong className="item-title">5D LOTTERY</strong>
+              <span className="item-tag">5 DIGITS</span>
             </div>
           </div>
 
-          {/* MOTO RACING */}
-          <div className="lottery-item-card item-moto" onClick={() => onSelectGame('wingo', 'EMERD')}>
+          {/* TRX WIN GO */}
+          <div className="lottery-item-card item-moto" onClick={() => onSelectGame('trx')}>
             <div className="item-art-left">
-              <span className="moto-art">🏍️</span>
+              <span className="moto-art">⚡</span>
             </div>
             <div className="item-info">
-              <strong className="item-title">MOTO RACING</strong>
-              <span className="item-tag">SPEED</span>
+              <strong className="item-title">TRX WIN GO</strong>
+              <span className="item-tag">BLOCK HASH</span>
             </div>
           </div>
         </div>
@@ -369,6 +436,54 @@ export function HomeLobby({
             <div className="pharaoh-name">PHARAOH TREASURE</div>
           </div>
         </div>
+      </div>
+
+      {/* 11. Live Provider Game Catalog (JILI, Evolution, PG Soft, Spribe) */}
+      <div className="home-55-section" id="section-provider-catalog">
+        <div className="section-55-header">
+          <div className="section-title-wrap">
+            <Flame size={18} className="star-gold" />
+            <h4 className="section-55-title">
+              {selectedProvider === 'ALL' ? 'Top Online Casino Games' : `${selectedProvider} Games`}
+            </h4>
+            <span className="catalog-count-badge">({thirdPartyGames.length})</span>
+          </div>
+          <div className="provider-active-indicator">
+            <span className="prov-indicator-dot" />
+            <small>{selectedProvider}</small>
+          </div>
+        </div>
+
+        {catalogLoading ? (
+          <div className="catalog-loading-card">
+            <RefreshCw size={22} className="spin-infinite text-orange" />
+            <span>Loading {selectedProvider} games from WebAPI...</span>
+          </div>
+        ) : (
+          <div className="thirdparty-grid-3x">
+            {thirdPartyGames.map((g) => (
+              <div
+                key={`${g.provider}-${g.id}`}
+                className="thirdparty-card-item"
+                onClick={() => onLaunchThirdPartyGame?.(g)}
+              >
+                <div className="thirdparty-poster-wrap">
+                  <img
+                    src={g.img}
+                    alt={g.name}
+                    className="thirdparty-thumb"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.src = 'https://ossimg.55club-55club.com/55club/gamelogo/TB/1533.png'
+                    }}
+                  />
+                  <span className={`thirdparty-prov-badge badge-${g.provider.toLowerCase()}`}>{g.provider}</span>
+                </div>
+                <span className="thirdparty-card-title">{g.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Floating Add to Desktop Pill */}

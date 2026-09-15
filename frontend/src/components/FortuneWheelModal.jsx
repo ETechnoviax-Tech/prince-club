@@ -48,7 +48,7 @@ export function FortuneWheelModal({ isOpen, onClose, userId, onRewardClaimed }) 
         </button>
 
         <div className="fortune-header">
-          <div className="fortune-badge">55 CLUB EXCLUSIVE</div>
+          <div className="fortune-badge">PRINCE CLUB EXCLUSIVE</div>
           <h2 className="fortune-title">🎡 Wheel of Fortune</h2>
           <p className="fortune-subtitle">Spin the daily lucky wheel & win up to ₹500 cash rewards!</p>
         </div>
