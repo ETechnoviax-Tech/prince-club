@@ -397,10 +397,16 @@ export function HomeLobby({
         </div>
 
         <div className="minigames-scroll-grid">
-          <div className="minigame-card card-goalwave" onClick={() => onSelectGame('aviator')}>
-            <div className="minigame-art">⚽👑</div>
-            <div className="minigame-name">GOAL WAVE</div>
-            <small className="minigame-sub">TI GAME</small>
+          <div className="minigame-card card-mines" onClick={() => onSelectGame('mines')}>
+            <div className="minigame-art">💣💎</div>
+            <div className="minigame-name">MINES</div>
+            <small className="minigame-sub">97% RTP</small>
+          </div>
+
+          <div className="minigame-card card-dragontiger" onClick={() => onSelectGame('dragontiger')}>
+            <div className="minigame-art">🐉🐯</div>
+            <div className="minigame-name">DRAGON TIGER</div>
+            <small className="minigame-sub">TABLE</small>
           </div>
 
           <div className="minigame-card card-rocket" onClick={() => onSelectGame('aviator')}>
@@ -409,9 +415,10 @@ export function HomeLobby({
             <small className="minigame-sub">CRASH</small>
           </div>
 
-          <div className="minigame-card card-hilo" onClick={() => onSelectGame('wingo', 'PARITY')}>
-            <div className="minigame-art">♦️♠️</div>
-            <div className="minigame-name">HILO WAVE</div>
+          <div className="minigame-card card-goalwave" onClick={() => onSelectGame('aviator')}>
+            <div className="minigame-art">⚽👑</div>
+            <div className="minigame-name">GOAL WAVE</div>
+            <small className="minigame-sub">TI GAME</small>
           </div>
         </div>
       </div>
@@ -430,10 +437,44 @@ export function HomeLobby({
           </div>
         </div>
 
-        <div className="slots-preview-card" onClick={() => onSelectGame('wingo', 'PARITY')}>
-          <div className="slots-art-pharaoh">
-            <span className="pharaoh-crown">🔱</span>
-            <div className="pharaoh-name">PHARAOH TREASURE</div>
+        <div className="inhouse-slots-grid">
+          <div
+            className="slot-banner-card card-crazy777"
+            onClick={() => onLaunchThirdPartyGame?.({ id: 'crazy777', name: 'Crazy 777', provider: 'JILI' })}
+          >
+            <div className="slot-card-badge">HOT 1000X</div>
+            <div className="slot-card-icon">🎰</div>
+            <div className="slot-card-info">
+              <span className="slot-card-title">Crazy 777</span>
+              <span className="slot-card-sub">3 Reels + 10X Bonus</span>
+            </div>
+            <button className="slot-play-pill">PLAY NOW</button>
+          </div>
+
+          <div
+            className="slot-banner-card card-fortunegems"
+            onClick={() => onLaunchThirdPartyGame?.({ id: 'fortunegems', name: 'Fortune Gems', provider: 'JILI' })}
+          >
+            <div className="slot-card-badge">POPULAR</div>
+            <div className="slot-card-icon">💎</div>
+            <div className="slot-card-info">
+              <span className="slot-card-title">Fortune Gems</span>
+              <span className="slot-card-sub">3x3 + 15X Wheel</span>
+            </div>
+            <button className="slot-play-pill">PLAY NOW</button>
+          </div>
+
+          <div
+            className="slot-banner-card card-superace"
+            onClick={() => onLaunchThirdPartyGame?.({ id: 'superace', name: 'Super Ace', provider: 'JILI' })}
+          >
+            <div className="slot-card-badge">NEW</div>
+            <div className="slot-card-icon">🃏</div>
+            <div className="slot-card-info">
+              <span className="slot-card-title">Super Ace</span>
+              <span className="slot-card-sub">243 Ways + Wilds</span>
+            </div>
+            <button className="slot-play-pill">PLAY NOW</button>
           </div>
         </div>
       </div>

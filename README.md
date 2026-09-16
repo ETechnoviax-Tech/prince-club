@@ -6,12 +6,16 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
 
 ## Features
 
-- **Lottery Games**: Real-time rounds across Win Go (30s, 1m, 3m, 5m), K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
+- **In-House Casino & Mini Games**:
+  - **Mines**: 5x5 tile grid with 1–24 configurable mines, combination-based multiplier ladder, and real-time cashout.
+  - **Dragon vs Tiger**: Fast-paced 2-card table duel with an 8-deck shoe simulation, 10s countdown intervals, and bead plate roadmap history.
+  - **In-House Slots**: Zero-fee native slots including Crazy 777 (with 4th bonus reel), Fortune Gems (with 15x multiplier wheel), and Super Ace (243 ways).
+- **Lottery Games**: Live period rounds across Win Go (30s, 1m, 3m, 5m), K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
 - **Aviator Crash Game**: Real-time multiplier curve rendered on HTML5 canvas with manual and auto cashout.
-- **Third-Party Game Integration**: Catalog and launch integration for third-party casino, slot, and live table providers.
 - **Wallet & Transactions**: Instant UPI QR generation, 12-digit UTR verification with duplicate checking, and IMPS/UPI withdrawal requests.
 - **Bonus & Activity System**: Daily attendance streak rewards, gift redemption codes, betting rebates, and daily fortune wheel spins.
 - **Authentication**: Phone and email login/signup with OTP recovery support.
+
 
 ---
 

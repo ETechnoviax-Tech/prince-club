@@ -388,5 +388,77 @@ export async function fetchGameLaunchUrl(gameId, provider, userId = null) {
   return json
 }
 
+export async function executeInHouseSlotSpin(userId, gameId, betAmount) {
+  const res = await fetch(`${API_BASE}/game/slot/spin`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, gameId, betAmount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Spin failed')
+  }
+  return json
+}
 
+export async function fetchSlotConfig(gameId) {
+  const res = await fetch(`${API_BASE}/game/slot/config/${gameId}`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch slot config')
+  return res.json()
+}
 
+// In-House Mines Game API
+export async function startMines(userId, betAmount, minesCount) {
+  const res = await fetch(`${API_BASE}/game/mines/start`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, betAmount, minesCount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to start Mines round')
+  return json
+}
+
+export async function revealMinesTile(sessionId, tileIndex, userId) {
+  const res = await fetch(`${API_BASE}/game/mines/reveal`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ sessionId, tileIndex, userId }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to reveal tile')
+  return json
+}
+
+export async function cashoutMines(sessionId, userId) {
+  const res = await fetch(`${API_BASE}/game/mines/cashout`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ sessionId, userId }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Cashout failed')
+  return json
+}
+
+// In-House Dragon vs Tiger API
+export async function fetchDragonTigerState() {
+  const res = await fetch(`${API_BASE}/game/dragontiger/state`, {
+    headers: authHeaders(),
+  })
+  if (!res.ok) throw new Error('Failed to fetch Dragon Tiger state')
+  return res.json()
+}
+
+export async function placeDragonTigerBet(userId, market, betAmount) {
+  const res = await fetch(`${API_BASE}/game/dragontiger/bet`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, market, betAmount }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Bet failed')
+  return json
+}

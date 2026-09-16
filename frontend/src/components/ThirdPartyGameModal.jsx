@@ -3,8 +3,9 @@ import {
   ArrowLeft, RefreshCw, ExternalLink, Maximize2, Minimize2, X, Loader2,
 } from 'lucide-react'
 import { fetchGameLaunchUrl } from '../api/client'
+import InHouseSlotArena from './InHouseSlotArena'
 
-export function ThirdPartyGameModal({ game, isOpen, onClose, balance, userId, setToast }) {
+export function ThirdPartyGameModal({ game, isOpen, onClose, balance, onBalanceUpdate, userId, setToast }) {
   const [state, setState] = useState({ loading: false, url: null, needsOperator: false, openInTab: false, error: null })
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -81,43 +82,27 @@ export function ThirdPartyGameModal({ game, isOpen, onClose, balance, userId, se
             </div>
           )}
 
-          {/* Needs Operator Credentials (most common case without 55club operator account) */}
-          {!state.loading && state.needsOperator && state.url && (
-            <div className="launcher-operator-screen">
-              {game.img && (
-                <img src={game.img} alt={game.name} className="operator-game-thumb"
-                  onError={e => e.target.style.display = 'none'} />
-              )}
-              <div className="operator-badge-row">
-                <span className={`launcher-badge badge-${game.provider.toLowerCase()}`}>{game.provider}</span>
-                <span className="operator-live-tag">● LIVE</span>
-              </div>
-              <h2 className="operator-game-title">{game.name}</h2>
-              <p className="operator-desc">
-                This is a real-money game hosted by <strong>{game.provider}</strong>.
-                Tap below to open on the official provider site.
-              </p>
-
-              <button className="operator-play-btn" onClick={openTab}>
-                <ExternalLink size={20} />
-                Play {game.name} on {game.provider}
-              </button>
-
-              <div className="operator-info-box">
-                <span className="info-icon">ℹ️</span>
-                <p>
-                  To embed this game directly inside Prince Club, you need an approved{' '}
-                  <strong>55CLUB Operator Account</strong> with game API credentials.
-                  Contact <a href="mailto:support@55club.com" target="_blank" rel="noreferrer">support@55club.com</a> to apply.
-                </p>
-              </div>
-
-              <div className="operator-meta-row">
-                <span>🔒 SSL Secured</span>
-                <span>⚡ RNG Certified</span>
-                <span>🏆 Licensed</span>
-              </div>
-            </div>
+          {/* Self-Hosted Native In-House Slot Engine (Zero-Fee, Instant Play) */}
+          {!state.loading && state.needsOperator && (
+            <InHouseSlotArena
+              initialGameId={
+                game.name?.toLowerCase().includes('gem') || game.name?.toLowerCase().includes('fortune')
+                  ? 'fortunegems'
+                  : game.name?.toLowerCase().includes('ace')
+                  ? 'superace'
+                  : 'crazy777'
+              }
+              userId={userId}
+              balance={balance}
+              onBalanceUpdate={(newBal) => {
+                onBalanceUpdate?.(newBal)
+                if (typeof window !== 'undefined' && window.__prince_update_balance) {
+                  window.__prince_update_balance(newBal)
+                }
+              }}
+              onClose={onClose}
+              setToast={setToast}
+            />
           )}
 
           {/* Error */}

@@ -52,6 +52,8 @@ import AviatorGame from './components/AviatorGame'
 import K3Game from './components/K3Game'
 import FiveDGame from './components/FiveDGame'
 import TrxGame from './components/TrxGame'
+import MinesGame from './components/MinesGame'
+import DragonTigerGame from './components/DragonTigerGame'
 import ThirdPartyGameModal from './components/ThirdPartyGameModal'
 import FortuneWheelModal from './components/FortuneWheelModal'
 import ActivityView from './components/ActivityView'
@@ -785,6 +787,28 @@ export function App() {
               onBackToLobby={() => setCurrentGame(null)}
               onOpenDeposit={() => setDepositModalOpen(true)}
               onOpenWithdraw={() => setWithdrawModalOpen(true)}
+              setToast={setToast}
+            />
+          )}
+
+          {/* 1e. Mines Game Arena */}
+          {currentGame === 'mines' && (
+            <MinesGame
+              userId={currentUser?.id || userId}
+              balance={balance}
+              onBalanceUpdate={(newBal) => setBalance(newBal)}
+              onBackToLobby={() => setCurrentGame(null)}
+              setToast={setToast}
+            />
+          )}
+
+          {/* 1f. Dragon vs Tiger Arena */}
+          {currentGame === 'dragontiger' && (
+            <DragonTigerGame
+              userId={currentUser?.id || userId}
+              balance={balance}
+              onBalanceUpdate={(newBal) => setBalance(newBal)}
+              onBackToLobby={() => setCurrentGame(null)}
               setToast={setToast}
             />
           )}

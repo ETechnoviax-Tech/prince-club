@@ -58,5 +58,17 @@
 - Added complete mobile UI styling for K3, 5D, and TRX in `frontend/src/styles.css`.
 - Built third-party game integration (`ThirdPartyGameModal.jsx`, `server/controllers/thirdPartyGameController.js`, `server/services/thirdPartyGameService.js`) for catalog and provider game launching.
 - Humanized `README.md` to public professional GitHub standard (setup, features, architecture, deployment, usage).
+- Updated `styles.css` `.mobile-app-wrapper` and `.mobile-app-container` with desktop-centered 430px smartphone canvas and launched standalone window.
+- Built 100% self-hosted in-house slot game engine:
+  - `server/services/inHouseSlotEngine.js`: Authoritative RNG math for Crazy 777 (3 reels + 1 bonus reel), Fortune Gems (3x3 grid + 15x multiplier wheel), and Super Ace (5x4 card matrix + 243 ways).
+  - `server/controllers/inHouseSlotController.js` + `server/routes/gameRoutes.js`: Mounted `POST /api/game/slot/spin` with atomic wallet deductions and payout credits.
+  - `frontend/src/utils/slotAudio.js`: Web Audio API sound synthesizer for reel clicks, stops, win chimes, and mega win fanfares.
+  - `frontend/src/components/InHouseSlotArena.jsx`: Golden arcade slot cabinet with payline visualizer, bet stepper, quick chips, Auto-spin, Turbo spin, and celebration popups.
+  - Embedded into `ThirdPartyGameModal.jsx` and added 3 lobby showcase cards in `HomeLobby.jsx`.
+- Enhanced slot visual graphics & animation suite:
+  - `frontend/src/components/SlotSymbol.jsx`: High-definition vector SVG casino symbols with metallic gradients, 3D specular bevels, and drop shadows (Golden 777, Crimson 77, Electric Blue 7, 3x Gold BAR, Bell, Ruby Cherries, Garuda Wild, Gems, Joker).
+  - 60FPS HTML5 Canvas Coin Shower: Dynamic physics-based coin fountain with gravity, rotation, bouncing, and sparkle bursts on wins.
+  - 3D cylindrical glass glare shaders on reels with elastic overshoot bounce landings.
+  - Animated counting win ticker, rotating sunburst victory rays, and blinking marquee bulb sequences.
 - Verified with `npm run build` (clean exit 0) and automated test suite.
 

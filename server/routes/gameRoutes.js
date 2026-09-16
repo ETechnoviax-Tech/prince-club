@@ -17,7 +17,37 @@ import {
   playGameRound,
 } from '../controllers/thirdPartyGameController.js'
 
+import {
+  handleSlotSpin,
+  getSlotConfig,
+} from '../controllers/inHouseSlotController.js'
+
+import {
+  handleStartMines,
+  handleRevealTile,
+  handleCashoutMines,
+} from '../controllers/minesController.js'
+
+import {
+  getDragonTigerStatus,
+  placeDragonTigerBet,
+} from '../controllers/dragonTigerController.js'
+
 const router = Router()
+
+// In-House Native Slot Engine (Crazy 777, Fortune Gems, Super Ace)
+router.post('/slot/spin', optionalAuth, betRateLimit, handleSlotSpin)
+router.get('/slot/config/:gameId', getSlotConfig)
+
+// In-House Mines Game (5x5 Grid)
+router.post('/mines/start', optionalAuth, betRateLimit, handleStartMines)
+router.post('/mines/reveal', optionalAuth, handleRevealTile)
+router.post('/mines/cashout', optionalAuth, handleCashoutMines)
+
+// In-House Dragon vs Tiger (10s Live Duel)
+router.get('/dragontiger/state', getDragonTigerStatus)
+router.post('/dragontiger/bet', optionalAuth, betRateLimit, placeDragonTigerBet)
+
 
 // Win Go Round State
 router.get('/round/current', optionalAuth, getCurrentRound)
