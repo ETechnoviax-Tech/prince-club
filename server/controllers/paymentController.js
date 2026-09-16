@@ -3,6 +3,18 @@ import QRCode from 'qrcode'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { memoryDeposits, memoryTransactions, memoryWallets } from '../db/store.js'
 
+async function logPaymentEvent(userId, eventType, referenceId, payload = {}) {
+  if (!isSupabaseConfigured || !supabase) return
+  try {
+    await supabase.from('payment_events').insert({
+      user_id: userId,
+      event_type: eventType,
+      reference_id: referenceId ? String(referenceId) : null,
+      payload,
+    })
+  } catch (_) {}
+}
+
 export async function createDeposit(req, res) {
   try {
     const userId = req.targetUserId || (req.user ? req.user.id : req.body.userId)
@@ -37,6 +49,10 @@ export async function createDeposit(req, res) {
       created_at: new Date().toISOString(),
     }
 
+    // Record audit event asynchronously
+    logPaymentEvent(userId, 'DEPOSIT_CREATED', depositRecord.id, { order_ref: orderRef, amount, upi_vpa: merchantVPA })
+
+
     if (isSupabaseConfigured) {
       const { data, error } = await supabase
         .from('deposit_requests')
@@ -56,6 +72,7 @@ export async function createDeposit(req, res) {
         merchantName,
       })
     }
+
 
     // Fallback store
     memoryDeposits.set(depositRecord.id, depositRecord)
@@ -138,6 +155,8 @@ export async function submitUTR(req, res) {
           p_notes: 'Auto-approved in sandbox mode',
         })
         if (!rpcErr && rpcRes?.success) {
+          logPaymentEvent(deposit.user_id, 'DEPOSIT_AUTO_APPROVED', depositId, { utr, amount: deposit.amount })
+
           return res.json({
             message: 'UTR submitted and auto-approved',
             deposit: { ...updated, status: 'APPROVED' },
@@ -146,10 +165,14 @@ export async function submitUTR(req, res) {
         }
       }
 
+      logPaymentEvent(deposit.user_id, 'UTR_SUBMITTED', depositId, { utr, order_ref: deposit.order_ref })
+
       return res.json({
         message: 'UTR submitted successfully. Awaiting admin verification.',
         deposit: updated,
       })
+
+
     }
 
     // Fallback in-memory logic
@@ -224,6 +247,8 @@ export async function verifyDeposit(req, res) {
           return res.status(400).json({ error: data?.error || error?.message || 'Approval failed' })
         }
 
+        logPaymentEvent(null, 'DEPOSIT_APPROVED', depositId, { admin_id: adminId || req.user?.id || null, notes })
+
         return res.json({
           message: 'Deposit approved successfully',
           depositId,
@@ -273,8 +298,13 @@ export async function verifyDeposit(req, res) {
           .single()
 
         if (error) return res.status(500).json({ error: 'Failed to reject deposit' })
+
+        logPaymentEvent(null, 'DEPOSIT_REJECTED', depositId, { admin_id: adminId || req.user?.id || null, notes })
+
         return res.json({ message: 'Deposit rejected', deposit: data })
       }
+
+
 
       const deposit = memoryDeposits.get(depositId)
       if (!deposit) return res.status(404).json({ error: 'Deposit not found' })

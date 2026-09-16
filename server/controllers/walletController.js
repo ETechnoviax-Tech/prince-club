@@ -130,7 +130,42 @@ export async function requestWithdrawal(req, res) {
     }
 
     if (isSupabaseConfigured) {
-      // 1. Check wallet balance
+      // 1. Try atomic stored procedure for concurrency & race-condition safety
+      try {
+        const { data: rpcRes, error: rpcErr } = await supabase.rpc('request_withdrawal_atomic', {
+          p_user_id: userId,
+          p_amount: amount,
+          p_method: payoutMethod,
+          p_details: payoutDetails || {}
+        })
+
+        if (!rpcErr && rpcRes) {
+          if (!rpcRes.success) {
+            return res.status(400).json({ error: rpcRes.error || 'Withdrawal request failed' })
+          }
+
+          const record = {
+            id: rpcRes.withdrawal_id,
+            user_id: userId,
+            amount,
+            payout_method: payoutMethod,
+            payout_details: payoutDetails || {},
+            status: 'PENDING',
+            created_at: new Date().toISOString()
+          }
+          memoryWithdrawals.set(record.id, record)
+
+          return res.status(201).json({
+            message: 'Withdrawal request submitted successfully. Processing within 2-24 hours.',
+            withdrawal: record,
+            newBalance: rpcRes.new_balance,
+          })
+        }
+      } catch (rpcEx) {
+        console.warn('[Supabase] request_withdrawal_atomic fallback:', rpcEx.message)
+      }
+
+      // 2. Fallback: Optimistic balance deduction if RPC is not loaded
       const { data: wallet, error: walErr } = await supabase
         .from('wallets')
         .select('balance')
@@ -147,7 +182,7 @@ export async function requestWithdrawal(req, res) {
         })
       }
 
-      // 2. Atomic Balance Deduction
+      // 3. Atomic Balance Deduction with optimistic check
       const newBalance = Number(wallet.balance) - amount
       const { data: updatedWal, error: deductErr } = await supabase
         .from('wallets')
@@ -161,7 +196,7 @@ export async function requestWithdrawal(req, res) {
         return res.status(400).json({ error: 'Insufficient balance or concurrent transaction conflict' })
       }
 
-      // 3. Create Withdrawal Request Record
+      // 4. Create Withdrawal Request Record
       const record = {
         id: crypto.randomUUID(),
         user_id: userId,
@@ -178,7 +213,7 @@ export async function requestWithdrawal(req, res) {
         console.warn('[Supabase] Withdrawal insert note:', insErr.message)
       }
 
-      // 4. Ledger Transaction
+      // 5. Ledger Transaction & Audit Event
       try {
         await supabase.from('wallet_transactions').insert({
           user_id: userId,
@@ -187,6 +222,13 @@ export async function requestWithdrawal(req, res) {
           balance_after: newBalance,
           reference_id: record.id,
           description: `Withdrawal request to ${payoutMethod} (${amount})`,
+        })
+
+        await supabase.from('payment_events').insert({
+          user_id: userId,
+          event_type: 'WITHDRAWAL_REQUESTED',
+          reference_id: record.id,
+          payload: { amount, payout_method: payoutMethod, balance_after: newBalance }
         })
       } catch {}
 
@@ -198,6 +240,7 @@ export async function requestWithdrawal(req, res) {
         newBalance,
       })
     }
+
 
     // Fallback in-memory
     const curBal = memoryWallets.get(userId) || 1000
@@ -302,9 +345,37 @@ export async function adminVerifyWithdrawal(req, res) {
       return res.status(400).json({ error: `Withdrawal is already ${wRecord.status}` })
     }
 
-    // 2. If rejected, refund the wallet balance
+    // 2. If rejected, refund the wallet balance atomically
     if (action === 'REJECT') {
       if (isSupabaseConfigured) {
+        try {
+          const { data: rpcRes, error: rpcErr } = await supabase.rpc('process_refund', {
+            p_target_id: withdrawalId,
+            p_refund_type: 'WITHDRAWAL',
+            p_amount: Number(wRecord.amount),
+            p_reason: notes || 'Admin rejected withdrawal',
+            p_admin_id: req.user?.id || null
+          })
+
+          if (!rpcErr && rpcRes?.success) {
+            wRecord.status = 'REJECTED'
+            wRecord.admin_notes = notes || null
+            wRecord.processed_at = nowIso
+            memoryWithdrawals.set(withdrawalId, wRecord)
+
+            return res.json({
+              success: true,
+              message: 'Withdrawal rejected and refunded atomically',
+              withdrawalId,
+              status: 'REJECTED',
+              newBalance: rpcRes.new_balance
+            })
+          }
+        } catch (rpcEx) {
+          console.warn('[Supabase] process_refund RPC fallback:', rpcEx.message)
+        }
+
+        // Fallback manual refund
         try {
           const { data: wal } = await supabase
             .from('wallets')
@@ -317,7 +388,7 @@ export async function adminVerifyWithdrawal(req, res) {
             await supabase.from('wallets').update({ balance: refundedBal }).eq('user_id', wRecord.user_id)
             await supabase.from('wallet_transactions').insert({
               user_id: wRecord.user_id,
-              type: 'BONUS',
+              type: 'REFUND',
               amount: Number(wRecord.amount),
               balance_after: refundedBal,
               reference_id: withdrawalId,
@@ -342,8 +413,16 @@ export async function adminVerifyWithdrawal(req, res) {
             processed_at: nowIso,
           })
           .eq('id', withdrawalId)
+
+        await supabase.from('payment_events').insert({
+          user_id: wRecord.user_id,
+          event_type: action === 'APPROVE' ? 'WITHDRAWAL_APPROVED' : 'WITHDRAWAL_REJECTED',
+          reference_id: withdrawalId,
+          payload: { admin_id: req.user?.id || null, notes }
+        }).catch(() => {})
       } catch {}
     }
+
 
     wRecord.status = newStatus
     wRecord.admin_notes = notes || null

@@ -56,3 +56,16 @@ export const paymentRateLimit = rateLimit({
   max: 20,         // max 20 deposit attempts per minute
   message: 'Too many payment requests. Please try again shortly.',
 })
+
+export const withdrawalRateLimit = rateLimit({
+  windowMs: 60000,
+  max: 5,          // max 5 withdrawal attempts per minute per IP/user
+  message: 'Too many withdrawal attempts. Please wait a minute before requesting again.',
+})
+
+export const webhookRateLimit = rateLimit({
+  windowMs: 60000,
+  max: 120,        // max 120 webhook payloads per minute per provider IP
+  message: 'Webhook ingestion rate limit exceeded.',
+})
+

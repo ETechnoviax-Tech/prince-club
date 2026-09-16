@@ -175,6 +175,10 @@ CREATE TABLE IF NOT EXISTS public.password_resets (
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
+-- Defensive migration if password_resets existed previously without channel
+ALTER TABLE public.password_resets ADD COLUMN IF NOT EXISTS channel VARCHAR(20) NOT NULL DEFAULT 'EMAIL';
+ALTER TABLE public.password_resets ADD COLUMN IF NOT EXISTS destination TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_password_resets_identity ON public.password_resets(identity);
 CREATE INDEX IF NOT EXISTS idx_password_resets_code ON public.password_resets(otp_code);
 CREATE INDEX IF NOT EXISTS idx_password_resets_status ON public.password_resets(is_used, expires_at);

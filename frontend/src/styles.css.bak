@@ -4,10 +4,10 @@
 
 :root {
   /* ── Ivory / White Light Palette ── */
-  --bg-core:        #ffffff;
-  --bg-surface:     #f6f7fb;
+  --bg-core:        #fffff8;
+  --bg-surface:     #f5f4ef;
   --bg-card:        #ffffff;
-  --bg-card-hover:  #f0f3fa;
+  --bg-card-hover:  #f0efe9;
   --border-subtle:  rgba(0, 0, 0, 0.07);
   --border-active:  rgba(0, 0, 0, 0.15);
 
@@ -86,7 +86,7 @@ button {
   width: 100%;
   height: 100vh;
   height: 100dvh;
-  background: #f1f3f7;
+  background: #111827;
   padding: 0;
   margin: 0;
   overflow: hidden;
@@ -323,7 +323,7 @@ button {
 
 .game-stage-card {
   position: relative;
-  background: #ffffff;
+  background: linear-gradient(145deg, #131a2b 0%, #0d121f 100%);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 16px;
   padding: 16px;
@@ -423,7 +423,7 @@ button {
   justify-content: center;
   width: 32px;
   height: 42px;
-  background: #f3f4f6; color: #111827;
+  background: #080b13;
   border: 1px solid var(--border-subtle);
   border-radius: 6px;
   font-size: 1.5rem;
@@ -958,7 +958,7 @@ button {
 .bottom-sheet-card {
   width: 100%;
   max-width: 480px;
-  background: #ffffff; color: #111827;
+  background: #111726;
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -1233,7 +1233,7 @@ button {
 
 /* Wallet Card */
 .wallet-hero-glass {
-  background: #ffffff;
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   padding: 20px;
@@ -1553,7 +1553,7 @@ button {
   max-height: 90vh;
   max-height: 90dvh;
   overflow-y: auto;
-  background: #ffffff; color: #111827;
+  background: #131926;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 16px;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.7);
@@ -2007,7 +2007,7 @@ button {
 .auth-input-wrap input:-webkit-autofill:hover, 
 .auth-input-wrap input:-webkit-autofill:focus, 
 .auth-input-wrap input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-box-shadow: 0 0 0 1000px #0b0f1a inset !important;
   -webkit-text-fill-color: #ffffff !important;
   caret-color: #ffffff !important;
   border-radius: 8px !important;
@@ -2360,7 +2360,7 @@ button {
 }
 
 .mode-tab-btn.active {
-  background: #ffffff;
+  background: linear-gradient(135deg, #1e293b, #0f172a);
   border-color: rgba(56, 189, 248, 0.4);
   color: #38bdf8;
   box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
@@ -2702,7 +2702,7 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #ffffff; color: #111827;
+  background: #180f2d;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -2758,7 +2758,7 @@ button {
   margin: 14px 14px 10px;
   padding: 20px 18px 18px;
   border-radius: 20px;
-  background: #ffffff;
+  background: linear-gradient(135deg, #2b174d 0%, #1e1039 100%);
   border: 1px solid rgba(168, 85, 247, 0.28);
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
@@ -2870,7 +2870,7 @@ button {
   margin: 6px 14px 12px;
   padding: 8px 6px;
   border-radius: 16px;
-  background: #ffffff; color: #111827;
+  background: #1c1133;
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -2887,7 +2887,7 @@ button {
 }
 
 .raja-mode-tab.active {
-  background: #ffffff;
+  background: linear-gradient(135deg, #351c5a 0%, #291448 100%);
   border: 1px solid rgba(168, 85, 247, 0.45);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
@@ -2935,7 +2935,7 @@ button {
   margin: 0 14px 14px;
   padding: 14px 16px;
   border-radius: 18px;
-  background: #ffffff;
+  background: linear-gradient(135deg, #2a164c 0%, #1f1039 100%);
   border: 1px solid rgba(168, 85, 247, 0.2);
   display: flex;
   align-items: center;
@@ -3044,7 +3044,7 @@ button {
   width: 26px;
   height: 32px;
   border-radius: 6px;
-  background: #f8fafc; color: #111827;
+  background: #140a24;
   border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
@@ -3125,7 +3125,7 @@ button {
   margin: 0 14px 12px;
   padding: 14px 12px;
   border-radius: 18px;
-  background: #ffffff; color: #111827;
+  background: #1b1031;
   border: 1px solid rgba(168, 85, 247, 0.15);
 }
 
@@ -4348,7 +4348,7 @@ button {
    ========================================================================== */
 .aviator-container {
   min-height: 100vh;
-  background: #ffffff; color: #111827;
+  background: #0f1015;
   color: #ffffff;
   padding-bottom: 30px;
 }
@@ -4358,7 +4358,7 @@ button {
   align-items: center;
   justify-content: space-between;
   padding: 12px 16px;
-  background: #ffffff; color: #111827;
+  background: #17181f;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -4406,7 +4406,7 @@ button {
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  background: #ffffff; color: #111827;
+  background: #13141a;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -4432,7 +4432,7 @@ button {
   position: relative;
   height: 240px;
   margin: 10px 14px;
-  background: #ffffff; color: #111827;
+  background: #15161e;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
@@ -4518,7 +4518,7 @@ button {
 
 /* Aviator Betting Panel */
 .aviator-bet-panel {
-  background: #ffffff; color: #111827;
+  background: #17181f;
   margin: 0 14px;
   padding: 14px;
   border-radius: 16px;
@@ -4552,7 +4552,7 @@ button {
   flex: 1;
   display: flex;
   align-items: center;
-  background: #ffffff; color: #111827;
+  background: #0f1015;
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 0 10px;
@@ -4611,7 +4611,7 @@ button {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #ffffff; color: #111827;
+  background: #0f1015;
   padding: 3px 8px;
   border-radius: 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -7592,7 +7592,7 @@ button {
 }
 
 .time-digit {
-  background: #f8fafc;
+  background: #0f172a;
   color: #facc15;
   font-size: 15px;
   font-weight: 900;
@@ -8029,7 +8029,7 @@ button {
   display: flex;
   align-items: center;
   gap: 6px;
-  background: #f8fafc;
+  background: #0f172a;
   padding: 10px 14px;
   border-radius: 8px;
   font-family: monospace;
@@ -8391,7 +8391,7 @@ button {
   position: relative;
   width: 100%;
   aspect-ratio: 1 / 1;
-  background: #f8fafc;
+  background: #0f172a;
   overflow: hidden;
 }
 
@@ -8459,7 +8459,7 @@ button {
   max-width: 460px;
   height: 100%;
   max-height: 96vh;
-  background: #f8fafc;
+  background: #0f172a;
   color: #ffffff;
   display: flex;
   flex-direction: column;
@@ -8636,7 +8636,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background: #ffffff; color: #111827;
+  background: #0b0f19;
   border-radius: 8px;
   padding: 6px 2px;
 }
@@ -8730,7 +8730,7 @@ button {
 }
 
 .outcome-chip.chip-red { background: #ef4444; color: #fff; }
-.outcome-chip.chip-black { background: #f8fafc; color: #fff; }
+.outcome-chip.chip-black { background: #0f172a; color: #fff; }
 .outcome-chip.chip-green { background: #10b981; color: #fff; }
 
 .casino-bet-choices {
@@ -9830,7 +9830,7 @@ button {
 }
 
 .sa-cell {
-  background: #ffffff; color: #111827;
+  background: #1e1929;
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 6px;
   height: 42px;
@@ -10636,7 +10636,7 @@ button {
 /* Mines Controls */
 .mines-controls {
   padding: 12px 14px 18px;
-  background: #ffffff; color: #111827;
+  background: #0d111a;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
@@ -11195,311 +11195,3 @@ button {
 }
 
 
-
-
-/* =========================================================
-   PRINCE CLUB - 100% PURE WHITE THEME OVERRIDES
-   ========================================================= */
-
-:root {
-  --bg-core:        #ffffff !important;
-  --bg-surface:     #f6f7fb !important;
-  --bg-card:        #ffffff !important;
-  --bg-card-hover:  #f0f3fa !important;
-  --border-subtle:  #e5e7eb !important;
-  --border-active:  #d1d5db !important;
-
-  --text-primary:   #111827 !important;
-  --text-secondary: #374151 !important;
-  --text-muted:     #6b7280 !important;
-}
-
-html, body, #root {
-  background: #f6f7fb !important;
-  color: #111827 !important;
-}
-
-.mobile-app-wrapper {
-  background: #f1f3f7 !important;
-}
-
-.mobile-app-container {
-  background: #ffffff !important;
-  border-left: 1px solid #e5e7eb !important;
-  border-right: 1px solid #e5e7eb !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08) !important;
-}
-
-.app-main-viewport {
-  background: #ffffff !important;
-  color: #111827 !important;
-}
-
-/* Account View White Theme */
-.account-view-wrapper {
-  background: #f6f7fb !important;
-  color: #111827 !important;
-}
-
-.account-avatar-container, .account-avatar-fallback {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e5e7eb !important;
-}
-
-.account-balance-card, .history-card-tile, .account-menu-card {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.03) !important;
-}
-
-.account-user-title, .balance-main-num, .history-tile-title, .menu-item-text {
-  color: #111827 !important;
-}
-
-.account-user-subtitle, .balance-card-label, .history-tile-val, .menu-item-sub {
-  color: #4b5563 !important;
-}
-
-/* Aviator White Theme */
-.aviator-wrapper, .aviator-container {
-  background: #ffffff !important;
-  color: #111827 !important;
-}
-
-.aviator-canvas-card {
-  background: #f8fafc !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.03) !important;
-}
-
-.aviator-bet-card, .aviator-wallet-pill, .aviator-stepper-btn, .aviator-chip-btn {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e2e8f0 !important;
-}
-
-.aviator-chip-btn.active {
-  background: #ff4d4f !important;
-  color: #ffffff !important;
-}
-
-/* Third Party & Slot White Theme */
-.thirdparty-game-stage, .thirdparty-game-header, .thirdparty-control-console {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e5e7eb !important;
-}
-
-.slot-cabinet, .slot-reels-frame, .slot-controls, .slot-paytable-card {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e5e7eb !important;
-}
-
-.c777-stage, .fg-stage, .sa-stage {
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%) !important;
-}
-
-/* Rajaluck / 55 Club Theme White Revamp */
-.raja-header, .raja-wallet-card, .raja-modes-bar, .raja-countdown-card, .raja-tbox, .raja-numbers-card {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.03) !important;
-}
-
-.raja-mode-tab {
-  background: #f3f4f6 !important;
-  color: #374151 !important;
-}
-
-.raja-mode-tab.active {
-  background: #ff4d4f !important;
-  color: #ffffff !important;
-}
-
-/* Bottom Sheet & Modals White Theme */
-.bottom-sheet-card, .modal-card, .deposit-modal-content, .withdraw-modal-content, .auth-modal-content {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1) !important;
-}
-
-/* Bottom Navigation White Theme */
-.bottom-nav-55, .bottom-nav-bar {
-  background: #ffffff !important;
-  border-top: 1px solid #edf0f5 !important;
-}
-
-.nav-tab-item {
-  color: #6b7280 !important;
-}
-
-.nav-tab-item.active {
-  color: #ff4d4f !important;
-}
-
-/* Inputs & Form Elements */
-input, select, textarea {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e2e8f0 !important;
-}
-
-input::placeholder {
-  color: #9ca3af !important;
-}
-
-
-
-
-/* =========================================================
-   ACCOUNT VIEW & TOAST - PRECISE WHITE THEME OVERRIDES
-   ========================================================= */
-
-.account-view-wrapper {
-  background: #f4f5f8 !important;
-  color: #111827 !important;
-}
-
-.account-profile-header {
-  background: linear-gradient(135deg, #ff5e62 0%, #ff9966 100%) !important;
-  color: #ffffff !important;
-}
-
-.profile-username {
-  color: #ffffff !important;
-  font-weight: 800 !important;
-}
-
-.profile-login-time {
-  color: rgba(255, 255, 255, 0.9) !important;
-}
-
-.account-avatar-container {
-  background: #ffffff !important;
-  border: 2px solid #ffffff !important;
-}
-
-.account-avatar-fallback {
-  background: #f1f5f9 !important;
-  color: #475569 !important;
-}
-
-.account-balance-card {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04) !important;
-}
-
-.balance-label {
-  color: #6b7280 !important;
-}
-
-.balance-value {
-  color: #111827 !important;
-  font-weight: 900 !important;
-}
-
-.balance-refresh-btn {
-  color: #6b7280 !important;
-}
-
-.enter-wallet-btn {
-  background: linear-gradient(135deg, #ff5e62 0%, #ff9966 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 4px 12px rgba(255, 94, 98, 0.3) !important;
-}
-
-.action-name {
-  color: #374151 !important;
-  font-weight: 600 !important;
-}
-
-.history-card-tile {
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03) !important;
-}
-
-.history-title {
-  color: #111827 !important;
-  font-weight: 800 !important;
-}
-
-.history-sub {
-  color: #6b7280 !important;
-}
-
-.account-menu-card {
-  background: #ffffff !important;
-  border: 1px solid #e5e7eb !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.03) !important;
-}
-
-.menu-list-row {
-  border-bottom: 1px solid #f3f4f6 !important;
-}
-
-.menu-row-title {
-  color: #111827 !important;
-  font-weight: 600 !important;
-}
-
-.account-auth-action-btn.logout-style {
-  background: #fff0f0 !important;
-  color: #ef4444 !important;
-  border: 1px solid #fee2e2 !important;
-}
-
-/* ── MOBILE TOAST NOTIFICATIONS (WHITE THEME HIGH CONTRAST) ── */
-.mobile-toast {
-  background: #ffffff !important;
-  color: #111827 !important;
-  border: 1px solid #e2e8f0 !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12) !important;
-}
-
-.mobile-toast .toast-title,
-.mobile-toast .toast-text,
-.mobile-toast .toast-msg,
-.mobile-toast span,
-.mobile-toast div {
-  color: #111827 !important;
-}
-
-.mobile-toast.toast-success {
-  border-color: #10b981 !important;
-  background: #ffffff !important;
-}
-
-.mobile-toast.toast-success .toast-icon {
-  background: #d1fae5 !important;
-  color: #059669 !important;
-}
-
-.mobile-toast.toast-loss {
-  border-color: #ef4444 !important;
-  background: #ffffff !important;
-}
-
-.mobile-toast.toast-loss .toast-icon {
-  background: #fee2e2 !important;
-  color: #dc2626 !important;
-}
-
-.mobile-toast.toast-neutral,
-.mobile-toast.toast-warning {
-  border-color: #f59e0b !important;
-  background: #ffffff !important;
-}
-
-.mobile-toast.toast-neutral .toast-icon,
-.mobile-toast.toast-warning .toast-icon {
-  background: #fef3c7 !important;
-  color: #d97706 !important;
-}

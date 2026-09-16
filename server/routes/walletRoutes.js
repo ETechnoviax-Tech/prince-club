@@ -9,8 +9,10 @@ import {
   resetWallet,
 } from '../controllers/walletController.js'
 import { optionalAuth, requireAdmin, requireAuth } from '../middleware/auth.js'
-import { paymentRateLimit } from '../middleware/rateLimit.js'
+import { withdrawalRateLimit } from '../middleware/rateLimit.js'
 import { validateWithdrawalRequest } from '../middleware/validate.js'
+import { idempotencyMiddleware } from '../middleware/idempotency.js'
+import { paymentLockMiddleware } from '../middleware/paymentLock.js'
 
 const router = Router()
 
@@ -19,8 +21,16 @@ router.get('/:userId', requireAuth, getWallet)
 router.get('/:userId/transactions', requireAuth, getTransactions)
 router.post('/reset', requireAuth, resetWallet)
 
-// Financial Payouts & Withdrawals
-router.post('/withdraw', optionalAuth, paymentRateLimit, validateWithdrawalRequest, requestWithdrawal)
+// Financial Payouts & Withdrawals protected with Mutex Lock and Idempotency
+router.post(
+  '/withdraw',
+  optionalAuth,
+  withdrawalRateLimit,
+  paymentLockMiddleware,
+  idempotencyMiddleware,
+  validateWithdrawalRequest,
+  requestWithdrawal
+)
 router.get('/withdrawals/:userId', optionalAuth, getUserWithdrawals)
 router.post('/withdraw/verify', requireAdmin, adminVerifyWithdrawal)
 

@@ -216,7 +216,8 @@ export async function register(req, res) {
           .single()
 
         if (error) {
-          return res.status(500).json({ error: 'Failed to create user account' })
+          console.error('[Supabase Error] insert profile:', error)
+          return res.status(500).json({ error: 'Failed to create user account', details: error.message })
         }
         profile = data
       }

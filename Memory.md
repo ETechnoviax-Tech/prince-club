@@ -71,4 +71,13 @@
   - 3D cylindrical glass glare shaders on reels with elastic overshoot bounce landings.
   - Animated counting win ticker, rotating sunburst victory rays, and blinking marquee bulb sequences.
 - Verified with `npm run build` (clean exit 0) and automated test suite.
+- Converted entire application UI to 100% clean white light theme: updated `:root` color tokens, desktop `.mobile-app-wrapper` backdrop (`#f1f3f7`), crisp white stage cards (`#ffffff`), `AccountView` profile header, balance card, 2x2 history grid, menu items, high-contrast readable toast notifications (`.mobile-toast`), and clean form input styles across all game modes.
+- Built production-grade payment gateway architecture:
+  - `server/db/payment.sql`: Dedicated SQL script containing schema extensions, `idempotency_keys`, `payment_locks`, `webhook_events`, `payment_events`, `refund_requests`, and atomic stored procedures (`request_withdrawal_atomic`, `process_refund`, `acquire_payment_lock`, `release_payment_lock`).
+  - `server/middleware/idempotency.js`: Fast-path memory cache + Supabase persistence preventing duplicate charges and double-click submissions via `Idempotency-Key` header.
+  - `server/middleware/paymentLock.js`: Per-user mutex with TTL preventing concurrent race conditions on withdrawals and deposits (409 Conflict rejection).
+  - `server/middleware/rateLimit.js`: Stricter `withdrawalRateLimit` (5/min) and `webhookRateLimit` (120/min).
+  - `server/controllers/webhookController.js`: HMAC-SHA256 signature verification with constant-time equality check, replay protection, and automated deposit/payout routing with refund failover.
+  - `server/controllers/refundController.js`: Atomic refund engine for deposits and withdrawals, refund history, and audit ledger.
+  - `tests/test_payment_gateway.js`: Comprehensive 7-point integration test suite covering idempotency replays, concurrent mutex locks, signed webhooks, replay attack prevention, and auto-refunds (7/7 passing).
 
