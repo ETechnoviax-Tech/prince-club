@@ -1,7 +1,13 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
+import WebSocket from 'ws'
 import { createClient } from '@supabase/supabase-js'
 import dotenv from 'dotenv'
+
+// Ensure WebSocket is defined globally for Node.js < 22 compatibility with Supabase Realtime
+if (typeof globalThis.WebSocket === 'undefined') {
+  globalThis.WebSocket = WebSocket
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
