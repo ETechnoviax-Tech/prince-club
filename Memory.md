@@ -184,5 +184,10 @@
 - Files: `ecosystem.config.cjs`, `render.yaml`, `Dockerfile.server`, `server/Dockerfile`, `frontend/wrangler.jsonc`, `frontend/.env.production`
 - Dependencies: Docker, PM2, Render, Cloudflare Pages
 - Last change: 2026-09-17 — Replaced _redirects with native Cloudflare wrangler.jsonc SPA assets config (code 100324 fix).
-
-
+## Audio Isolation & Game Context Shield
+- Status: done
+- Purpose: Prevent sound playback when unauthenticated, in auth modals, or outside active game arenas.
+- Key logic: `SoundManager.setGameActive` gate, `isWinGoPlaying` view-state validation, and active bet checks before playing settlement audio.
+- Files: `frontend/src/utils/audio.js`, `frontend/src/App.jsx`, `tests/test_audio_guards.js`
+- Dependencies: Web Audio API, React 18
+- Last change: 2026-09-17 — Silenced Win Go countdown and settlement sounds for unauthenticated or non-gaming states.

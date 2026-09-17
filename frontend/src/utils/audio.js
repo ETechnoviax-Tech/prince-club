@@ -3,12 +3,17 @@ class SoundManager {
   constructor() {
     this.ctx = null
     this.isMuted = false
+    this.gameActive = false // Default muted until an authenticated user enters an active game arena
     try {
       const saved = localStorage.getItem('club69_sound_muted') || localStorage.getItem('prince_sound_muted')
       this.isMuted = saved === 'true'
     } catch {
       this.isMuted = false
     }
+  }
+
+  setGameActive(active) {
+    this.gameActive = Boolean(active)
   }
 
   getAudioContext() {
@@ -37,7 +42,7 @@ class SoundManager {
   }
 
   playTone(freq, type = 'sine', duration = 0.1, gainValue = 0.08) {
-    if (this.isMuted) return
+    if (this.isMuted || !this.gameActive) return
     try {
       const ctx = this.getAudioContext()
       if (!ctx) return
@@ -58,15 +63,17 @@ class SoundManager {
   }
 
   playTick() {
+    if (this.isMuted || !this.gameActive) return
     this.playTone(880, 'sine', 0.08, 0.06)
   }
 
   playLockTick() {
+    if (this.isMuted || !this.gameActive) return
     this.playTone(440, 'triangle', 0.12, 0.09)
   }
 
   playBetPlaced() {
-    if (this.isMuted) return
+    if (this.isMuted || !this.gameActive) return
     try {
       const ctx = this.getAudioContext()
       if (!ctx) return
@@ -87,7 +94,7 @@ class SoundManager {
   }
 
   playWin() {
-    if (this.isMuted) return
+    if (this.isMuted || !this.gameActive) return
     try {
       const ctx = this.getAudioContext()
       if (!ctx) return

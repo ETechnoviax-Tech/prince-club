@@ -32,6 +32,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - Dedicated full-screen subpages with seamless back-navigation: Wallet Center (`WalletPage.jsx`), Fast Deposit (`DepositPage.jsx`), Instant Withdrawal (`WithdrawPage.jsx`), VIP Club (`VIPPage.jsx`), Notification Center (`NotificationPage.jsx`), Gifts & Hongbao Rewards (`GiftsPage.jsx`), Top-Up Coupons (`CouponsPage.jsx`), Security Center (`SecurityPage.jsx`), and 24/7 Customer Service (`CustomerServicePage.jsx`).
 - **Anti-Inspect & Client Security Shield**:
   - Global protection engine (`antiInspect.js`) blocking right-click context menu, DevTools inspection shortcuts (`F12`, `Ctrl+Shift+I/J/C`), and source view (`Ctrl+U`), paired with CSS text-selection lockout and console sanitization.
+- **Audio Isolation & Sound Shield**: Zero background sounds or countdown ticks for unauthenticated visitors, authentication modals, or non-active game viewports; game audio only initializes for logged-in players inside active game arenas.
 - **Bonus & Activity System**: Daily attendance streak rewards, gift redemption codes, betting rebates, and daily fortune wheel spins.
 - **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, iOS Safe Area insets, touch targets, and desktop-centered canvas.
 

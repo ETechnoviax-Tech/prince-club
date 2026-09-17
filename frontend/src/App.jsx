@@ -279,6 +279,18 @@ export function App() {
     }
   }, [])
 
+  // Global audio guard: strictly mute Web Audio synth whenever user is unauthenticated,
+  // on auth screens, or outside an active game viewport
+  useEffect(() => {
+    const isGameActive = Boolean(
+      currentUser &&
+      !authModalOpen &&
+      activeNav === 'home' &&
+      currentGame !== null
+    )
+    sound.setGameActive(isGameActive)
+  }, [currentUser, authModalOpen, activeNav, currentGame])
+
   const [userId, setUserId] = useState(() => {
     try {
       const token = getAuthToken()
@@ -652,10 +664,12 @@ export function App() {
 
     let totalWinCredits = 0
     let hasWin = false
+    let userBetsInRound = 0
 
     setBets((prev) =>
       prev.map((b) => {
         if (b.status === 'pending' && b.round === roundNumber) {
+          userBetsInRound++
           let won = false
           if (b.type === 'color' && b.selection === outcome.color) won = true
           if (b.type === 'number' && Number(b.selection) === outcome.digit) won = true
@@ -678,21 +692,23 @@ export function App() {
       })
     )
 
+    const isWinGoPlaying = Boolean(currentUser && !authModalOpen && activeNav === 'home' && currentGame === 'wingo')
+
     if (hasWin) {
       setBalance((curr) => curr + totalWinCredits)
-      sound.playWin()
-      console.log('[Win Go Debug] Round Won! Credits added:', totalWinCredits)
-      if (currentUser && !authModalOpen) {
+      if (isWinGoPlaying) {
+        sound.playWin()
         setToast({
           type: 'success',
           title: '🎉 Congratulations! You Won!',
           detail: `Period ${formatPeriod(roundNumber)}: +₹${formatCredits(totalWinCredits)} credited to your wallet balance.`,
         })
       }
+      console.log('[Win Go Debug] Round Won! Credits added:', totalWinCredits)
     } else {
-      sound.playLockTick()
       console.log('[Win Go Debug] Round Lost. Outcome:', outcome)
-      if (currentUser && !authModalOpen) {
+      if (isWinGoPlaying && userBetsInRound > 0) {
+        sound.playLockTick()
         setToast({
           type: 'loss',
           title: 'Round Settled',
@@ -700,7 +716,7 @@ export function App() {
         })
       }
     }
-  }, [roundNumber, currentUser, authModalOpen, currentGame])
+  }, [roundNumber, currentUser, authModalOpen, activeNav, currentGame])
 
   // Timer Tick Engine
   useEffect(() => {
@@ -708,12 +724,13 @@ export function App() {
       setSeconds((prevSec) => {
         if (prevSec > 1) {
           const next = prevSec - 1
+          const isWinGoPlaying = Boolean(currentUser && !authModalOpen && activeNav === 'home' && currentGame === 'wingo')
           if (next <= LOCK_SECONDS && phase === 'open') {
             setPhase('locked')
             setBetSheetOpen(false)
-            sound.playLockTick()
+            if (isWinGoPlaying) sound.playLockTick()
           } else if (next <= 5 && next > 0) {
-            sound.playTick()
+            if (isWinGoPlaying) sound.playTick()
           }
           return next
         }
@@ -734,7 +751,7 @@ export function App() {
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [phase, settleCurrentRound])
+  }, [phase, settleCurrentRound, currentUser, authModalOpen, activeNav, currentGame])
 
   // Open bet sheet
   const handleSelectTarget = (type, val, multiplier) => {
