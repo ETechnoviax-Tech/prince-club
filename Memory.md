@@ -140,10 +140,10 @@
 ## Database Schema & Row Level Security (RLS)
 - Status: done
 - Purpose: PostgreSQL schema for Supabase with is_admin column, defensive migrations, and RLS protection.
-- Key logic: Added `is_admin BOOLEAN NOT NULL DEFAULT FALSE` to `profiles` (and `users` view with `security_invoker = true`); enabled RLS across all 8 tables (`profiles`, `wallets`, `deposit_requests`, `wallet_transactions`, `game_rounds`, `bets`, `password_resets`, `withdrawal_requests`) with `service_role` full bypass policies to remove Supabase "Unrestricted" warning.
-- Files: `server/db/schema.sql`, `server/middleware/adminGuard.js`, `server/controllers/adminController.js`
+- Key logic: Added `is_admin BOOLEAN NOT NULL DEFAULT FALSE` to `profiles` (and `users` view with `security_invoker = true`); enabled RLS across all tables with `service_role` full bypass policies.
+- Files: `server/db/schema.sql`, `server/db/payment.sql`, `tests/clean_db_all.js`
 - Dependencies: PostgreSQL, Supabase PostgREST
-- Last change: 2026-09-17 — Added is_admin column and enabled RLS + service_role policies to eliminate Unrestricted warning.
+- Last change: 2026-09-17 — Executed complete database purge/truncate across all 13 tables (0 remaining rows) for clean production launch.
 
 ## Standalone Subpages Architecture
 - Status: done
