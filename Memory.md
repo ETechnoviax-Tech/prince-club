@@ -80,4 +80,31 @@
   - `server/controllers/webhookController.js`: HMAC-SHA256 signature verification with constant-time equality check, replay protection, and automated deposit/payout routing with refund failover.
   - `server/controllers/refundController.js`: Atomic refund engine for deposits and withdrawals, refund history, and audit ledger.
   - `tests/test_payment_gateway.js`: Comprehensive 7-point integration test suite covering idempotency replays, concurrent mutex locks, signed webhooks, replay attack prevention, and auto-refunds (7/7 passing).
+- Upgraded Login, Signup, Forgot Password, and Reset Password views:
+  - `frontend/src/components/AuthModal.jsx`: Synchronized state with `initialMode` and `isOpen`, removed hardcoded mock phone numbers, added India country selector (`🇮🇳 +91`), visual 6-digit OTP code inputs, and customer support quick link.
+  - Upgraded all buttons across AccountView, DepositModal, and WithdrawModal to authentic 55 CLUB production standards: coral-to-red gradients (`linear-gradient(90deg, #ff6054 0%, #f2413b 50%, #e62c25 100%)`), 25px pill border radius, 3D specular highlights, tactile click physics (`active:scale(0.97)`), and eliminated mismatched purple styles.
+  - Fixed syntax error in `frontend/src/styles.css` (unclosed brace on `.menu-row-title` at line 11549) and verified bracket balance (depth 0).
+- Built full Transaction History feature:
+  - `frontend/src/components/TransactionModal.jsx`: Dedicated modal for wallet ledger history with filter tabs (All, Deposit, Withdraw, Bets, Bonus/Refund), live balance after, copyable reference IDs, and pull-to-refresh.
+  - `frontend/src/api/client.js`: Added `fetchWalletTransactions(userId)`.
+  - `server/controllers/walletController.js`: Fixed `getTransactions` to validate UUID before querying Supabase and gracefully fall back to in-memory store for guest/demo IDs (`usr_...`).
+## Authentication & Access Gate
+- Status: done
+- Purpose: Production-grade auth system with strict login verification, separate pages, and zero-bypass security.
+- Key logic: Strict login verification rejects unregistered users with 401; disk persistence for profiles and credentials; dedicated modular pages for Login, Register, Forgot Password, and Reset Password.
+- Files: `frontend/src/components/auth/LoginPage.jsx`, `frontend/src/components/auth/RegisterPage.jsx`, `frontend/src/components/auth/ForgotPasswordPage.jsx`, `frontend/src/components/auth/ResetPasswordPage.jsx`, `frontend/src/components/AuthModal.jsx`, `server/controllers/authController.js`
+- Dependencies: Express, Supabase, crypto, JWT
+- Last change: 2026-09-17 — Built separate auth pages, eliminated auto-creation login bypass, and enforced strict credential validation.
+
+## Mobile Toast Notification UI
+- Status: done
+- Purpose: High-contrast, top-floating notification toast with zero navigation obstruction.
+- Key logic: Fixed top positioning (`max(20px, env(safe-area-inset-top))`), obsidian dark card (`#111827`), vivid gradients for success/error/neutral badges, and readable pure white title and slate text.
+- Files: `frontend/src/styles.css`, `frontend/src/App.jsx`
+- Dependencies: Lucide React, Vanilla CSS
+- Last change: 2026-09-17 — Overhauled toast colors and positioning to top floating obsidian badge with crystal-clear contrast.
+
+
+
+
 

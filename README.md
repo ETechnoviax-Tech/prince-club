@@ -19,8 +19,12 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **Atomic Balance Operations**: PostgreSQL stored procedures using `SELECT ... FOR UPDATE` locks for zero-drift balance consistency.
   - **Refund Engine**: Atomic full or partial refunds for deposits and withdrawals with complete audit logs.
   - **Payment Events Ledger**: Immutable append-only audit trail for all financial operations.
+- **Authentication Gate & Session Security**:
+  - **Modular Production Auth Architecture**: Dedicated, standalone components for Login (`LoginPage.jsx`), Registration (`RegisterPage.jsx`), Forgot Password (`ForgotPasswordPage.jsx`), and Password Reset (`ResetPasswordPage.jsx`) supporting phone (+91) and email authentication.
+  - **Zero-Bypass Credential Verification**: Strict password verification rejecting unauthenticated requests and non-existent accounts with 401 Unauthorized; dual persistence across Supabase DB and local JSON stores.
+  - **Protected Backend API**: Strict JWT `requireAuth` enforcement across all financial endpoints (`/withdraw`, `/vip/claim`, `/deposit`) and betting endpoints (`/bet`, `/slot/spin`, `/mines/*`, `/dragontiger/bet`, `/aviator/*`).
 - **Bonus & Activity System**: Daily attendance streak rewards, gift redemption codes, betting rebates, and daily fortune wheel spins.
-- **Authentication**: Phone and email login/signup with OTP recovery support.
+- **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, iOS Safe Area insets, touch targets, and desktop-centered canvas.
 
 ---
 

@@ -1,18 +1,76 @@
 import crypto from 'crypto'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { generateToken } from '../middleware/auth.js'
 import { dispatchOTP } from '../services/notificationService.js'
 
-// In-memory fallback stores
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const CREDENTIALS_FILE = path.join(__dirname, '../db/credentials.json')
+const PROFILES_FILE = path.join(__dirname, '../db/profiles.json')
+
+// In-memory fallback stores with file persistence
 const memoryProfiles = new Map()
-const memoryCredentials = new Map() // id/username -> passwordHash
+const memoryCredentials = new Map() // id/username/email -> passwordHash
 const resetCodes = new Map() // identity -> { code, expiresAt }
+
+function loadCredentialsFromDisk() {
+  try {
+    if (fs.existsSync(CREDENTIALS_FILE)) {
+      const raw = fs.readFileSync(CREDENTIALS_FILE, 'utf8')
+      const parsed = JSON.parse(raw)
+      for (const [k, v] of Object.entries(parsed)) {
+        memoryCredentials.set(k, v)
+      }
+    }
+  } catch (err) {
+    console.warn('[Credentials] Failed to load credentials from disk:', err.message)
+  }
+}
+
+function saveCredentialsToDisk() {
+  try {
+    const obj = Object.fromEntries(memoryCredentials.entries())
+    fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(obj, null, 2), 'utf8')
+  } catch (err) {
+    console.warn('[Credentials] Failed to save credentials to disk:', err.message)
+  }
+}
+
+function loadProfilesFromDisk() {
+  try {
+    if (fs.existsSync(PROFILES_FILE)) {
+      const raw = fs.readFileSync(PROFILES_FILE, 'utf8')
+      const parsed = JSON.parse(raw)
+      for (const [k, v] of Object.entries(parsed)) {
+        memoryProfiles.set(k, v)
+      }
+    }
+  } catch (err) {
+    console.warn('[Profiles] Failed to load profiles from disk:', err.message)
+  }
+}
+
+function saveProfilesToDisk() {
+  try {
+    const obj = Object.fromEntries(memoryProfiles.entries())
+    fs.writeFileSync(PROFILES_FILE, JSON.stringify(obj, null, 2), 'utf8')
+  } catch (err) {
+    console.warn('[Profiles] Failed to save profiles to disk:', err.message)
+  }
+}
+
+// Load on boot
+loadCredentialsFromDisk()
+loadProfilesFromDisk()
 
 function hashPassword(password) {
   return crypto.createHash('sha256').update(String(password) + '_prince_salt_2026_vault').digest('hex')
 }
 
-// 1. Unified Login
+// 1. Strict Login (Never auto-creates accounts; only registered users can log in)
 export async function loginOrRegister(req, res) {
   try {
     const { identity, password } = req.validatedLogin || {
@@ -21,17 +79,21 @@ export async function loginOrRegister(req, res) {
     }
 
     if (!identity || identity.length < 3) {
-      return res.status(400).json({ error: 'Username or phone must be at least 3 characters' })
+      return res.status(400).json({ error: 'Username, phone number, or email must be at least 3 characters' })
+    }
+
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required' })
     }
 
     const cleanUsername = identity
 
     if (isSupabaseConfigured) {
-      // 1. Check if profile exists
+      // 1. Check if profile exists by username or email
       let { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('username', cleanUsername)
+        .or(`username.eq.${cleanUsername},email.eq.${cleanUsername}`)
         .maybeSingle()
 
       if (error) {
@@ -39,64 +101,37 @@ export async function loginOrRegister(req, res) {
         return res.status(500).json({ error: 'Error checking user credentials' })
       }
 
-      // If user exists and password is provided, strictly verify password
-      if (profile) {
-        if (password) {
-          const storedHash = profile.password_hash || memoryCredentials.get(profile.id)
-          if (storedHash && storedHash !== hashPassword(password)) {
-            return res.status(401).json({ error: 'Invalid username or password' })
-          }
-        }
-      } else {
-        // Only allow auto-creation if this is explicitly a guest/demo account or password provided
-        const insertPayload = { username: cleanUsername, role: 'user' }
-        if (password) {
-          insertPayload.password_hash = hashPassword(password)
-        }
-
-        let newProfile = null
-        try {
-          const { data, error: insertErr } = await supabase
-            .from('profiles')
-            .insert(insertPayload)
-            .select()
-            .single()
-
-          if (insertErr) throw insertErr
-          newProfile = data
-        } catch {
-          const { data, error: fallbackErr } = await supabase
-            .from('profiles')
-            .insert({ username: cleanUsername, role: 'user' })
-            .select()
-            .single()
-
-          if (fallbackErr) {
-            console.error('[Supabase Error] insert profile fallback:', fallbackErr)
-            return res.status(500).json({ error: 'Error creating user profile' })
-          }
-          newProfile = data
-        }
-
-        profile = newProfile
-        if (password) {
-          memoryCredentials.set(profile.id, hashPassword(password))
-          memoryCredentials.set(cleanUsername, hashPassword(password))
-        }
-
-        // Initialize wallet
-        await supabase.from('wallets').insert({
-          user_id: profile.id,
-          balance: 1000.0,
-        })
+      // If user does NOT exist, strictly reject! Never auto-create on login.
+      if (!profile) {
+        return res.status(401).json({ error: 'Account does not exist. Please click Register to create an account.' })
       }
 
-      // Fetch wallet
-      const { data: wallet } = await supabase
+      // Strictly verify password (profile.password_hash may not exist in schema \u2014 use memoryCredentials)
+      const storedHash =
+        memoryCredentials.get(profile.id) ||
+        memoryCredentials.get(profile.username) ||
+        (profile.email && memoryCredentials.get(profile.email)) ||
+        profile.password_hash // fallback if column exists
+
+      if (!storedHash || storedHash !== hashPassword(password)) {
+        return res.status(401).json({ error: 'Incorrect password. Please try again.' })
+      }
+
+      // Fetch or auto-init wallet for this registered profile
+      let { data: wallet } = await supabase
         .from('wallets')
         .select('balance')
         .eq('user_id', profile.id)
-        .single()
+        .maybeSingle()
+
+      if (!wallet) {
+        const { data: newWal } = await supabase
+          .from('wallets')
+          .insert({ user_id: profile.id, balance: 1000.0 })
+          .select()
+          .single()
+        wallet = newWal
+      }
 
       // Generate signed auth token
       const token = generateToken({
@@ -108,33 +143,36 @@ export async function loginOrRegister(req, res) {
       return res.json({
         message: 'Login successful',
         token,
-        user: { id: profile.id, username: profile.username, role: profile.role || 'user' },
+        user: { id: profile.id, username: profile.username, email: profile.email, role: profile.role || 'user' },
         wallet: wallet || { balance: 1000.0 },
       })
     }
 
-    // Local Fallback Store
-    let profile = Array.from(memoryProfiles.values()).find((p) => p.username === cleanUsername)
+    // Local Fallback Store — search by username, phone variants, or email
+    const phoneVariants = /^\d{10}$/.test(cleanUsername)
+      ? [cleanUsername, `+91${cleanUsername}`, `91${cleanUsername}`]
+      : /^(\+91|91)(\d{10})$/.test(cleanUsername)
+      ? [cleanUsername, cleanUsername.replace(/^(\+91|91)/, '')]
+      : [cleanUsername]
 
-    if (profile) {
-      if (password) {
-        const storedHash = memoryCredentials.get(profile.id)
-        if (storedHash && storedHash !== hashPassword(password)) {
-          return res.status(401).json({ error: 'Invalid username or password' })
-        }
-      }
-    } else {
-      profile = {
-        id: crypto.randomUUID(),
-        username: cleanUsername,
-        role: 'user',
-        created_at: new Date().toISOString(),
-      }
-      memoryProfiles.set(profile.id, profile)
-      if (password) {
-        memoryCredentials.set(profile.id, hashPassword(password))
-        memoryCredentials.set(cleanUsername, hashPassword(password))
-      }
+    let profile = Array.from(memoryProfiles.values()).find(
+      (p) => phoneVariants.includes(p.username) || (p.email && p.email === cleanUsername)
+    )
+
+    if (!profile) {
+      return res.status(401).json({ error: 'Account does not exist. Please click Register to create an account.' })
+    }
+
+    // Try all credential lookup keys
+    const storedHash =
+      memoryCredentials.get(profile.id) ||
+      memoryCredentials.get(profile.username) ||
+      memoryCredentials.get(cleanUsername) ||
+      phoneVariants.reduce((found, v) => found || memoryCredentials.get(v), null) ||
+      (profile.email && memoryCredentials.get(profile.email))
+
+    if (!storedHash || storedHash !== hashPassword(password)) {
+      return res.status(401).json({ error: 'Incorrect password. Please try again.' })
     }
 
     const token = generateToken({
@@ -146,7 +184,7 @@ export async function loginOrRegister(req, res) {
     return res.json({
       message: 'Login successful',
       token,
-      user: { id: profile.id, username: profile.username, role: profile.role },
+      user: { id: profile.id, username: profile.username, email: profile.email, role: profile.role },
       wallet: { balance: 1000.0 },
     })
   } catch (err) {
@@ -173,20 +211,27 @@ export async function register(req, res) {
       return res.status(400).json({ error: 'Password must be at least 6 characters' })
     }
 
-    const cleanUsername = username
+    // BUG FIX: Must be `let` not `const` — may be reassigned if username conflict
+    let cleanUsername = username
     const cleanEmail = email || null
     const hashed = hashPassword(password)
 
     if (isSupabaseConfigured) {
       // Check duplicate
-      const { data: existing } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('username', cleanUsername)
-        .maybeSingle()
+      const query = cleanEmail
+        ? supabase.from('profiles').select('id, username, email').or(`username.eq.${cleanUsername},email.eq.${cleanEmail}`)
+        : supabase.from('profiles').select('id, username, email').eq('username', cleanUsername)
+
+      const { data: existing } = await query.maybeSingle()
 
       if (existing) {
-        return res.status(409).json({ error: 'Username already registered. Please login.' })
+        if (existing.email && existing.email === cleanEmail) {
+          return res.status(409).json({ error: 'Email is already registered. Please log in.' })
+        }
+        if (existing.username === cleanUsername) {
+          return res.status(409).json({ error: 'Username already registered. Please log in.' })
+        }
+        cleanUsername = `${cleanUsername.slice(0, 18)}_${Math.floor(100 + Math.random() * 900)}`
       }
 
       let profile = null
@@ -204,7 +249,12 @@ export async function register(req, res) {
 
         if (error) throw error
         profile = data
-      } catch {
+      } catch (insertErr) {
+        // Only fallback to no-hash insert if error is specifically about missing column
+        if (!insertErr?.message?.includes('password_hash')) {
+          console.error('[Supabase Error] insert profile:', insertErr)
+          return res.status(500).json({ error: 'Failed to create user account', details: insertErr.message })
+        }
         const { data, error } = await supabase
           .from('profiles')
           .insert({
@@ -216,14 +266,22 @@ export async function register(req, res) {
           .single()
 
         if (error) {
-          console.error('[Supabase Error] insert profile:', error)
+          console.error('[Supabase Error] insert profile (fallback):', error)
           return res.status(500).json({ error: 'Failed to create user account', details: error.message })
         }
         profile = data
       }
 
+      // Store credentials under all possible lookup keys
       memoryCredentials.set(profile.id, hashed)
       memoryCredentials.set(cleanUsername, hashed)
+      // Also store with +91 prefix for phone numbers (10-digit)
+      if (/^\d{10}$/.test(cleanUsername)) {
+        memoryCredentials.set(`+91${cleanUsername}`, hashed)
+        memoryCredentials.set(`91${cleanUsername}`, hashed)
+      }
+      if (cleanEmail) memoryCredentials.set(cleanEmail, hashed)
+      saveCredentialsToDisk()
 
       const startingBal = referralCode ? 1200.0 : 1000.0
       await supabase.from('wallets').insert({
@@ -245,10 +303,15 @@ export async function register(req, res) {
       })
     }
 
-    // Fallback store
-    const existing = Array.from(memoryProfiles.values()).find((p) => p.username === cleanUsername)
+    // Fallback local store
+    const existing = Array.from(memoryProfiles.values()).find(
+      (p) => p.username === cleanUsername || (cleanEmail && p.email === cleanEmail)
+    )
     if (existing) {
-      return res.status(409).json({ error: 'Username already registered. Please login.' })
+      if (existing.email && existing.email === cleanEmail) {
+        return res.status(409).json({ error: 'Email is already registered. Please log in.' })
+      }
+      return res.status(409).json({ error: 'Username already registered. Please log in.' })
     }
 
     const startingBal = referralCode ? 1200.0 : 1000.0
@@ -263,6 +326,14 @@ export async function register(req, res) {
     memoryProfiles.set(profile.id, profile)
     memoryCredentials.set(profile.id, hashed)
     memoryCredentials.set(cleanUsername, hashed)
+    // Also store with +91 prefix for phone numbers
+    if (/^\d{10}$/.test(cleanUsername)) {
+      memoryCredentials.set(`+91${cleanUsername}`, hashed)
+      memoryCredentials.set(`91${cleanUsername}`, hashed)
+    }
+    if (cleanEmail) memoryCredentials.set(cleanEmail, hashed)
+    saveCredentialsToDisk()
+    saveProfilesToDisk()
 
     const token = generateToken({
       id: profile.id,
@@ -572,10 +643,13 @@ export async function resetPassword(req, res) {
             .eq('id', profile.id)
         } catch {}
         memoryCredentials.set(profile.id, newHash)
+        if (profile.username) memoryCredentials.set(profile.username.toLowerCase(), newHash)
+        if (profile.email) memoryCredentials.set(profile.email.toLowerCase(), newHash)
       }
     }
 
     memoryCredentials.set(cleanId, newHash)
+    saveCredentialsToDisk()
     resetCodes.delete(cleanId)
 
     return res.json({

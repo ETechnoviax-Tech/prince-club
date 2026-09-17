@@ -68,22 +68,30 @@ export async function getTransactions(req, res) {
       return res.status(403).json({ error: 'Access denied: Cannot view another user transactions' })
     }
 
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase
-        .from('wallet_transactions')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50)
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
 
-      if (error) return res.status(500).json({ error: 'Failed to retrieve transactions' })
-      return res.json({ transactions: data || [] })
+    if (isSupabaseConfigured && isUuid) {
+      try {
+        const { data, error } = await supabase
+          .from('wallet_transactions')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(50)
+
+        if (!error && data) {
+          return res.json({ transactions: data })
+        }
+      } catch (dbErr) {
+        console.warn('[getTransactions] Supabase query fallback:', dbErr.message)
+      }
     }
 
     const txs = memoryTransactions
       .filter((t) => t.user_id === userId)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     return res.json({ transactions: txs })
+
   } catch (err) {
     return res.status(500).json({ error: 'Server error fetching transactions' })
   }

@@ -462,3 +462,14 @@ export async function placeDragonTigerBet(userId, market, betAmount) {
   if (!res.ok) throw new Error(json.error || 'Bet failed')
   return json
 }
+
+// Wallet Transactions Ledger API
+export async function fetchWalletTransactions(userId) {
+  const res = await fetch(`${API_BASE}/wallet/${userId}/transactions`, {
+    headers: authHeaders(),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch transaction ledger')
+  return json.transactions || []
+}
+

@@ -12,6 +12,16 @@ const VEER_ORIGIN = 'https://www.veergame32.com'
 const MIRROR3_API_BASE = 'https://api.55clubapi.net/api/webapi'
 const MIRROR3_ORIGIN = 'https://www.55club.io'
 
+// Circuit breaker — prevents hammering unreachable servers
+const circuit = {
+  failures: 0,
+  open: false,
+  openedAt: 0,
+  THRESHOLD: 1,          // open immediately on first all-server failure
+  RESET_AFTER_MS: 60000, // retry after 60s
+  lastWarnAt: 0,         // throttle console.warn to once per 60s
+}
+
 function generateRandomHex() {
   return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function (e) {
     const t = (Math.random() * 16) | 0
@@ -51,9 +61,27 @@ function signPayload(data = {}) {
 }
 
 /**
- * Call 55CLUB WebAPI with automatic failover to secondary gateway
+ * Call 55CLUB WebAPI with automatic failover to secondary gateway.
+ * Circuit-breaker prevents log spam when all servers are unreachable.
  */
 export async function call55ClubAPI(endpoint, data = {}) {
+  // Check circuit breaker
+  if (circuit.open) {
+    const elapsed = Date.now() - circuit.openedAt
+    if (elapsed < circuit.RESET_AFTER_MS) {
+      // Silently use fallback — warn only once per minute
+      const now = Date.now()
+      if (now - circuit.lastWarnAt > 60000) {
+        circuit.lastWarnAt = now
+        console.warn(`[55CLUB API] All servers unreachable — using local fallback (retry in ${Math.ceil((circuit.RESET_AFTER_MS - elapsed) / 1000)}s)`)
+      }
+      throw new Error('circuit open')
+    }
+    // Reset circuit and try again
+    circuit.open = false
+    circuit.failures = 0
+  }
+
   const signed = signPayload(data)
   const servers = [
     { base: CLUB55_API_BASE, origin: CLUB55_ORIGIN, name: '55club' },
@@ -63,42 +91,42 @@ export async function call55ClubAPI(endpoint, data = {}) {
 
   let lastErr = null
   for (const s of servers) {
-    // Each server gets up to 2 attempts before moving on
-    for (let attempt = 0; attempt < 2; attempt++) {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 8000)
-      try {
-        const res = await fetch(`${s.base}${endpoint}`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json;charset=UTF-8',
-            'Ar-Origin': s.origin,
-            Referer: `${s.origin}/`,
-            Origin: s.origin,
-          },
-          body: JSON.stringify(signed),
-          signal: controller.signal,
-        })
-        clearTimeout(timeoutId)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 3500) // 3.5s per server
+    try {
+      const res = await fetch(`${s.base}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json;charset=UTF-8',
+          'Ar-Origin': s.origin,
+          Referer: `${s.origin}/`,
+          Origin: s.origin,
+        },
+        body: JSON.stringify(signed),
+        signal: controller.signal,
+      })
+      clearTimeout(timeoutId)
 
-        if (res.ok) {
-          const json = await res.json()
-          if (json && (json.code === 0 || json.data)) {
-            json._serverSource = s.name
-            return json
-          }
+      if (res.ok) {
+        const json = await res.json()
+        if (json && (json.code === 0 || json.data)) {
+          json._serverSource = s.name
+          circuit.failures = 0 // reset on success
+          return json
         }
-        // Non-200 or bad JSON — don't retry this server
-        break
-      } catch (err) {
-        clearTimeout(timeoutId)
-        lastErr = err
-        // Only retry on abort/network errors, not on logic errors
-        if (err.name !== 'AbortError') break
-        // Small back-off before retry
-        await new Promise((r) => setTimeout(r, 300))
       }
+    } catch (err) {
+      clearTimeout(timeoutId)
+      lastErr = err
     }
+  }
+
+  // All servers failed — trip circuit breaker
+  circuit.failures++
+  if (circuit.failures >= circuit.THRESHOLD && !circuit.open) {
+    circuit.open = true
+    circuit.openedAt = Date.now()
+    console.warn('[55CLUB API] Circuit breaker OPEN — all servers unreachable. Switching to local fallback for 60s.')
   }
 
   throw lastErr || new Error(`All 55club API servers failed for ${endpoint}`)
@@ -164,7 +192,10 @@ export async function getLiveIssue(typeId = 30) {
         return result
       }
     } catch (err) {
-      console.warn('[55CLUB API] Live issue fetch error:', err.message)
+      // Suppress repeated log spam — circuit breaker handles throttling
+      if (err.message !== 'circuit open') {
+        console.warn('[55CLUB API] Live issue fetch error:', err.message)
+      }
     } finally {
       inFlightRequests.delete(inFlightKey)
     }
@@ -240,7 +271,10 @@ export async function getLiveHistory(typeId = 30, page = 1) {
         return result
       }
     } catch (err) {
-      console.warn('[55CLUB API] History fetch error:', err.message)
+      // Suppress repeated log spam — circuit breaker handles throttling
+      if (err.message !== 'circuit open') {
+        console.warn('[55CLUB API] History fetch error:', err.message)
+      }
     } finally {
       inFlightRequests.delete(inFlightKey)
     }

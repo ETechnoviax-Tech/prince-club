@@ -41,7 +41,7 @@ export function rateLimit({ windowMs = 60000, max = 30, message = 'Too many requ
 
 export const authRateLimit = rateLimit({
   windowMs: 60000, // 1 minute
-  max: 15,         // max 15 login/register attempts per minute per IP
+  max: 30,         // max 30 login/register attempts per minute per IP
   message: 'Too many authentication attempts. Please try again in a minute.',
 })
 

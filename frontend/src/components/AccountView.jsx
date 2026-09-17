@@ -35,6 +35,7 @@ export function AccountView({
   onOpenVIP,
   onOpenRules,
   onOpenBets,
+  onOpenTransactions,
   onOpenSupport,
   onOpenAuth,
   onLogout,
@@ -186,7 +187,7 @@ export function AccountView({
           </div>
         </div>
 
-        <div className="history-card-tile" onClick={onOpenBets}>
+        <div className="history-card-tile" onClick={onOpenTransactions || onOpenBets}>
           <div className="history-icon-box bg-green-transaction">
             <History size={18} />
           </div>
@@ -195,6 +196,7 @@ export function AccountView({
             <span className="history-sub">My transaction history</span>
           </div>
         </div>
+
 
         <div className="history-card-tile" onClick={onOpenDeposit}>
           <div className="history-icon-box bg-coral-deposit">

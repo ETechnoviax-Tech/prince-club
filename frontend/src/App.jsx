@@ -46,7 +46,9 @@ import {
 } from 'lucide-react'
 import { DepositModal } from './components/DepositModal'
 import { AuthModal } from './components/AuthModal'
+import { TransactionModal } from './components/TransactionModal'
 import WithdrawModal from './components/WithdrawModal'
+
 import HomeLobby from './components/HomeLobby'
 import AviatorGame from './components/AviatorGame'
 import K3Game from './components/K3Game'
@@ -61,6 +63,7 @@ import PromotionView from './components/PromotionView'
 import AccountView from './components/AccountView'
 import {
   clearAuthToken,
+  getAuthToken,
   fetchCurrentRound,
   fetchUserBets,
   fetchVeerHistory,
@@ -223,11 +226,12 @@ export function App() {
   const [fortuneWheelOpen, setFortuneWheelOpen] = useState(false)
   const [activeThirdPartyGame, setActiveThirdPartyGame] = useState(null)
 
-  // User & Wallet
+  // User & Wallet (Mandatory Authentication)
   const [currentUser, setCurrentUser] = useState(() => {
     try {
+      const token = getAuthToken()
       const saved = localStorage.getItem('prince_user_info')
-      if (saved) return JSON.parse(saved)
+      if (token && saved) return JSON.parse(saved)
     } catch {}
     return null
   })
@@ -235,15 +239,19 @@ export function App() {
   const [authMode, setAuthMode] = useState('login')
   const [selectedMode, setSelectedMode] = useState('PARITY') // 'PARITY' | 'SAPRE' | 'BCONE' | 'EMERD'
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false)
+  const [transactionModalOpen, setTransactionModalOpen] = useState(false)
   const [vipBonusLoading, setVipBonusLoading] = useState(false)
 
   const [userId, setUserId] = useState(() => {
-    if (typeof window === 'undefined') return 'usr_dev01'
-    const saved = localStorage.getItem('prince_user_id')
-    if (saved) return saved
-    const newId = 'usr_' + Math.random().toString(36).substring(2, 9)
-    localStorage.setItem('prince_user_id', newId)
-    return newId
+    try {
+      const token = getAuthToken()
+      const saved = localStorage.getItem('prince_user_info')
+      if (token && saved) {
+        const u = JSON.parse(saved)
+        if (u?.id) return u.id
+      }
+    } catch {}
+    return null
   })
 
   const handleAuthSuccess = (user, wallet) => {
@@ -256,24 +264,27 @@ export function App() {
     if (wallet?.balance !== undefined) {
       setBalance(wallet.balance)
     }
+    setAuthModalOpen(false)
     setToast({
       type: 'success',
       title: 'Welcome to Prince Club!',
-      detail: `Signed in as ${user.username}. Balance: ₹${formatCredits(wallet?.balance || balance)}`,
+      detail: `Signed in as ${user.username || 'Member'}. Balance: ₹${formatCredits(wallet?.balance || balance)}`,
     })
   }
 
   const handleLogout = () => {
     setCurrentUser(null)
+    setUserId(null)
     localStorage.removeItem('prince_user_info')
+    localStorage.removeItem('prince_user_id')
     clearAuthToken()
-    const guestId = 'usr_' + Math.random().toString(36).substring(2, 9)
-    localStorage.setItem('prince_user_id', guestId)
-    setUserId(guestId)
+    setCurrentGame(null)
+    setActiveNav('home')
+    setAuthModalOpen(false)
     setToast({
       type: 'neutral',
       title: 'Signed Out',
-      detail: 'Switched to guest player mode.',
+      detail: 'Please log in to access games and lobby.',
     })
   }
 
@@ -449,52 +460,82 @@ export function App() {
       }
     }
 
-    // Authoritative Server Wallet Balance Sync
-    try {
-      const walData = await fetchWallet(userId)
-      if (walData?.wallet?.balance !== undefined) {
-        setBalance(Number(walData.wallet.balance))
-      }
-    } catch {}
-
-    // Authoritative Server Bets Sync
-    try {
-      const betsData = await fetchUserBets(userId)
-      if (Array.isArray(betsData?.bets) && betsData.bets.length > 0) {
-        const formatted = betsData.bets.map((b) => ({
-          id: b.id,
-          round: String(b.round_number),
-          selection: String(b.selection),
-          type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase())
-            ? 'color'
-            : ['big', 'small'].includes(String(b.selection).toLowerCase())
-            ? 'size'
-            : 'number',
-          amount: Number(b.amount),
-          multiplier: Number(b.multiplier),
-          potentialReturn: Math.round(Number(b.amount) * Number(b.multiplier)),
-          payout: Number(b.payout || 0),
-          status: String(b.status).toLowerCase(),
-          outcome: b.outcome || null,
-          createdAt: b.created_at ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
-        }))
-
-        const hadWonBet = formatted.find(
-          (nb) => nb.status === 'won' && betsRef.current.some((ob) => ob.id === nb.id && ob.status === 'pending')
-        )
-        if (hadWonBet) {
-          sound.playWin()
-          setToast({
-            type: 'success',
-            title: '🎉 Bet Won!',
-            detail: `Period ${formatPeriod(hadWonBet.round)}: +₹${formatCredits(hadWonBet.payout)} credited to your wallet.`,
-          })
+    // Authoritative Server Wallet Balance & Bets Sync
+    if (userId && currentUser) {
+      try {
+        const walData = await fetchWallet(userId)
+        if (walData?.wallet?.balance !== undefined) {
+          setBalance(Number(walData.wallet.balance))
         }
-
-        setBets(formatted)
+      } catch (err) {
+        if (err.message && (err.message.includes('401') || err.message.includes('Unauthorized') || err.message.includes('expired'))) {
+          handleLogout()
+        }
       }
-    } catch {}
-  }, [userId, gameMode, phase, selectedMode])
+
+      try {
+        const betsData = await fetchUserBets(userId)
+        if (Array.isArray(betsData?.bets) && betsData.bets.length > 0) {
+          const formatted = betsData.bets.map((b) => ({
+            id: b.id,
+            round: String(b.round_number),
+            selection: String(b.selection),
+            type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase())
+              ? 'color'
+              : ['big', 'small'].includes(String(b.selection).toLowerCase())
+              ? 'size'
+              : 'number',
+            amount: Number(b.amount),
+            multiplier: Number(b.multiplier),
+            potentialReturn: Math.round(Number(b.amount) * Number(b.multiplier)),
+            payout: Number(b.payout || 0),
+            status: String(b.status).toLowerCase(),
+            outcome: b.outcome || null,
+            createdAt: b.created_at ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+          }))
+
+          const hadWonBet = formatted.find(
+            (nb) => nb.status === 'won' && betsRef.current.some((ob) => ob.id === nb.id && ob.status === 'pending')
+          )
+          if (hadWonBet) {
+            sound.playWin()
+            setToast({
+              type: 'success',
+              title: '🎉 Bet Won!',
+              detail: `Period ${formatPeriod(hadWonBet.round)}: +₹${formatCredits(hadWonBet.payout)} credited to your wallet.`,
+            })
+          }
+
+          setBets(formatted)
+        }
+      } catch {}
+    }
+  }, [userId, currentUser, gameMode, phase, selectedMode])
+
+  // Verify existing session on boot
+  useEffect(() => {
+    if (!currentUser || !userId) return
+    let isCancelled = false
+
+    async function verifyBootSession() {
+      try {
+        const walData = await fetchWallet(userId)
+        if (!isCancelled && walData?.wallet?.balance !== undefined) {
+          setBalance(Number(walData.wallet.balance))
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.warn('[Session Boot Check]: Invalid session, returning to Auth Gate')
+          handleLogout()
+        }
+      }
+    }
+
+    verifyBootSession()
+    return () => {
+      isCancelled = true
+    }
+  }, [])
 
   useEffect(() => {
     syncWithBackend()
@@ -737,6 +778,41 @@ export function App() {
     }
   }, [history])
 
+  // MANDATORY AUTHENTICATION GATE
+  // Without logging in, users CANNOT enter Home Lobby, Games, or sensitive features.
+  if (!currentUser) {
+    return (
+      <div className="mobile-app-wrapper">
+        <div className="mobile-app-container auth-gate-wrapper">
+          <AuthModal
+            isOpen={true}
+            canClose={false}
+            onClose={() => {}}
+            onAuthSuccess={handleAuthSuccess}
+            initialMode={authMode || 'login'}
+          />
+          {toast && (
+            <div className={`mobile-toast toast-${toast.type}`}>
+              <div className="toast-icon">
+                {toast.type === 'success' ? (
+                  <Check size={16} />
+                ) : toast.type === 'loss' ? (
+                  <ArrowDownRight size={16} />
+                ) : (
+                  <Info size={16} />
+                )}
+              </div>
+              <div className="toast-body">
+                <strong>{toast.title}</strong>
+                <p>{toast.detail}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="mobile-app-wrapper">
       <div className="mobile-app-container">
@@ -901,7 +977,12 @@ export function App() {
               setActiveTab('win')
               sound.playTick()
             }}
+            onOpenTransactions={() => {
+              setTransactionModalOpen(true)
+              sound.playTick()
+            }}
             onOpenSupport={() => setHowToPlayOpen(true)}
+
             onOpenAuth={(mode) => {
               setAuthMode(mode)
               setAuthModalOpen(true)
@@ -1865,6 +1946,15 @@ export function App() {
           onAuthSuccess={handleAuthSuccess}
           initialMode={authMode}
         />
+
+        {/* WALLET TRANSACTIONS MODAL */}
+        <TransactionModal
+          isOpen={transactionModalOpen}
+          onClose={() => setTransactionModalOpen(false)}
+          userId={currentUser?.id || userId}
+          currentUser={currentUser}
+        />
+
 
         {/* HOW TO PLAY MODAL */}
         {howToPlayOpen && (

@@ -25,13 +25,39 @@ export const VALID_GAME_MODES = new Set(['PARITY', 'SAPRE', 'BCONE', 'EMERD'])
 
 
 export function validateSignup(req, res, next) {
-  const { username, email, password, referralCode } = req.body
+  let { username, email, password, referralCode } = req.body
 
-  if (!username || typeof username !== 'string') {
-    return res.status(400).json({ error: 'Username is required' })
+  if (!username && email) {
+    username = email
   }
 
-  const cleanUsername = username.trim()
+  if (!username || typeof username !== 'string') {
+    return res.status(400).json({ error: 'Username, phone number, or email is required' })
+  }
+
+  let cleanUsername = username.trim()
+  let cleanEmail = null
+
+  // If username is an email address or email is explicitly provided
+  if (EMAIL_REGEX.test(cleanUsername)) {
+    cleanEmail = cleanUsername.toLowerCase()
+    const prefix = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 18)
+    cleanUsername = prefix.length >= 3 ? prefix : `user_${prefix}`
+  } else if (cleanUsername.startsWith('+')) {
+    cleanUsername = cleanUsername.replace(/^\+/, '')
+  }
+
+  if (email && typeof email === 'string' && email.trim().length > 0) {
+    const candidateEmail = email.trim().toLowerCase()
+    if (EMAIL_REGEX.test(candidateEmail)) {
+      cleanEmail = candidateEmail
+      if (!cleanUsername || cleanUsername.length < 3) {
+        const prefix = cleanEmail.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 18)
+        cleanUsername = prefix.length >= 3 ? prefix : `user_${prefix}`
+      }
+    }
+  }
+
   if (!USERNAME_REGEX.test(cleanUsername)) {
     return res.status(400).json({
       error: 'Username must be 3-24 characters long and contain only letters, numbers, and underscores (no spaces or special characters)',
@@ -44,14 +70,6 @@ export function validateSignup(req, res, next) {
 
   if (password.length > 64) {
     return res.status(400).json({ error: 'Password must not exceed 64 characters' })
-  }
-
-  let cleanEmail = null
-  if (email && typeof email === 'string' && email.trim().length > 0) {
-    cleanEmail = email.trim().toLowerCase()
-    if (!EMAIL_REGEX.test(cleanEmail) || cleanEmail.length > 100) {
-      return res.status(400).json({ error: 'Invalid email address format' })
-    }
   }
 
   let cleanReferral = null
