@@ -26,6 +26,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **Payment Events Ledger**: Immutable append-only audit trail for all financial operations.
 - **Authentication Gate & Session Security**:
   - **Modular Production Auth Architecture**: Dedicated, standalone components for Login (`LoginPage.jsx`), Registration (`RegisterPage.jsx`), Forgot Password (`ForgotPasswordPage.jsx`), and Password Reset (`ResetPasswordPage.jsx`) supporting phone (+91) and email authentication.
+  - **Slide-to-Verify Jigsaw Captcha**: Interactive human verification modal with high-res scenic canvas, custom jigsaw path cutouts, smooth touch/mouse slide drag, and ±8px alignment validation protecting login and registration endpoints.
   - **Zero-Bypass Credential Verification**: Strict password verification rejecting unauthenticated requests and non-existent accounts with 401 Unauthorized; dual persistence across Supabase DB and local JSON stores.
   - **Protected Backend API**: Strict JWT `requireAuth` enforcement across all financial endpoints (`/withdraw`, `/vip/claim`, `/deposit`) and betting endpoints (`/bet`, `/slot/spin`, `/mines/*`, `/dragontiger/bet`, `/aviator/*`).
 - **Standalone Subpages Architecture**:

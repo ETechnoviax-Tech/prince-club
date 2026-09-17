@@ -889,16 +889,17 @@ export function App() {
           issueNumber: String(roundNumber),
           typeId,
         })
-        if (res?.newBalance !== undefined) {
-          setBalance(res.newBalance)
-        } else {
-          setBalance((curr) => curr - totalBetAmount)
+        const confirmedId = res?.bet?.id || res?.betId || newBet.id
+        const confirmedBet = {
+          ...newBet,
+          id: confirmedId,
         }
+        setBets((prev) => [confirmedBet, ...prev.filter((b) => b.id !== confirmedId && b.id !== newBet.id)])
       } else {
         setBalance((curr) => curr - totalBetAmount)
+        setBets((prev) => [newBet, ...prev])
       }
 
-      setBets((prev) => [newBet, ...prev])
       setBetSheetOpen(false)
       sound.playBetPlaced()
 
@@ -1782,37 +1783,78 @@ export function App() {
               {/* SUBTAB 3: MY BETS */}
               {activeSubTab === 'mybets' && (
                 <div className="subtab-content">
-                  {bets.length === 0 ? (
+                  {!currentUser ? (
                     <div className="empty-state-card">
                       <Layers size={32} className="empty-icon" />
-                      <p>No bets placed yet. Pick a color or number to start!</p>
+                      <p>Please log in to view your real-time bet history and live settlements.</p>
+                      <button
+                        className="empty-login-btn"
+                        onClick={() => {
+                          setAuthMode('login')
+                          setAuthModalOpen(true)
+                        }}
+                      >
+                        Log in now
+                      </button>
+                    </div>
+                  ) : bets.length === 0 ? (
+                    <div className="empty-state-card">
+                      <Layers size={32} className="empty-icon" />
+                      <p>No bets placed yet. Pick a color, size, or number to start!</p>
                     </div>
                   ) : (
                     <div className="bets-list">
-                      {bets.map((b) => (
-                        <div key={b.id} className={`bet-card-item status-${b.status}`}>
-                          <div className="bet-card-header">
-                            <div>
-                              <span className="bet-period">{formatPeriod(b.round)}</span>
-                              <span className="bet-target">
-                                {b.type === 'color' ? b.selection.toUpperCase() : `Number ${b.selection}`}
+                      {bets.map((b) => {
+                        const selStr = String(b.selection).toLowerCase()
+                        const targetLabel =
+                          b.type === 'color' || ['green', 'red', 'violet'].includes(selStr)
+                            ? selStr.toUpperCase()
+                            : b.type === 'size' || ['big', 'small'].includes(selStr)
+                            ? selStr.toUpperCase()
+                            : `Number ${b.selection}`
+
+                        const targetColor =
+                          selStr === 'green'
+                            ? '#22c55e'
+                            : selStr === 'red'
+                            ? '#ef4444'
+                            : selStr === 'violet'
+                            ? '#a855f7'
+                            : selStr === 'big'
+                            ? '#f59e0b'
+                            : selStr === 'small'
+                            ? '#0ea5e9'
+                            : '#64748b'
+
+                        return (
+                          <div key={b.id} className={`bet-card-item status-${b.status}`}>
+                            <div className="bet-card-header">
+                              <div>
+                                <span className="bet-period">{formatPeriod(b.round)}</span>
+                                <span className="bet-target" style={{ color: targetColor }}>
+                                  {targetLabel}
+                                </span>
+                              </div>
+                              <span className={`bet-badge ${b.status}`}>
+                                {b.status === 'won'
+                                  ? `+₹${formatCredits(b.payout)}`
+                                  : b.status === 'lost'
+                                  ? 'Failed'
+                                  : 'Waiting'}
                               </span>
                             </div>
-                            <span className={`bet-badge ${b.status}`}>
-                              {b.status === 'won'
-                                ? `+₹${formatCredits(b.payout)}`
-                                : b.status === 'lost'
-                                ? 'Failed'
-                                : 'Waiting'}
-                            </span>
+                            <div className="bet-card-details">
+                              <span>Amount: ₹{formatCredits(b.amount)}</span>
+                              <span>Multiplier: {b.multiplier}x</span>
+                              <span>
+                                {b.status === 'won'
+                                  ? `Won: ₹${formatCredits(b.payout)}`
+                                  : `Return: ₹${formatCredits(b.potentialReturn)}`}
+                              </span>
+                            </div>
                           </div>
-                          <div className="bet-card-details">
-                            <span>Amount: ₹{formatCredits(b.amount)}</span>
-                            <span>Multiplier: {b.multiplier}x</span>
-                            <span>Return: ₹{formatCredits(b.potentialReturn)}</span>
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>

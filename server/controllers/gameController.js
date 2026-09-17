@@ -1,5 +1,6 @@
 import crypto from 'crypto'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
+import { memoryWallets } from '../db/store.js'
 import { getLiveHistory, getLiveIssue } from '../services/veerGameService.js'
 
 export const GAME_MODES = {
@@ -73,7 +74,7 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
   // 1. Settle in-memory bets
   const pendingBets = Array.from(memoryBets.values()).filter(
     (b) =>
-      Number(b.round_number) === Number(roundNumber) &&
+      String(b.round_number) === String(roundNumber) &&
       (b.game_mode || 'PARITY') === mode &&
       b.status === 'PENDING'
   )
@@ -142,7 +143,7 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
       const { data: dbBets } = await supabase
         .from('bets')
         .select('*')
-        .eq('round_number', roundNumber)
+        .eq('round_number', String(roundNumber))
         .eq('status', 'PENDING')
 
       if (Array.isArray(dbBets)) {
@@ -553,19 +554,27 @@ export async function placeBet(req, res) {
       created_at: new Date().toISOString(),
     }
 
-    if (isSupabaseConfigured) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
+
+    if (isSupabaseConfigured && isUuid) {
       // 1. Check wallet exists and has sufficient balance
-      const { data: wallet, error: walErr } = await supabase
+      let { data: wallet, error: walErr } = await supabase
         .from('wallets')
         .select('balance')
         .eq('user_id', userId)
-        .single()
+        .maybeSingle()
 
-      if (walErr || !wallet) {
-        return res.status(404).json({ error: 'User wallet not found' })
+      if (!wallet) {
+        // Auto-create wallet
+        const { data: newWal } = await supabase
+          .from('wallets')
+          .insert({ user_id: userId, balance: 1000.0 })
+          .select()
+          .single()
+        wallet = newWal
       }
 
-      if (Number(wallet.balance) < amount) {
+      if (!wallet || Number(wallet.balance) < amount) {
         return res.status(400).json({ error: 'Insufficient wallet balance' })
       }
 
@@ -598,7 +607,7 @@ export async function placeBet(req, res) {
           amount: -amount,
           balance_after: newBalance,
           reference_id: betRecord.id,
-          description: `Bet ₹${amount} on ${sel} (${cfg.name} Round ${roundNumber})`,
+          description: `Bet ₹${amount} on ${sel} (${cfg.name} Round ${targetRound})`,
         })
       } catch {}
 
@@ -612,10 +621,21 @@ export async function placeBet(req, res) {
     }
 
     // Fallback store
+    if (!memoryWallets.has(userId)) {
+      memoryWallets.set(userId, 1000.0)
+    }
+    const currentMemBal = memoryWallets.get(userId)
+    if (currentMemBal < amount) {
+      return res.status(400).json({ error: 'Insufficient wallet balance' })
+    }
+    const memNewBal = currentMemBal - amount
+    memoryWallets.set(userId, memNewBal)
+
     memoryBets.set(betRecord.id, betRecord)
     return res.status(201).json({
       message: 'Bet placed successfully',
       bet: betRecord,
+      newBalance: memNewBal,
     })
   } catch (err) {
     console.error('[placeBet Exception]:', err)
@@ -637,17 +657,19 @@ export async function getUserBets(req, res) {
 
     if (isSupabaseConfigured) {
       try {
-        const { data: dbBets } = await supabase
+        const { data: dbBets, error: dbErr } = await supabase
           .from('bets')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
-          .limit(30)
+          .limit(50)
 
-        if (Array.isArray(dbBets) && dbBets.length > 0) {
+        if (!dbErr && Array.isArray(dbBets)) {
           return res.json({ bets: dbBets })
         }
-      } catch {}
+      } catch (err) {
+        console.warn('[getUserBets Supabase query fallback]:', err.message)
+      }
     }
 
     const userBets = Array.from(memoryBets.values())

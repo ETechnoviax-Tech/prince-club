@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { loginUser } from '../../api/client.js'
+import { SliderCaptchaModal } from './SliderCaptchaModal.jsx'
 import { sound } from '../../utils/audio.js'
 
 export function LoginPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
@@ -24,8 +25,9 @@ export function LoginPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
+  const [captchaOpen, setCaptchaOpen] = useState(false)
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e?.preventDefault?.()
     const identifier = loginTab === 'phone' ? phone.trim() : email.trim()
 
@@ -47,6 +49,14 @@ export function LoginPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
     }
 
     setError(null)
+    sound.playTick?.()
+    // Open Slider Puzzle Captcha before executing login
+    setCaptchaOpen(true)
+  }
+
+  async function executeLogin() {
+    setCaptchaOpen(false)
+    const identifier = loginTab === 'phone' ? phone.trim() : email.trim()
     setLoading(true)
     sound.playBet?.()
 
@@ -277,6 +287,13 @@ export function LoginPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
           </div>
         </div>
       </div>
+
+      {/* Slide-to-Verify Jigsaw Puzzle Captcha Modal */}
+      <SliderCaptchaModal
+        isOpen={captchaOpen}
+        onSuccess={executeLogin}
+        onClose={() => setCaptchaOpen(false)}
+      />
     </div>
   )
 }

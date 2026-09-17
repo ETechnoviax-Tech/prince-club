@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { signupUser } from '../../api/client.js'
 import { sound } from '../../utils/audio.js'
+import { SliderCaptchaModal } from './SliderCaptchaModal.jsx'
 
 export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
   const [loginTab, setLoginTab] = useState('phone') // 'phone' | 'email'
@@ -28,8 +29,9 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
+  const [captchaOpen, setCaptchaOpen] = useState(false)
 
-  async function handleSubmit(e) {
+  function handleSubmit(e) {
     e?.preventDefault?.()
     const identifier = loginTab === 'phone' ? phone.trim() : email.trim()
 
@@ -59,6 +61,14 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
     }
 
     setError(null)
+    sound.playTick?.()
+    // Open Slider Puzzle Captcha before executing registration
+    setCaptchaOpen(true)
+  }
+
+  async function executeRegister() {
+    setCaptchaOpen(false)
+    const identifier = loginTab === 'phone' ? phone.trim() : email.trim()
     setLoading(true)
     sound.playBet?.()
 
@@ -339,6 +349,13 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
           </div>
         </div>
       </div>
+
+      {/* Slide-to-Verify Jigsaw Puzzle Captcha Modal */}
+      <SliderCaptchaModal
+        isOpen={captchaOpen}
+        onSuccess={executeRegister}
+        onClose={() => setCaptchaOpen(false)}
+      />
     </div>
   )
 }

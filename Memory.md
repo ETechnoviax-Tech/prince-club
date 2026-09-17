@@ -131,10 +131,10 @@
 ## My Bets Live Sync
 - Status: done
 - Purpose: Show all real user bets accurately in "My Bets" tab, synced from server every 2.5s.
-- Key logic: No fake seed bets for logged-in users; always sync from server (even empty array replaces local); optimistic pending bets merged until confirmed by server; bets cleared on login/logout preventing cross-session leakage.
-- Files: `frontend/src/App.jsx`
-- Dependencies: React state, `/api/game/bets/:userId` endpoint
-- Last change: 2026-09-17 — Fixed always-sync, optimistic merge, cleared seed bets, clear on auth events.
+- Key logic: Returns empty array on clean accounts without leaking cross-user bets; reconciles server bet IDs; handles Big/Small size types; string round matching; unauthenticated login barrier.
+- Files: `frontend/src/App.jsx`, `server/controllers/gameController.js`, `tests/test_wingo_mybets_and_captcha.js`
+- Dependencies: React state, `/api/game/bets/:userId` endpoint, Supabase
+- Last change: 2026-09-17 — Fixed empty bets array return in getUserBets, string round number matching, and bet ID reconciliation.
 
 
 ## Database Schema & Row Level Security (RLS)
@@ -207,4 +207,13 @@
 - Files: `frontend/src/components/GlobalLoadingSpinner.jsx`, `frontend/src/api/client.js`, `frontend/src/styles.css`, `frontend/src/App.jsx`
 - Dependencies: React 18, Vanilla CSS
 - Last change: 2026-09-17 — Integrated global top loading bar and branded loading overlay for all async network operations.
+
+## Interactive Slider Puzzle Captcha Verification
+- Status: done
+- Purpose: Human verification jigsaw puzzle slider before login and registration submission.
+- Key logic: High-res scenic cove canvas with cutout jigsaw slot; draggable slider handle with 1:1 piece translation; ±8px alignment tolerance; reload button.
+- Files: `frontend/src/components/auth/SliderCaptchaModal.jsx`, `frontend/src/components/auth/LoginPage.jsx`, `frontend/src/components/auth/RegisterPage.jsx`, `frontend/src/styles.css`, `tests/test_wingo_mybets_and_captcha.js`
+- Dependencies: React 18, HTML5 Canvas, Lucide React
+- Last change: 2026-09-17 — Built authentic 55CLUB slide-to-verify jigsaw puzzle captcha before login/register submit.
+
 

@@ -15050,3 +15050,228 @@ input, textarea {
   margin-top: 6px;
   letter-spacing: 0.2px;
 }
+
+/* ==========================================================================
+   SLIDER PUZZLE CAPTCHA MODAL STYLING
+   ========================================================================== */
+.slider-captcha-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.slider-captcha-card {
+  background: #ffffff;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+  width: 100%;
+  max-width: 312px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slider-captcha-card.card-shake {
+  animation: captchaShake 0.4s ease-in-out;
+}
+
+@keyframes captchaShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.slider-captcha-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.slider-captcha-title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.slider-captcha-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+
+.slider-captcha-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.slider-captcha-canvas-wrap {
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+  margin-bottom: 14px;
+  user-select: none;
+}
+
+.slider-bg-canvas {
+  display: block;
+  border-radius: 10px;
+}
+
+.slider-piece-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.slider-canvas-toast {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.slider-canvas-toast.toast-success {
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.slider-canvas-toast.toast-fail {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+/* Slide Track */
+.slider-track-container {
+  height: 44px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.slider-track-container.success {
+  background: #dcfce7;
+  border-color: #86efac;
+}
+
+.slider-track-container.fail {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
+.slider-track-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: rgba(242, 65, 59, 0.12);
+  pointer-events: none;
+  border-radius: 22px 0 0 22px;
+}
+
+.slider-track-container.success .slider-track-fill {
+  background: rgba(22, 163, 74, 0.2);
+}
+
+.slider-track-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.slider-handle {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 40px;
+  height: 40px;
+  background: #ffffff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  cursor: grab;
+  z-index: 5;
+  touch-action: none;
+}
+
+.slider-handle.dragging {
+  cursor: grabbing;
+  box-shadow: 0 4px 12px rgba(242, 65, 59, 0.35);
+}
+
+.slider-handle .handle-icon {
+  color: #f2413b;
+  transition: transform 0.15s;
+}
+
+.slider-handle.dragging .handle-icon {
+  transform: scale(1.15);
+}
+
+.slider-captcha-footer {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+.slider-reload-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.15s;
+}
+
+.slider-reload-btn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
