@@ -99,12 +99,72 @@
 ## Mobile Toast Notification UI
 - Status: done
 - Purpose: High-contrast, top-floating notification toast with zero navigation obstruction.
-- Key logic: Fixed top positioning (`max(20px, env(safe-area-inset-top))`), obsidian dark card (`#111827`), vivid gradients for success/error/neutral badges, and readable pure white title and slate text.
+- Key logic: Fixed top positioning (`max(20px, env(safe-area-inset-top))`), obsidian dark card (`#111827`), vivid gradients for success/error/neutral badges, and readable pure white title and slate text; suppressed when unauthenticated or during login.
 - Files: `frontend/src/styles.css`, `frontend/src/App.jsx`
 - Dependencies: Lucide React, Vanilla CSS
-- Last change: 2026-09-17 — Overhauled toast colors and positioning to top floating obsidian badge with crystal-clear contrast.
+- Last change: 2026-09-17 — Overhauled toast contrast and suppressed background settlement toasts during login.
+
+## Dual-Verification Admin Management & Live Risk Matrix
+- Status: done
+- Purpose: Production-grade modular admin dashboard with separate mobile-responsive sub-components and live risk matrix.
+- Key logic: Split monolithic dashboard into 5 dedicated components: `AdminGate.jsx` (security barrier), `AdminMatrixView.jsx` (live pool risk & financials), `AdminBetsView.jsx` (bets & winners ledger), `AdminUsersView.jsx` (user CRUD & status management), and `AdminBalanceModal.jsx` (audit balance adjustments); styled via dedicated mobile-responsive `admin.css`.
+- Files: `frontend/src/components/admin/AdminDashboard.jsx`, `frontend/src/components/admin/AdminGate.jsx`, `frontend/src/components/admin/AdminMatrixView.jsx`, `frontend/src/components/admin/AdminBetsView.jsx`, `frontend/src/components/admin/AdminUsersView.jsx`, `frontend/src/components/admin/AdminBalanceModal.jsx`, `frontend/src/components/admin/admin.css`
+- Dependencies: Express, Supabase, React 18, Lucide React
+- Last change: 2026-09-17 — Split AdminDashboard into modular components with mobile-responsive layouts.
+
+## 55CLUB Live WebAPI Sync & Failover Engine
+- Status: done
+- Purpose: Synchronize live Win Go issues and draw history directly with official 55CLUB WebAPI endpoints.
+- Key logic: MD5 payload signing, dual-server failover (`api55clubapi.com`, `veergameapi.com`), 8s startup network grace window, delayed background poller, and auto fallback cache.
+- Files: `server/services/veerGameService.js`, `server/controllers/gameController.js`
+- Dependencies: Node crypto, fetch, Express
+- Last change: 2026-09-17 — Removed dead mirror domain, added startup network warmup grace period, and verified 20-round official history sync.
+
+## Admin Security & Access Control
+- Status: done
+- Purpose: Triple-verified admin gate — Backend Secret + DB role + optional ADMIN_IDENTIFIER env whitelist.
+- Key logic: `adminGuard.js` enforces 3 sequential checks: (1) `x-admin-key` == `ADMIN_SECRET_KEY`, (2) JWT user role == 'admin' in DB, (3) if `ADMIN_IDENTIFIER` is set in env, account username/email must match it. Admin UI visible only to verified admin accounts (`role === 'admin' || is_admin === true`) in AccountView menu list; also accessible via `Ctrl+Shift+A` or version footer 5-tap.
+- Files: `server/middleware/adminGuard.js`, `frontend/src/components/AccountView.jsx`, `frontend/src/App.jsx`, `server/controllers/authController.js`
+- Dependencies: Express, JWT, Supabase
+- Last change: 2026-09-17 — Populated is_admin in login payload, mounted admin menu card in AccountView, and added Ctrl+Shift+A global shortcut.
+
+## My Bets Live Sync
+- Status: done
+- Purpose: Show all real user bets accurately in "My Bets" tab, synced from server every 2.5s.
+- Key logic: No fake seed bets for logged-in users; always sync from server (even empty array replaces local); optimistic pending bets merged until confirmed by server; bets cleared on login/logout preventing cross-session leakage.
+- Files: `frontend/src/App.jsx`
+- Dependencies: React state, `/api/game/bets/:userId` endpoint
+- Last change: 2026-09-17 — Fixed always-sync, optimistic merge, cleared seed bets, clear on auth events.
 
 
+## Database Schema & Row Level Security (RLS)
+- Status: done
+- Purpose: PostgreSQL schema for Supabase with is_admin column, defensive migrations, and RLS protection.
+- Key logic: Added `is_admin BOOLEAN NOT NULL DEFAULT FALSE` to `profiles` (and `users` view with `security_invoker = true`); enabled RLS across all 8 tables (`profiles`, `wallets`, `deposit_requests`, `wallet_transactions`, `game_rounds`, `bets`, `password_resets`, `withdrawal_requests`) with `service_role` full bypass policies to remove Supabase "Unrestricted" warning.
+- Files: `server/db/schema.sql`, `server/middleware/adminGuard.js`, `server/controllers/adminController.js`
+- Dependencies: PostgreSQL, Supabase PostgREST
+- Last change: 2026-09-17 — Added is_admin column and enabled RLS + service_role policies to eliminate Unrestricted warning.
 
+## Standalone Subpages Architecture
+- Status: done
+- Purpose: Dedicated modular pages for all account operations and portal views.
+- Key logic: Individual full-screen views with back-navigation for Wallet, Deposit, Withdraw, VIP, Notifications, Gifts, Coupons, Security, and Customer Service.
+- Files: `frontend/src/components/pages/*.jsx`, `frontend/src/App.jsx`, `frontend/src/components/AccountView.jsx`
+- Dependencies: React 18, Lucide React, Vanilla CSS
+- Last change: 2026-09-17 — Built dedicated standalone pages for Notifications, Gifts, Coupons, Security, and Customer Service.
 
+## Anti-Inspect & Client Security Shield
+- Status: done
+- Purpose: Prevent unauthorized DevTools inspection, right-click menu, and source code extraction.
+- Key logic: Global listeners trap `contextmenu`, F12, Ctrl+Shift+I/J/C, Ctrl+U, Ctrl+S with warning toasts, console clearing, and CSS user-select lockout.
+- Files: `frontend/src/utils/antiInspect.js`, `frontend/index.html`, `frontend/src/styles.css`, `frontend/src/App.jsx`
+- Dependencies: Vanilla JS DOM events
+- Last change: 2026-09-17 — Deployed Anti-Inspect protection engine blocking contextmenu and inspection shortcuts.
 
+## Win Go Color UI & Contrast Engine
+- Status: done
+- Purpose: High-contrast, crystal-clear typography and color rendering across all Win Go components.
+- Key logic: Obsidian dark text on white header, rich amber marquee ticker, 55 CLUB signature red active tab gradient, high-contrast timer boxes, and bet edge guards.
+- Files: `frontend/src/styles.css`, `frontend/src/App.jsx`
+- Dependencies: React 18, Lucide React
+- Last change: 2026-09-17 — Fixed text visibility in header, ticker, mode tabs, multiplier chips, and bottom sheet drawer.

@@ -12,11 +12,11 @@ const CREDENTIALS_FILE = path.join(__dirname, '../db/credentials.json')
 const PROFILES_FILE = path.join(__dirname, '../db/profiles.json')
 
 // In-memory fallback stores with file persistence
-const memoryProfiles = new Map()
-const memoryCredentials = new Map() // id/username/email -> passwordHash
-const resetCodes = new Map() // identity -> { code, expiresAt }
+export const memoryProfiles = new Map()
+export const memoryCredentials = new Map() // id/username/email -> passwordHash
+export const resetCodes = new Map() // identity -> { code, expiresAt }
 
-function loadCredentialsFromDisk() {
+export function loadCredentialsFromDisk() {
   try {
     if (fs.existsSync(CREDENTIALS_FILE)) {
       const raw = fs.readFileSync(CREDENTIALS_FILE, 'utf8')
@@ -30,7 +30,7 @@ function loadCredentialsFromDisk() {
   }
 }
 
-function saveCredentialsToDisk() {
+export function saveCredentialsToDisk() {
   try {
     const obj = Object.fromEntries(memoryCredentials.entries())
     fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(obj, null, 2), 'utf8')
@@ -39,7 +39,7 @@ function saveCredentialsToDisk() {
   }
 }
 
-function loadProfilesFromDisk() {
+export function loadProfilesFromDisk() {
   try {
     if (fs.existsSync(PROFILES_FILE)) {
       const raw = fs.readFileSync(PROFILES_FILE, 'utf8')
@@ -53,7 +53,7 @@ function loadProfilesFromDisk() {
   }
 }
 
-function saveProfilesToDisk() {
+export function saveProfilesToDisk() {
   try {
     const obj = Object.fromEntries(memoryProfiles.entries())
     fs.writeFileSync(PROFILES_FILE, JSON.stringify(obj, null, 2), 'utf8')
@@ -66,7 +66,7 @@ function saveProfilesToDisk() {
 loadCredentialsFromDisk()
 loadProfilesFromDisk()
 
-function hashPassword(password) {
+export function hashPassword(password) {
   return crypto.createHash('sha256').update(String(password) + '_prince_salt_2026_vault').digest('hex')
 }
 
@@ -133,17 +133,23 @@ export async function loginOrRegister(req, res) {
         wallet = newWal
       }
 
-      // Generate signed auth token
+      const userRole = profile.is_admin === true ? 'admin' : (profile.role || 'user')
       const token = generateToken({
         id: profile.id,
         username: profile.username,
-        role: profile.role || 'user',
+        role: userRole,
       })
 
       return res.json({
         message: 'Login successful',
         token,
-        user: { id: profile.id, username: profile.username, email: profile.email, role: profile.role || 'user' },
+        user: {
+          id: profile.id,
+          username: profile.username,
+          email: profile.email,
+          role: userRole,
+          is_admin: Boolean(profile.is_admin || profile.role === 'admin'),
+        },
         wallet: wallet || { balance: 1000.0 },
       })
     }
@@ -175,16 +181,23 @@ export async function loginOrRegister(req, res) {
       return res.status(401).json({ error: 'Incorrect password. Please try again.' })
     }
 
+    const userRole = profile.is_admin === true ? 'admin' : (profile.role || 'user')
     const token = generateToken({
       id: profile.id,
       username: profile.username,
-      role: profile.role,
+      role: userRole,
     })
 
     return res.json({
       message: 'Login successful',
       token,
-      user: { id: profile.id, username: profile.username, email: profile.email, role: profile.role },
+      user: {
+        id: profile.id,
+        username: profile.username,
+        email: profile.email,
+        role: userRole,
+        is_admin: Boolean(profile.is_admin || profile.role === 'admin'),
+      },
       wallet: { balance: 1000.0 },
     })
   } catch (err) {

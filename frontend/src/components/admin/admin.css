@@ -1,0 +1,1124 @@
+/* ============================================================================
+   69 Club Admin Management Console — Production Mobile-Responsive Styles
+   ============================================================================ */
+
+.admin-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  animation: adminFadeIn 0.2s ease-out;
+}
+
+@keyframes adminFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.admin-dialog-window {
+  width: 100%;
+  max-width: 860px;
+  max-height: 92vh;
+  background: #ffffff;
+  color: #0f172a;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(226, 232, 240, 0.8);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  animation: adminSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes adminSlideUp {
+  from { transform: translateY(20px) scale(0.98); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* Modal Header */
+.admin-modal-header {
+  padding: 14px 18px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.admin-header-title-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-shield-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  flex-shrink: 0;
+}
+
+.admin-header-title-box h3 {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.admin-header-title-box p {
+  font-size: 11px;
+  color: #64748b;
+  margin: 2px 0 0 0;
+}
+
+.admin-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-btn-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.admin-btn-icon:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.admin-btn-icon.spinning svg {
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.admin-btn-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.admin-btn-close:hover {
+  background: #fee2e2;
+  color: #ef4444;
+  border-color: #fca5a5;
+}
+
+/* Modal Body */
+.admin-modal-body-scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 16px 18px;
+  background: #f8fafc;
+}
+
+/* Verification Card */
+.admin-verify-card {
+  max-width: 460px;
+  margin: 20px auto;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+}
+
+.verify-shield-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #fef3c7;
+  color: #d97706;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+}
+
+.verify-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+}
+
+.verify-desc {
+  font-size: 12px;
+  color: #64748b;
+  line-height: 1.5;
+  margin: 0 0 20px 0;
+}
+
+.verify-steps-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 20px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.verify-step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.verify-step-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.verify-step-badge.passed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.verify-step-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.verify-step-info strong {
+  font-size: 12px;
+  color: #1e293b;
+  display: block;
+}
+
+.verify-step-info p {
+  font-size: 11px;
+  color: #64748b;
+  margin: 2px 0 0 0;
+}
+
+.verify-error-msg {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #991b1b;
+  font-size: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.verify-input-wrapper {
+  text-align: left;
+  margin-bottom: 18px;
+}
+
+.verify-input-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.verify-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.verify-input-box svg.input-lead-icon {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+}
+
+.verify-text-input {
+  width: 100%;
+  height: 44px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 40px 0 38px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.15s;
+}
+
+.verify-text-input:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.verify-eye-toggle {
+  position: absolute;
+  right: 10px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.verify-submit-btn {
+  width: 100%;
+  height: 46px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(239, 68, 68, 0.35);
+  transition: all 0.15s;
+}
+
+.verify-submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.verify-submit-btn:active {
+  transform: scale(0.98);
+}
+
+/* Status Bar & Tabs */
+.admin-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #334155;
+  background: #f1f5f9;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-weight: 600;
+}
+
+.status-chip strong {
+  color: #0f172a;
+}
+
+.status-chip.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.admin-nav-tabs-bar {
+  display: flex;
+  gap: 6px;
+  background: #ffffff;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.admin-nav-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-tab-btn {
+  flex: 1;
+  min-width: 110px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+  padding: 0 10px;
+}
+
+.admin-tab-btn:hover {
+  color: #0f172a;
+  background: #f8fafc;
+}
+
+.admin-tab-btn.active {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
+}
+
+/* ============================================================================
+   SUB-PAGE 1: PLATFORM MATRIX & RISK VIEW
+   ============================================================================ */
+
+.admin-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 768px) {
+  .admin-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+}
+
+.admin-stat-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.admin-stat-card.highlight {
+  border-color: #fca5a5;
+  background: linear-gradient(135deg, #ffffff 0%, #fff1f2 100%);
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 4px;
+}
+
+.stat-number {
+  font-size: 20px;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.stat-number.green { color: #16a34a; }
+.stat-number.red { color: #dc2626; }
+.stat-number.blue { color: #2563eb; }
+
+.stat-subtext {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* Pool Box */
+.admin-card-section {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.card-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.card-section-header h4 {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.live-badge-vol {
+  font-size: 11px;
+  font-weight: 700;
+  color: #dc2626;
+  background: #fee2e2;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.pool-cards-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .pool-cards-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pool-sub-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+
+.pool-sub-card h5 {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  margin: 0 0 10px 0;
+}
+
+.pool-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.pool-row:last-child {
+  margin-bottom: 0;
+}
+
+.pool-row-name {
+  width: 48px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+.pool-bar-track {
+  flex: 1;
+  height: 10px;
+  background: #e2e8f0;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.pool-bar-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 0.3s ease;
+}
+
+.pool-bar-fill.color-green { background: #22c55e; }
+.pool-bar-fill.color-red { background: #ef4444; }
+.pool-bar-fill.color-violet { background: #a855f7; }
+.pool-bar-fill.size-big { background: #f97316; }
+.pool-bar-fill.size-small { background: #3b82f6; }
+
+.pool-row-val {
+  min-width: 60px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+/* Digits Grid 0-9 */
+.digits-matrix-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (max-width: 480px) {
+  .digits-matrix-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+  }
+}
+
+.digit-chip-card {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 4px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.digit-badge-pill {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.digit-amt-text {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+/* ============================================================================
+   SUB-PAGE 2: BETS & WINNERS MATRIX VIEW
+   ============================================================================ */
+
+.admin-toolbar-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-filter-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.admin-filter-pill {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.admin-filter-pill.active {
+  background: #0f172a;
+  border-color: #0f172a;
+  color: #ffffff;
+}
+
+/* Mobile-Friendly Bet Cards */
+.admin-bets-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-bet-item-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.bet-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bet-mode-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f1f5f9;
+  color: #475569;
+  text-transform: uppercase;
+}
+
+.bet-period-num {
+  font-size: 11px;
+  color: #64748b;
+  font-family: monospace;
+}
+
+.bet-status-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+
+.bet-status-pill.won { background: #dcfce7; color: #166534; }
+.bet-status-pill.lost { background: #fee2e2; color: #991b1b; }
+.bet-status-pill.pending { background: #fef3c7; color: #92400e; }
+
+.bet-card-mid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bet-target-badge {
+  font-size: 12px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+}
+
+.bet-amount-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.bet-amount-info span {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.bet-amount-info strong {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.bet-payout-val.win { color: #16a34a; }
+.bet-payout-val.loss { color: #94a3b8; }
+
+/* ============================================================================
+   SUB-PAGE 3: USERS MANAGEMENT (CRUD) VIEW
+   ============================================================================ */
+
+.admin-search-box {
+  position: relative;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.admin-search-box svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94a3b8;
+}
+
+.admin-search-input {
+  width: 100%;
+  height: 40px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  padding: 0 12px 0 38px;
+  font-size: 13px;
+  font-family: inherit;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.15s;
+}
+
+.admin-search-input:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+}
+
+.admin-users-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-user-card-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.user-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.user-avatar-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.user-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.user-avatar-circle.is-admin {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+}
+
+.user-text-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-name-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.user-email-sub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.user-pill-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.role-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 8px;
+  text-transform: uppercase;
+}
+
+.role-badge.admin {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.role-badge.user {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.status-badge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 8px;
+  text-transform: uppercase;
+}
+
+.status-badge.active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.suspended {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.user-balance-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 8px 12px;
+}
+
+.balance-text-col span {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.balance-text-col strong {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  display: block;
+}
+
+.btn-quick-adjust {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-quick-adjust:hover {
+  background: #f1f5f9;
+}
+
+.user-actions-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-user-action {
+  flex: 1;
+  min-width: 80px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-user-action:hover {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+.btn-user-action.danger {
+  color: #ef4444;
+  border-color: #fecaca;
+}
+
+.btn-user-action.danger:hover {
+  background: #fef2f2;
+}
+
+/* ============================================================================
+   SUB-MODAL: BALANCE ADJUSTMENT
+   ============================================================================ */
+
+.admin-sub-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: adminFadeIn 0.15s ease-out;
+}
+
+.admin-sub-modal-card {
+  width: 100%;
+  max-width: 400px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-sub-modal-card h4 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+.sub-modal-user-pill {
+  font-size: 12px;
+  color: #64748b;
+  margin: 0;
+}
+
+.adjust-type-toggle {
+  display: flex;
+  gap: 8px;
+}
+
+.adjust-type-btn {
+  flex: 1;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.adjust-type-btn.active.credit {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #15803d;
+}
+
+.adjust-type-btn.active.debit {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.quick-chip-row {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.amount-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+  cursor: pointer;
+}
+
+.amount-chip:hover {
+  background: #f1f5f9;
+}
+
+.sub-modal-footer {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.btn-modal-cancel {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-modal-confirm {
+  flex: 1;
+  height: 40px;
+  border-radius: 10px;
+  border: none;
+  background: #0f172a;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-modal-confirm:disabled {
+  opacity: 0.6;
+}
+
+/* Empty States */
+.admin-empty-box {
+  text-align: center;
+  padding: 36px 16px;
+  color: #94a3b8;
+}
+
+.admin-empty-box svg {
+  margin-bottom: 8px;
+  opacity: 0.6;
+}
+
+.admin-empty-box p {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}

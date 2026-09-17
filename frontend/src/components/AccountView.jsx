@@ -21,6 +21,7 @@ import {
   LogOut,
   LogIn,
   Lock,
+  ShieldCheck,
 } from 'lucide-react'
 import { sound } from '../utils/audio'
 
@@ -29,6 +30,7 @@ export function AccountView({
   userId,
   balance = 0,
   onRefreshBalance,
+  onOpenWallet,
   onOpenDeposit,
   onOpenWithdraw,
   onOpenFortuneWheel,
@@ -38,11 +40,31 @@ export function AccountView({
   onOpenTransactions,
   onOpenSupport,
   onOpenAuth,
+  onOpenAdmin,
+  onOpenNotification,
+  onOpenGifts,
+  onOpenCoupons,
+  onOpenSecurity,
+  onOpenCustomerService,
   onLogout,
 }) {
   const [copied, setCopied] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
+
+  const [adminTapCount, setAdminTapCount] = useState(0)
+  const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.is_admin === true)
+
+  const handleSecretAdminTap = () => {
+    setAdminTapCount((prev) => {
+      const next = prev + 1
+      if (next >= 5) {
+        if (onOpenAdmin) onOpenAdmin()
+        return 0
+      }
+      return next
+    })
+  }
 
   // Generate or format consistent display data matching user screenshot
   const username = currentUser?.username || 'MEMBERNNG5EZDK'
@@ -57,7 +79,7 @@ export function AccountView({
       setCopied(true)
       sound.playTick()
       setTimeout(() => setCopied(false), 2000)
-    } catch {}
+    } catch { }
   }
 
   const handleRefresh = async () => {
@@ -90,6 +112,7 @@ export function AccountView({
               </div>
             )}
           </div>
+
 
           {/* User Info */}
           <div className="account-profile-info">
@@ -136,7 +159,7 @@ export function AccountView({
 
           <button
             className="enter-wallet-btn"
-            onClick={onOpenDeposit}
+            onClick={onOpenWallet || onOpenDeposit}
             title="Enter Wallet"
           >
             Enter wallet
@@ -145,7 +168,7 @@ export function AccountView({
 
         {/* 4 Action Icons Row */}
         <div className="balance-actions-grid">
-          <div className="action-item" onClick={onOpenDeposit}>
+          <div className="action-item" onClick={onOpenWallet || onOpenDeposit}>
             <div className="action-icon-circle bg-arwallet">
               <Wallet size={20} />
             </div>
@@ -221,8 +244,44 @@ export function AccountView({
 
       {/* 4. VERTICAL MENU LIST */}
       <div className="account-menu-card">
+        {/* Admin Dashboard Entry — ONLY visible to verified Admin accounts */}
+        {isAdmin && (
+          <div
+            className="menu-list-row admin-portal-row"
+            onClick={onOpenAdmin}
+            style={{
+              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.12) 0%, rgba(220, 38, 38, 0.05) 100%)',
+              border: '1px solid rgba(239, 68, 68, 0.35)',
+              borderRadius: '12px',
+              padding: '12px 14px',
+              marginBottom: '10px',
+              cursor: 'pointer',
+            }}
+          >
+            <div className="menu-row-left">
+              <div className="menu-icon-box" style={{ background: '#ef4444', color: '#ffffff' }}>
+                <ShieldCheck size={18} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                <span className="menu-row-title" style={{ color: '#ef4444', fontWeight: '700', fontSize: '14px' }}>
+                  Admin Control Panel
+                </span>
+                <span style={{ fontSize: '11px', color: '#dc2626' }}>
+                  Live Risk Matrix, Users & Bets
+                </span>
+              </div>
+            </div>
+            <div className="menu-row-right">
+              <span style={{ background: '#ef4444', color: '#fff', fontSize: '10px', padding: '2px 8px', borderRadius: '10px', fontWeight: 'bold', marginRight: '6px' }}>
+                ADMIN
+              </span>
+              <ChevronRight size={16} style={{ color: '#ef4444' }} />
+            </div>
+          </div>
+        )}
+
         {/* Notification */}
-        <div className="menu-list-row" onClick={onOpenSupport}>
+        <div className="menu-list-row" onClick={onOpenNotification || onOpenSupport}>
           <div className="menu-row-left">
             <div className="menu-icon-box bg-menu-indigo">
               <Bell size={16} />
@@ -236,7 +295,7 @@ export function AccountView({
         </div>
 
         {/* Gifts */}
-        <div className="menu-list-row" onClick={onOpenFortuneWheel}>
+        <div className="menu-list-row" onClick={onOpenGifts || onOpenFortuneWheel}>
           <div className="menu-row-left">
             <div className="menu-icon-box bg-menu-purple">
               <Gift size={16} />
@@ -249,7 +308,7 @@ export function AccountView({
         </div>
 
         {/* My Top-Up Coupons */}
-        <div className="menu-list-row" onClick={onOpenDeposit}>
+        <div className="menu-list-row" onClick={onOpenCoupons || onOpenDeposit}>
           <div className="menu-row-left">
             <div className="menu-icon-box bg-menu-lavender">
               <Ticket size={16} />
@@ -261,8 +320,24 @@ export function AccountView({
           </div>
         </div>
 
+        {/* Admin Management Console - Strictly visible ONLY for verified admin accounts */}
+        {isAdmin && (
+          <div className="menu-list-row" onClick={onOpenAdmin}>
+            <div className="menu-row-left">
+              <div className="menu-icon-box" style={{ background: '#fef3c7', color: '#b45309' }}>
+                <Shield size={16} />
+              </div>
+              <span className="menu-row-title">Admin Management</span>
+            </div>
+            <div className="menu-row-right">
+              <span className="menu-count-badge" style={{ background: '#0f172a', color: '#ffffff' }}>ADMIN</span>
+              <ChevronRight size={16} className="text-slate-500" />
+            </div>
+          </div>
+        )}
+
         {/* Security Center */}
-        <div className="menu-list-row" onClick={() => onOpenAuth && onOpenAuth('forgot')}>
+        <div className="menu-list-row" onClick={onOpenSecurity || (() => onOpenAuth && onOpenAuth('forgot'))}>
           <div className="menu-row-left">
             <div className="menu-icon-box bg-menu-cyan">
               <Shield size={16} />
@@ -275,7 +350,7 @@ export function AccountView({
         </div>
 
         {/* Live Support */}
-        <div className="menu-list-row" onClick={onOpenSupport}>
+        <div className="menu-list-row" onClick={onOpenCustomerService || onOpenSupport}>
           <div className="menu-row-left">
             <div className="menu-icon-box bg-menu-amber">
               <Headphones size={16} />
@@ -301,6 +376,22 @@ export function AccountView({
             <span>Log In / Register</span>
           </button>
         )}
+      </div>
+
+      {/* Discrete Version / Secret Admin Tap Footer */}
+      <div
+        className="account-version-tag"
+        onClick={handleSecretAdminTap}
+        style={{
+          textAlign: 'center',
+          fontSize: '11px',
+          color: '#94a3b8',
+          padding: '16px 0 24px 0',
+          cursor: 'default',
+          userSelect: 'none',
+        }}
+      >
+        Version 2.4.0 • 69 Club
       </div>
     </div>
   )

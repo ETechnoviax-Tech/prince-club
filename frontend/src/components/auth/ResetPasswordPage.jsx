@@ -80,9 +80,9 @@ export function ResetPasswordPage({ initialIdentity = '', initialCode = '', onNa
           <div className="auth-55club-brand">
             <div className="brand-55-circle">
               <span className="brand-crown-top">👑</span>
-              <span className="brand-55-num">PC</span>
+              <span className="brand-55-num">69</span>
             </div>
-            <span className="brand-club-text">PRINCE CLUB</span>
+            <span className="brand-club-text">69 CLUB</span>
           </div>
 
           {/* Language Selector */}

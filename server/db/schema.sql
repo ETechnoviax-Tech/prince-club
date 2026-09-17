@@ -1,17 +1,34 @@
--- Prince Club Database Schema for Supabase (PostgreSQL)
+-- 69 Club Database Schema for Supabase (PostgreSQL)
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. Profiles Table
+-- 1. Profiles Table (Users)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username TEXT NOT NULL UNIQUE,
     email TEXT,
+    password_hash TEXT,
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+    is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     last_daily_bonus TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
+
+-- Defensive migrations for existing databases
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
+
+-- Fast lookup index on is_admin
+CREATE INDEX IF NOT EXISTS idx_profiles_is_admin ON public.profiles(is_admin);
+
+-- Optional convenience view so queries to public.users map to public.profiles
+-- Defined with security_invoker = true so it inherits RLS security
+DROP VIEW IF EXISTS public.users CASCADE;
+CREATE OR REPLACE VIEW public.users WITH (security_invoker = true) AS
+    SELECT id, username, email, password_hash, role, is_admin, last_daily_bonus, created_at
+    FROM public.profiles;
 
 -- 2. Wallets Table
 CREATE TABLE IF NOT EXISTS public.wallets (
@@ -199,5 +216,94 @@ CREATE TABLE IF NOT EXISTS public.withdrawal_requests (
 
 CREATE INDEX IF NOT EXISTS idx_withdrawal_user ON public.withdrawal_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_withdrawal_status ON public.withdrawal_requests(status);
+
+-- ============================================================================
+-- 10. Row Level Security (RLS) & Protection Policies
+-- Fixes Supabase "Unrestricted" warning on tables and views.
+-- ============================================================================
+
+-- 10.1 Enable Row Level Security on all core tables
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.deposit_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.wallet_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game_rounds ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.bets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.password_resets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.withdrawal_requests ENABLE ROW LEVEL SECURITY;
+
+-- If a physical users table exists (rather than view), enable RLS on it
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'users' AND table_type = 'BASE TABLE'
+    ) THEN
+        EXECUTE 'ALTER TABLE public.users ENABLE ROW LEVEL SECURITY';
+    END IF;
+END $$;
+
+-- 10.2 Service Role Full Access Policies (Bypasses for Express Backend API)
+DO $$ 
+BEGIN
+    -- profiles
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'profiles' AND policyname = 'service_role_profiles') THEN
+        CREATE POLICY "service_role_profiles" ON public.profiles FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+
+    -- wallets
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'wallets' AND policyname = 'service_role_wallets') THEN
+        CREATE POLICY "service_role_wallets" ON public.wallets FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+
+    -- deposit_requests
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'deposit_requests' AND policyname = 'service_role_deposit_requests') THEN
+        CREATE POLICY "service_role_deposit_requests" ON public.deposit_requests FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+
+    -- wallet_transactions
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'wallet_transactions' AND policyname = 'service_role_wallet_transactions') THEN
+        CREATE POLICY "service_role_wallet_transactions" ON public.wallet_transactions FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+
+    -- game_rounds
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'game_rounds' AND policyname = 'service_role_game_rounds') THEN
+        CREATE POLICY "service_role_game_rounds" ON public.game_rounds FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+
+    -- bets
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'bets' AND policyname = 'service_role_bets') THEN
+        CREATE POLICY "service_role_bets" ON public.bets FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+
+    -- password_resets
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'password_resets' AND policyname = 'service_role_password_resets') THEN
+        CREATE POLICY "service_role_password_resets" ON public.password_resets FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+
+    -- withdrawal_requests
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'withdrawal_requests' AND policyname = 'service_role_withdrawal_requests') THEN
+        CREATE POLICY "service_role_withdrawal_requests" ON public.withdrawal_requests FOR ALL TO service_role USING (true) WITH CHECK (true);
+    END IF;
+
+    -- users (if base table)
+    IF EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'users' AND table_type = 'BASE TABLE'
+    ) THEN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'users' AND policyname = 'service_role_users') THEN
+            EXECUTE 'CREATE POLICY "service_role_users" ON public.users FOR ALL TO service_role USING (true) WITH CHECK (true)';
+        END IF;
+    END IF;
+END $$;
+
+-- 10.3 Public Read Policies (for non-sensitive data like settled game rounds)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'game_rounds' AND policyname = 'public_read_game_rounds') THEN
+        CREATE POLICY "public_read_game_rounds" ON public.game_rounds FOR SELECT USING (true);
+    END IF;
+END $$;
+
 
 

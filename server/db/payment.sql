@@ -1,5 +1,5 @@
 -- ============================================================================
--- Prince Club: Production-Grade Payment Gateway Database Extensions
+-- 69 Club: Production-Grade Payment Gateway Database Extensions
 -- File: server/db/payment.sql
 -- ============================================================================
 

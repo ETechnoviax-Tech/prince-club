@@ -86,7 +86,7 @@ export function HomeLobby({
 
   const announcements = [
     'All players registered on this platform must bind their bank data. If a non-personal bank account is bound, please withdraw all your balance and re-register.',
-    '🎉 Welcome to PRINCE CLUB! Get up to ₹500 on your first daily fortune spin!',
+    '🎉 Welcome to 69 CLUB! Get up to ₹500 on your first daily fortune spin!',
     '⚡ Instant UPI & Bank withdrawals processed 24/7 with zero processing fees.',
   ]
 
@@ -128,9 +128,9 @@ export function HomeLobby({
         <div className="home-55-brand">
           <div className="brand-55-logo-circle">
             <Crown size={11} className="brand-pc-crown" />
-            <span className="brand-55-num">PC</span>
+            <span className="brand-55-num">69</span>
           </div>
-          <span className="brand-55-text">PRINCE CLUB</span>
+          <span className="brand-55-text">69 CLUB</span>
         </div>
 
         <button
@@ -164,11 +164,11 @@ export function HomeLobby({
           <div className="hero-left-col">
             <div className="hero-55-stamp">
               <span className="stamp-circle">👑</span>
-              <span className="stamp-text">PRINCECLUB.COM</span>
+              <span className="stamp-text">69CLUB.COM</span>
             </div>
             <h3 className="hero-title-main">WIN BIG REWARDS</h3>
             <p className="hero-desc-hindi">
-              PRINCE CLUB ऐप इंस्टॉल करें और दैनिक नकद पुरस्कार प्राप्त करें
+              69 CLUB ऐप इंस्टॉल करें और दैनिक नकद पुरस्कार प्राप्त करें
             </p>
             <div className="hero-phones-mockup">
               <div className="phone-mini-card">
@@ -311,7 +311,7 @@ export function HomeLobby({
 
           {/* Card 3: WIN GO */}
           <div className="game-card card-wingo-red" onClick={() => onSelectGame('wingo', 'PARITY')}>
-            <div className="wingo-55-stamp">PRINCE CLUB</div>
+            <div className="wingo-55-stamp">69 CLUB</div>
             <div className="wingo-balls-cluster">
               <span className="ball-circle ball-red">9</span>
               <span className="ball-circle ball-green">4</span>

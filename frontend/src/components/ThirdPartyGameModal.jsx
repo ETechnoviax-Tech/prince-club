@@ -96,8 +96,9 @@ export function ThirdPartyGameModal({ game, isOpen, onClose, balance, onBalanceU
               balance={balance}
               onBalanceUpdate={(newBal) => {
                 onBalanceUpdate?.(newBal)
-                if (typeof window !== 'undefined' && window.__prince_update_balance) {
-                  window.__prince_update_balance(newBal)
+                if (typeof window !== 'undefined') {
+                  if (window.__club69_update_balance) window.__club69_update_balance(newBal)
+                  else if (window.__prince_update_balance) window.__prince_update_balance(newBal)
                 }
               }}
               onClose={onClose}

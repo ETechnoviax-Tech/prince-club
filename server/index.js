@@ -14,6 +14,7 @@ import authRoutes from './routes/authRoutes.js'
 import gameRoutes from './routes/gameRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
 import walletRoutes from './routes/walletRoutes.js'
+import adminRoutes from './routes/adminRoutes.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -31,7 +32,7 @@ app.use(express.json({
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'Prince Club API',
+    service: '69 Club API',
     supabaseConnected: isSupabaseConfigured,
     timestamp: new Date().toISOString(),
   })
@@ -42,6 +43,7 @@ app.use('/api/auth', authRoutes)
 app.use('/api/payments', paymentRoutes)
 app.use('/api/wallet', walletRoutes)
 app.use('/api/game', gameRoutes)
+app.use('/api/admin', adminRoutes)
 
 // 404 handler
 app.use((req, res) => {
@@ -56,8 +58,8 @@ app.use((err, req, res, next) => {
 
 if (process.env.NODE_ENV !== 'test') {
   app.listen(PORT, () => {
-    console.log(`[Prince Club API] Server running on http://localhost:${PORT}`)
-    console.log(`[Prince Club API] Supabase status: ${isSupabaseConfigured ? 'Configured' : 'Fallback local store'}`)
+    console.log(`[69 Club API] Server running on http://localhost:${PORT}`)
+    console.log(`[69 Club API] Supabase status: ${isSupabaseConfigured ? 'Configured' : 'Fallback local store'}`)
   })
 }
 

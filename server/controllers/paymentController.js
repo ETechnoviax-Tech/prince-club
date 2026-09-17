@@ -24,9 +24,9 @@ export async function createDeposit(req, res) {
       return res.status(400).json({ error: 'Valid userId and minimum deposit of ₹100 required' })
     }
 
-    const merchantVPA = process.env.MERCHANT_UPI_VPA || 'princeclub@upi'
-    const merchantName = process.env.MERCHANT_NAME || 'Prince Club'
-    const orderRef = `PC-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
+    const merchantVPA = process.env.MERCHANT_UPI_VPA || 'club69@upi'
+    const merchantName = process.env.MERCHANT_NAME || '69 Club'
+    const orderRef = `C69-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
 
     // Standard UPI Intent specification
     const upiUri = `upi://pay?pa=${encodeURIComponent(merchantVPA)}&pn=${encodeURIComponent(merchantName)}&am=${amount.toFixed(2)}&cu=INR&tr=${orderRef}&tn=${encodeURIComponent('Deposit ' + orderRef)}`

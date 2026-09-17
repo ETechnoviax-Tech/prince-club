@@ -4,7 +4,7 @@ class SoundManager {
     this.ctx = null
     this.isMuted = false
     try {
-      const saved = localStorage.getItem('prince_sound_muted')
+      const saved = localStorage.getItem('club69_sound_muted') || localStorage.getItem('prince_sound_muted')
       this.isMuted = saved === 'true'
     } catch {
       this.isMuted = false
@@ -27,7 +27,7 @@ class SoundManager {
   setMuted(muted) {
     this.isMuted = muted
     try {
-      localStorage.setItem('prince_sound_muted', String(muted))
+      localStorage.setItem('club69_sound_muted', String(muted))
     } catch {}
   }
 

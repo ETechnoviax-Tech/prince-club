@@ -4,7 +4,7 @@ import assert from 'assert'
 
 console.log('--- Testing 55CLUB Login Page Implementation ---')
 
-const authModalPath = path.resolve('frontend/src/components/AuthModal.jsx')
+const authModalPath = path.resolve('frontend/src/components/auth/LoginPage.jsx')
 const stylesPath = path.resolve('frontend/src/styles.css')
 
 const authCode = fs.readFileSync(authModalPath, 'utf8')
@@ -12,10 +12,10 @@ const stylesCode = fs.readFileSync(stylesPath, 'utf8')
 
 // 1. Check Header Elements
 assert.ok(authCode.includes('auth-coral-header'), 'Must have coral gradient header')
-assert.ok(authCode.includes('PRINCE CLUB'), 'Must display PRINCE CLUB logo')
+assert.ok(authCode.includes('69 CLUB'), 'Must display 69 CLUB logo')
 assert.ok(authCode.includes('auth-lang-selector'), 'Must have language selector with EN')
 assert.ok(authCode.includes('auth-nav-back-btn'), 'Must have back button')
-console.log('✓ 1. Header with PRINCE CLUB logo, back button, and EN selector verified.')
+console.log('✓ 1. Header with 69 CLUB logo, back button, and EN selector verified.')
 
 // 2. Check Tab Switcher
 assert.ok(authCode.includes('auth-method-tabs'), 'Must have method tabs')

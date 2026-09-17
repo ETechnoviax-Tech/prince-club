@@ -98,18 +98,18 @@ async function runVerification() {
     failed++
   }
 
-  // 6. Verify brand name consistency: PRINCE CLUB across UI
-  test('Branding is consistently PRINCE CLUB', () => {
+  // 6. Verify brand name consistency: 69 CLUB across UI
+  test('Branding is consistently 69 CLUB', () => {
     const files = [
       '../frontend/src/components/HomeLobby.jsx',
-      '../frontend/src/components/AuthModal.jsx',
       '../frontend/src/components/ActivityView.jsx',
       '../frontend/src/components/FortuneWheelModal.jsx',
+      '../frontend/src/components/auth/LoginPage.jsx',
     ]
     for (const f of files) {
       const content = fs.readFileSync(path.resolve(__dirname, f), 'utf8')
-      assert(content.includes('PRINCE CLUB') || content.includes('Prince Club'), `${f} missing Prince Club brand`)
-      assert(!content.includes('55 CLUB'), `${f} still has 55 CLUB`)
+      assert(content.includes('69 CLUB') || content.includes('69 Club'), `${f} missing 69 Club brand`)
+      assert(!content.includes('PRINCE CLUB'), `${f} still has PRINCE CLUB`)
     }
   })
 

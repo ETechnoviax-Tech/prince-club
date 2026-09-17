@@ -70,13 +70,13 @@ export function ActivityView({
     <div className="activity-view-wrapper">
       {/* 1. TOP CORAL HEADER (55CLUB BRAND & BONUS STATS) */}
       <div className="activity-coral-header">
-        {/* Prince Club Brand Logo */}
+        {/* 69 Club Brand Logo */}
         <div className="activity-brand-centered">
           <div className="activity-55-circle">
             <span className="brand-crown-top">👑</span>
-            <span className="brand-55-num">PC</span>
+            <span className="brand-55-num">69</span>
           </div>
-          <span className="brand-club-text">PRINCE CLUB</span>
+          <span className="brand-club-text">69 CLUB</span>
         </div>
 
         {/* Bonus Stats (Today's bonus vs Total bonus) */}
@@ -210,11 +210,11 @@ export function ActivityView({
           </div>
         </div>
 
-        {/* Banner 2: PRINCECLUB.COM MEGA SPIN WHEEL */}
+        {/* Banner 2: 69CLUB.COM MEGA SPIN WHEEL */}
         <div className="activity-event-card" onClick={onOpenFortuneWheel}>
           <div className="banner-visual-box banner-mega-spin">
             <div className="banner-header-row">
-              <span className="club-domain-tag">PRINCECLUB.COM</span>
+              <span className="club-domain-tag">69CLUB.COM</span>
             </div>
             <div className="banner-body-text">
               <h2 className="banner-spin-title">Mega Spin Wheel</h2>
@@ -225,7 +225,7 @@ export function ActivityView({
             </div>
           </div>
           <div className="banner-footer-caption">
-            <strong>PRINCE CLUB MEGA SPIN WHEEL</strong>
+            <strong>69 CLUB MEGA SPIN WHEEL</strong>
           </div>
         </div>
       </div>
@@ -293,7 +293,7 @@ export function ActivityView({
                   <input
                     type="text"
                     className="dialog-text-input"
-                    placeholder="Enter gift code (e.g. PRINCE500)"
+                    placeholder="Enter gift code (e.g. 69CLUB500)"
                     value={giftCode}
                     onChange={(e) => setGiftCode(e.target.value)}
                   />

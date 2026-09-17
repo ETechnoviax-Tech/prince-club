@@ -61,6 +61,18 @@ import FortuneWheelModal from './components/FortuneWheelModal'
 import ActivityView from './components/ActivityView'
 import PromotionView from './components/PromotionView'
 import AccountView from './components/AccountView'
+import { AdminDashboard } from './components/admin/AdminDashboard'
+
+import WalletPage from './components/pages/WalletPage'
+import DepositPage from './components/pages/DepositPage'
+import WithdrawPage from './components/pages/WithdrawPage'
+import VIPPage from './components/pages/VIPPage'
+import NotificationPage from './components/pages/NotificationPage'
+import GiftsPage from './components/pages/GiftsPage'
+import CouponsPage from './components/pages/CouponsPage'
+import SecurityPage from './components/pages/SecurityPage'
+import CustomerServicePage from './components/pages/CustomerServicePage'
+import { initAntiInspect } from './utils/antiInspect'
 import {
   clearAuthToken,
   getAuthToken,
@@ -230,7 +242,7 @@ export function App() {
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const token = getAuthToken()
-      const saved = localStorage.getItem('prince_user_info')
+      const saved = localStorage.getItem('club69_user_info') || localStorage.getItem('prince_user_info')
       if (token && saved) return JSON.parse(saved)
     } catch {}
     return null
@@ -240,12 +252,37 @@ export function App() {
   const [selectedMode, setSelectedMode] = useState('PARITY') // 'PARITY' | 'SAPRE' | 'BCONE' | 'EMERD'
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false)
   const [transactionModalOpen, setTransactionModalOpen] = useState(false)
+  const [adminModalOpen, setAdminModalOpen] = useState(false)
   const [vipBonusLoading, setVipBonusLoading] = useState(false)
+
+  // Secure Admin Access Listener (URL hash '#admin', '?admin=1', or Ctrl+Shift+A)
+  useEffect(() => {
+    const handleAdminRoute = () => {
+      if (window.location.hash === '#admin' || window.location.search.includes('admin=1')) {
+        setAdminModalOpen(true)
+      }
+    }
+    handleAdminRoute()
+    window.addEventListener('hashchange', handleAdminRoute)
+
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
+        e.preventDefault()
+        setAdminModalOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('hashchange', handleAdminRoute)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [])
 
   const [userId, setUserId] = useState(() => {
     try {
       const token = getAuthToken()
-      const saved = localStorage.getItem('prince_user_info')
+      const saved = localStorage.getItem('club69_user_info') || localStorage.getItem('prince_user_info')
       if (token && saved) {
         const u = JSON.parse(saved)
         if (u?.id) return u.id
@@ -256,9 +293,10 @@ export function App() {
 
   const handleAuthSuccess = (user, wallet) => {
     setCurrentUser(user)
+    setBets([]) // clear any stale bets from previous session
     if (user?.id) {
-      localStorage.setItem('prince_user_id', user.id)
-      localStorage.setItem('prince_user_info', JSON.stringify(user))
+      localStorage.setItem('club69_user_id', user.id)
+      localStorage.setItem('club69_user_info', JSON.stringify(user))
       setUserId(user.id)
     }
     if (wallet?.balance !== undefined) {
@@ -267,7 +305,7 @@ export function App() {
     setAuthModalOpen(false)
     setToast({
       type: 'success',
-      title: 'Welcome to Prince Club!',
+      title: 'Welcome to 69 Club!',
       detail: `Signed in as ${user.username || 'Member'}. Balance: ₹${formatCredits(wallet?.balance || balance)}`,
     })
   }
@@ -275,6 +313,9 @@ export function App() {
   const handleLogout = () => {
     setCurrentUser(null)
     setUserId(null)
+    setBets([]) // clear user bets on logout
+    localStorage.removeItem('club69_user_info')
+    localStorage.removeItem('club69_user_id')
     localStorage.removeItem('prince_user_info')
     localStorage.removeItem('prince_user_id')
     clearAuthToken()
@@ -323,15 +364,21 @@ export function App() {
     return STARTING_BALANCE
   })
 
+  // Bets state — starts empty for authenticated users; seed only for demo/guest mode
   const [bets, setBets] = useState(() => {
     try {
+      const token = getAuthToken()
       const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
+      if (token && saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed.bets)) return parsed.bets
+        // Only restore persisted bets if they belong to this session (not seed)
+        if (Array.isArray(parsed.bets) && parsed.bets.some((b) => !b.id.startsWith('bet-seed'))) {
+          return parsed.bets.filter((b) => !b.id.startsWith('bet-seed'))
+        }
+        return [] // fresh slate for authenticated users
       }
     } catch {}
-    return initialSeedBets()
+    return [] // no fake seed bets shown to real users
   })
 
   // Game Engine State
@@ -382,12 +429,35 @@ export function App() {
     return () => clearInterval(tInterval)
   }, [])
 
+  // 69 Club Security Shield: Anti-Inspect Engine
+  useEffect(() => {
+    initAntiInspect((msg) => {
+      setToast({
+        type: 'warning',
+        title: 'Security Shield Active',
+        detail: msg || 'Developer Tools & Inspect are disabled on 69 Club.',
+      })
+    })
+  }, [])
+
   // Auto clear toast
   useEffect(() => {
     if (!toast) return
     const timer = setTimeout(() => setToast(null), 3800)
     return () => clearTimeout(timer)
   }, [toast])
+
+  // Admin shortcut: Ctrl+Shift+A or Alt+A opens Admin Dashboard
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) || (e.altKey && (e.key === 'A' || e.key === 'a'))) {
+        e.preventDefault()
+        setAdminModalOpen(true)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [])
 
   // Backend Sync Initial & Periodic with VeerGame
   const syncWithBackend = useCallback(async () => {
@@ -475,7 +545,8 @@ export function App() {
 
       try {
         const betsData = await fetchUserBets(userId)
-        if (Array.isArray(betsData?.bets) && betsData.bets.length > 0) {
+        // Always replace bets from server — even if empty (clears stale seed/local bets)
+        if (betsData && Array.isArray(betsData.bets)) {
           const formatted = betsData.bets.map((b) => ({
             id: b.id,
             round: String(b.round_number),
@@ -491,8 +562,18 @@ export function App() {
             payout: Number(b.payout || 0),
             status: String(b.status).toLowerCase(),
             outcome: b.outcome || null,
-            createdAt: b.created_at ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+            createdAt: b.created_at
+              ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              : 'Recently',
           }))
+
+          // Merge optimistic pending bets that haven't landed on server yet
+          const serverIds = new Set(formatted.map((b) => b.id))
+          const optimisticPending = betsRef.current.filter(
+            (b) => b.status === 'pending' && !serverIds.has(b.id) && !b.id.startsWith('bet-seed')
+          )
+
+          const merged = [...optimisticPending, ...formatted]
 
           const hadWonBet = formatted.find(
             (nb) => nb.status === 'won' && betsRef.current.some((ob) => ob.id === nb.id && ob.status === 'pending')
@@ -506,7 +587,7 @@ export function App() {
             })
           }
 
-          setBets(formatted)
+          setBets(merged)
         }
       } catch {}
     }
@@ -561,10 +642,10 @@ export function App() {
     )
 
     if (currentPending.length === 0) {
-      setToast({
-        type: 'neutral',
-        title: `Period ${formatPeriod(roundNumber)} Result`,
-        detail: `Winning Number: ${outcome.digit} (${outcome.color.toUpperCase()}) - ${outcome.digit >= 5 ? 'BIG' : 'SMALL'}`,
+      console.log('[Win Go Debug] Period settled without user bets:', {
+        period: roundNumber,
+        winningDigit: outcome.digit,
+        color: outcome.color,
       })
       return
     }
@@ -600,19 +681,26 @@ export function App() {
     if (hasWin) {
       setBalance((curr) => curr + totalWinCredits)
       sound.playWin()
-      setToast({
-        type: 'success',
-        title: '🎉 Congratulations! You Won!',
-        detail: `Credited +₹${formatCredits(totalWinCredits)} to your wallet balance.`,
-      })
+      console.log('[Win Go Debug] Round Won! Credits added:', totalWinCredits)
+      if (currentUser && !authModalOpen) {
+        setToast({
+          type: 'success',
+          title: '🎉 Congratulations! You Won!',
+          detail: `Period ${formatPeriod(roundNumber)}: +₹${formatCredits(totalWinCredits)} credited to your wallet balance.`,
+        })
+      }
     } else {
-      setToast({
-        type: 'loss',
-        title: 'Round Closed',
-        detail: `Result was ${outcome.digit} (${outcome.color.toUpperCase()}). Better luck next round!`,
-      })
+      sound.playLockTick()
+      console.log('[Win Go Debug] Round Lost. Outcome:', outcome)
+      if (currentUser && !authModalOpen) {
+        setToast({
+          type: 'loss',
+          title: 'Round Settled',
+          detail: `Period ${formatPeriod(roundNumber)} result: ${outcome.digit} (${outcome.color.toUpperCase()}) - ${outcome.digit >= 5 ? 'BIG' : 'SMALL'}. Better luck next round!`,
+        })
+      }
     }
-  }, [roundNumber])
+  }, [roundNumber, currentUser, authModalOpen, currentGame])
 
   // Timer Tick Engine
   useEffect(() => {
@@ -650,7 +738,20 @@ export function App() {
 
   // Open bet sheet
   const handleSelectTarget = (type, val, multiplier) => {
-    if (isLocked) {
+    if (!currentUser) {
+      console.log('[Win Go Bet Debug] Target clicked without login')
+      setToast({
+        type: 'warning',
+        title: 'Login Required',
+        detail: 'Please sign in to your 69 Club account to place bets.',
+      })
+      setAuthMode('login')
+      setAuthModalOpen(true)
+      return
+    }
+
+    if (isLocked || seconds <= activeLevel.lock) {
+      console.log('[Win Go Bet Debug] Target clicked during lock period')
       setToast({
         type: 'warning',
         title: 'Round Locked',
@@ -658,13 +759,28 @@ export function App() {
       })
       return
     }
+
+    sound.playTick()
     setSelectedTarget({ type, val, multiplier })
     setBetSheetOpen(true)
   }
 
   // Pick random lottery number
   const handleRandomBet = () => {
-    if (isLocked) {
+    if (!currentUser) {
+      console.log('[Win Go Bet Debug] Random bet clicked without login')
+      setToast({
+        type: 'warning',
+        title: 'Login Required',
+        detail: 'Please sign in to your 69 Club account to place bets.',
+      })
+      setAuthMode('login')
+      setAuthModalOpen(true)
+      return
+    }
+
+    if (isLocked || seconds <= activeLevel.lock) {
+      console.log('[Win Go Bet Debug] Random bet blocked: round locked')
       setToast({
         type: 'warning',
         title: 'Round Locked',
@@ -672,6 +788,7 @@ export function App() {
       })
       return
     }
+
     sound.playTick()
     const randomDigit = Math.floor(Math.random() * 10)
     handleSelectTarget('number', randomDigit, 9.0)
@@ -680,11 +797,45 @@ export function App() {
   // Confirm bet placement
   const handleConfirmBet = async () => {
     if (!selectedTarget) return
+
+    if (!currentUser) {
+      setToast({
+        type: 'warning',
+        title: 'Login Required',
+        detail: 'Please sign in to your 69 Club account to place bets.',
+      })
+      setBetSheetOpen(false)
+      setAuthMode('login')
+      setAuthModalOpen(true)
+      return
+    }
+
+    if (isLocked || seconds <= activeLevel.lock) {
+      console.log('[Win Go Bet Debug] Confirm bet blocked: period locked')
+      setToast({
+        type: 'warning',
+        title: 'Round Locked',
+        detail: 'Betting has locked for this round. Please wait for next round.',
+      })
+      setBetSheetOpen(false)
+      return
+    }
+
+    if (!Number.isFinite(totalBetAmount) || totalBetAmount <= 0) {
+      setToast({
+        type: 'loss',
+        title: 'Invalid Amount',
+        detail: 'Please select a valid contract amount.',
+      })
+      return
+    }
+
     if (totalBetAmount > balance) {
+      console.log('[Win Go Bet Debug] Insufficient balance:', { totalBetAmount, balance })
       setToast({
         type: 'loss',
         title: 'Insufficient Balance',
-        detail: 'Please recharge your wallet or choose a smaller amount.',
+        detail: `Required ₹${formatCredits(totalBetAmount)}, but available balance is ₹${formatCredits(balance)}.`,
       })
       return
     }
@@ -702,6 +853,14 @@ export function App() {
       outcome: null,
       createdAt: 'Just now',
     }
+
+    console.log('[Win Go Bet Debug] Placing bet:', {
+      user: currentUser?.username,
+      round: roundNumber,
+      target: selectedTarget,
+      amount: totalBetAmount,
+      balance,
+    })
 
     // Try backend placeBet
     try {
@@ -732,12 +891,14 @@ export function App() {
           ? selectedTarget.val.toUpperCase()
           : 'Number ' + selectedTarget.val
 
+      console.log('[Win Go Bet Debug] Bet confirmed successfully:', newBet)
       setToast({
         type: 'success',
         title: 'Bet Placed Successfully',
         detail: `₹${formatCredits(totalBetAmount)} on ${targetLabel} (${selectedMode})`,
       })
     } catch (err) {
+      console.error('[Win Go Bet Debug] Bet placement error:', err)
       setToast({
         type: 'loss',
         title: 'Bet Rejected',
@@ -798,6 +959,8 @@ export function App() {
                   <Check size={16} />
                 ) : toast.type === 'loss' ? (
                   <ArrowDownRight size={16} />
+                ) : toast.type === 'warning' ? (
+                  <AlertCircle size={16} />
                 ) : (
                   <Info size={16} />
                 )}
@@ -894,10 +1057,19 @@ export function App() {
           <HomeLobby
             balance={balance}
             onRefreshBalance={syncWithBackend}
-            onOpenWithdraw={() => setWithdrawModalOpen(true)}
-            onOpenDeposit={() => setDepositModalOpen(true)}
+            onOpenWithdraw={() => {
+              setActiveNav('withdraw')
+              sound.playTick()
+            }}
+            onOpenDeposit={() => {
+              setActiveNav('deposit')
+              sound.playTick()
+            }}
             onOpenFortuneWheel={() => setFortuneWheelOpen(true)}
-            onOpenVIP={handleClaimVIPBonus}
+            onOpenVIP={() => {
+              setActiveNav('vip')
+              sound.playTick()
+            }}
             onSelectGame={(gameId, modeId) => {
               if (modeId) setSelectedMode(modeId)
               setCurrentGame(gameId)
@@ -911,7 +1083,7 @@ export function App() {
               setToast({
                 type: 'success',
                 title: 'Official App APK',
-                detail: 'Prince Club Android APK download started.',
+                detail: '69 Club Android APK download started.',
               })
             }}
             onMessages={() => {
@@ -925,7 +1097,7 @@ export function App() {
               setToast({
                 type: 'success',
                 title: 'PWA Installed',
-                detail: 'Prince Club shortcut successfully pinned to your screen.',
+                detail: '69 Club shortcut successfully pinned to your screen.',
               })
             }}
           />
@@ -963,10 +1135,23 @@ export function App() {
             userId={currentUser?.id || userId}
             balance={balance}
             onRefreshBalance={syncWithBackend}
-            onOpenDeposit={() => setDepositModalOpen(true)}
-            onOpenWithdraw={() => setWithdrawModalOpen(true)}
+            onOpenWallet={() => {
+              setActiveNav('wallet')
+              sound.playTick()
+            }}
+            onOpenDeposit={() => {
+              setActiveNav('deposit')
+              sound.playTick()
+            }}
+            onOpenWithdraw={() => {
+              setActiveNav('withdraw')
+              sound.playTick()
+            }}
+            onOpenVIP={() => {
+              setActiveNav('vip')
+              sound.playTick()
+            }}
             onOpenFortuneWheel={() => setFortuneWheelOpen(true)}
-            onOpenVIP={handleClaimVIPBonus}
             onOpenRules={() => {
               setCurrentGame('wingo')
               setActiveTab('rules')
@@ -982,12 +1167,166 @@ export function App() {
               sound.playTick()
             }}
             onOpenSupport={() => setHowToPlayOpen(true)}
-
+            onOpenAdmin={() => setAdminModalOpen(true)}
+            onOpenNotification={() => {
+              setActiveNav('notification')
+              sound.playTick()
+            }}
+            onOpenGifts={() => {
+              setActiveNav('gifts')
+              sound.playTick()
+            }}
+            onOpenCoupons={() => {
+              setActiveNav('coupons')
+              sound.playTick()
+            }}
+            onOpenSecurity={() => {
+              setActiveNav('security')
+              sound.playTick()
+            }}
+            onOpenCustomerService={() => {
+              setActiveNav('customerservice')
+              sound.playTick()
+            }}
             onOpenAuth={(mode) => {
               setAuthMode(mode)
               setAuthModalOpen(true)
             }}
             onLogout={handleLogout}
+          />
+        )}
+
+        {/* 2e. Standalone Dedicated Wallet Page */}
+        {currentGame === null && activeNav === 'wallet' && (
+          <WalletPage
+            currentUser={currentUser}
+            balance={balance}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+            onNavigateDeposit={() => {
+              setActiveNav('deposit')
+              sound.playTick()
+            }}
+            onNavigateWithdraw={() => {
+              setActiveNav('withdraw')
+              sound.playTick()
+            }}
+            onRefreshBalance={syncWithBackend}
+            onOpenTransactions={() => setTransactionModalOpen(true)}
+          />
+        )}
+
+        {/* 2f. Standalone Dedicated Deposit Page */}
+        {currentGame === null && activeNav === 'deposit' && (
+          <DepositPage
+            currentUser={currentUser}
+            balance={balance}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+            onBalanceUpdated={(newBal) => {
+              setBalance(newBal)
+              syncWithBackend()
+            }}
+            onOpenHistory={() => setTransactionModalOpen(true)}
+          />
+        )}
+
+        {/* 2g. Standalone Dedicated Withdraw Page */}
+        {currentGame === null && activeNav === 'withdraw' && (
+          <WithdrawPage
+            currentUser={currentUser}
+            balance={balance}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+            onWithdrawSuccess={(newBal) => {
+              setBalance(newBal)
+              syncWithBackend()
+            }}
+            onOpenHistory={() => setTransactionModalOpen(true)}
+          />
+        )}
+
+        {/* 2h. Standalone Dedicated VIP Page */}
+        {currentGame === null && activeNav === 'vip' && (
+          <VIPPage
+            currentUser={currentUser}
+            balance={balance}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+            onClaimVIPBonus={handleClaimVIPBonus}
+            vipLoading={vipBonusLoading}
+          />
+        )}
+
+        {/* 2i. Standalone Dedicated Notification Page */}
+        {currentGame === null && activeNav === 'notification' && (
+          <NotificationPage
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {/* 2j. Standalone Dedicated Gifts Page */}
+        {currentGame === null && activeNav === 'gifts' && (
+          <GiftsPage
+            balance={balance}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+            onRedeemGift={(amt) => {
+              setBalance((b) => b + amt)
+              syncWithBackend()
+            }}
+          />
+        )}
+
+        {/* 2k. Standalone Dedicated Coupons Page */}
+        {currentGame === null && activeNav === 'coupons' && (
+          <CouponsPage
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+            onApplyCouponToDeposit={() => {
+              setActiveNav('deposit')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {/* 2l. Standalone Dedicated Security Page */}
+        {currentGame === null && activeNav === 'security' && (
+          <SecurityPage
+            currentUser={currentUser}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+            onOpenChangePassword={() => {
+              setAuthMode('forgot')
+              setAuthModalOpen(true)
+            }}
+          />
+        )}
+
+        {/* 2m. Standalone Dedicated Customer Service Page */}
+        {currentGame === null && activeNav === 'customerservice' && (
+          <CustomerServicePage
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
           />
         )}
 
@@ -1001,7 +1340,7 @@ export function App() {
                   setCurrentGame(null)
                   setActiveNav('home')
                 }}
-                title="Back to Prince Club Lobby"
+                title="Back to 69 Club Lobby"
               >
                 <ArrowLeft size={20} />
               </button>
@@ -1016,10 +1355,28 @@ export function App() {
             <div
               className={`server-indicator ${serverOnline ? 'online' : 'offline'}`}
               title={serverOnline ? 'Synced with Express & Supabase' : 'Offline Local Mode'}
-              style={{ display: 'flex', alignItems: 'center', gap: 4, marginRight: 4 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                marginRight: 4,
+                background: serverOnline ? '#f0fdf4' : '#fef2f2',
+                border: `1px solid ${serverOnline ? '#bbf7d0' : '#fecaca'}`,
+                borderRadius: 12,
+                padding: '2px 8px',
+              }}
             >
-              <span className="status-dot" />
-              <span className="indicator-label" style={{ fontSize: 11, color: '#94a3b8' }}>{serverOnline ? 'Live' : 'Local'}</span>
+              <span className="status-dot" style={{ background: serverOnline ? '#22c55e' : '#ef4444' }} />
+              <span
+                className="indicator-label"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: serverOnline ? '#16a34a' : '#dc2626',
+                }}
+              >
+                {serverOnline ? 'Live' : 'Local'}
+              </span>
             </div>
 
             {/* VIP Daily Check-In Bonus */}
@@ -1607,7 +1964,7 @@ export function App() {
             <div className="tab-view-container">
               <div className="view-title-header">
                 <h2>Game Rules</h2>
-                <p>Prince Club Presale & Calculation Guide</p>
+                <p>69 Club Presale & Calculation Guide</p>
               </div>
 
               {/* Account Management Card */}
@@ -1823,7 +2180,7 @@ export function App() {
     )}
         </div>
 
-        {/* PRINCE CLUB BOTTOM NAVIGATION BAR */}
+        {/* 69 CLUB BOTTOM NAVIGATION BAR */}
         <nav className="home-55-bottom-nav">
           <button
             className={`nav-55-item ${currentGame === null && activeNav === 'home' ? 'active' : ''}`}
@@ -2094,6 +2451,14 @@ export function App() {
           </div>
         )}
 
+        {/* AUTHORITATIVE DUAL-VERIFIED ADMIN MANAGEMENT DASHBOARD */}
+        <AdminDashboard
+          isOpen={adminModalOpen}
+          onClose={() => setAdminModalOpen(false)}
+          currentUser={currentUser}
+          onUserUpdated={syncWithBackend}
+        />
+
         {/* TOAST NOTIFICATION POPUP */}
         {toast && (
           <div className={`mobile-toast toast-${toast.type}`}>
@@ -2102,6 +2467,8 @@ export function App() {
                 <Check size={16} />
               ) : toast.type === 'loss' ? (
                 <ArrowDownRight size={16} />
+              ) : toast.type === 'warning' ? (
+                <AlertCircle size={16} />
               ) : (
                 <Info size={16} />
               )}

@@ -42,7 +42,7 @@ export const ROUND_DURATION_MS = GAME_MODES.PARITY.durationMs
 export const LOCK_DURATION_MS = GAME_MODES.PARITY.lockMs
 
 // In-memory fallback stores
-const memoryBets = new Map() // betId -> betRecord
+export const memoryBets = new Map() // betId -> betRecord
 
 export function calculateOutcome(roundNumber, mode = 'PARITY') {
   const cfg = GAME_MODES[mode] || GAME_MODES.PARITY
@@ -384,32 +384,36 @@ export async function settleVeerRound(outcome) {
 
 // Background VeerGame settlement poller
 let isVeerPolling = false
-const veerLoopInterval = setInterval(async () => {
-  if (isVeerPolling) return
-  isVeerPolling = true
-  try {
-    const [h30, h1] = await Promise.allSettled([
-      getLiveHistory(30, 1),
-      getLiveHistory(1, 1),
-    ])
-    if (h30.status === 'fulfilled' && Array.isArray(h30.value?.list)) {
-      for (const item of h30.value.list.slice(0, 5)) {
-        await settleVeerRound(item)
-      }
-    }
-    if (h1.status === 'fulfilled' && Array.isArray(h1.value?.list)) {
-      for (const item of h1.value.list.slice(0, 5)) {
-        await settleVeerRound(item)
-      }
-    }
-  } catch {} finally {
-    isVeerPolling = false
-  }
-}, 3000)
+let veerLoopInterval = null
 
-if (veerLoopInterval?.unref) {
-  veerLoopInterval.unref()
-}
+setTimeout(() => {
+  veerLoopInterval = setInterval(async () => {
+    if (isVeerPolling) return
+    isVeerPolling = true
+    try {
+      const [h30, h1] = await Promise.allSettled([
+        getLiveHistory(30, 1),
+        getLiveHistory(1, 1),
+      ])
+      if (h30.status === 'fulfilled' && Array.isArray(h30.value?.list)) {
+        for (const item of h30.value.list.slice(0, 5)) {
+          await settleVeerRound(item)
+        }
+      }
+      if (h1.status === 'fulfilled' && Array.isArray(h1.value?.list)) {
+        for (const item of h1.value.list.slice(0, 5)) {
+          await settleVeerRound(item)
+        }
+      }
+    } catch {} finally {
+      isVeerPolling = false
+    }
+  }, 3500)
+
+  if (veerLoopInterval?.unref) {
+    veerLoopInterval.unref()
+  }
+}, 4000)
 
 // Background Multi-Game Loop
 const gameLoopInterval = setInterval(() => {

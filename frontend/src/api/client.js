@@ -19,7 +19,9 @@ export function getAuthToken() {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       return (
+        window.localStorage.getItem('club69_auth_token') ||
         window.localStorage.getItem('prince_club_auth_token') ||
+        window.sessionStorage?.getItem('club69_auth_token') ||
         window.sessionStorage?.getItem('prince_club_auth_token') ||
         inMemoryToken
       )
@@ -33,8 +35,10 @@ export function setAuthToken(token) {
   try {
     if (typeof window !== 'undefined' && window.localStorage) {
       if (token) {
-        window.localStorage.setItem('prince_club_auth_token', token)
+        window.localStorage.setItem('club69_auth_token', token)
       } else {
+        window.localStorage.removeItem('club69_auth_token')
+        window.sessionStorage?.removeItem('club69_auth_token')
         window.localStorage.removeItem('prince_club_auth_token')
         window.sessionStorage?.removeItem('prince_club_auth_token')
       }
@@ -471,5 +475,109 @@ export async function fetchWalletTransactions(userId) {
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Failed to fetch transaction ledger')
   return json.transactions || []
+}
+
+// ============================================================================
+// DUAL-VERIFIED ADMIN API CLIENT
+// ============================================================================
+
+function adminHeaders(adminKey) {
+  return {
+    ...authHeaders(),
+    'x-admin-key': adminKey,
+  }
+}
+
+export async function verifyAdminAccess(adminKey) {
+  const res = await fetch(`${API_BASE}/admin/verify`, {
+    method: 'POST',
+    headers: adminHeaders(adminKey),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Admin verification failed')
+  return json
+}
+
+export async function fetchAdminMatrix(adminKey) {
+  const res = await fetch(`${API_BASE}/admin/matrix`, {
+    headers: adminHeaders(adminKey),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch admin matrix')
+  return json.matrix
+}
+
+export async function fetchAdminBetsLedger(adminKey, params = {}) {
+  const q = new URLSearchParams(params).toString()
+  const res = await fetch(`${API_BASE}/admin/bets${q ? `?${q}` : ''}`, {
+    headers: adminHeaders(adminKey),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch bets ledger')
+  return json
+}
+
+export async function fetchAdminUsers(adminKey, search = '') {
+  const q = search ? `?search=${encodeURIComponent(search)}` : ''
+  const res = await fetch(`${API_BASE}/admin/users${q}`, {
+    headers: adminHeaders(adminKey),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to list users')
+  return json.users || []
+}
+
+export async function adminUpdateUserBalance(adminKey, userId, amount, action = 'credit', reason = '') {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/balance`, {
+    method: 'POST',
+    headers: adminHeaders(adminKey),
+    body: JSON.stringify({ amount, action, reason }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to update user balance')
+  return json
+}
+
+export async function adminUpdateUserRole(adminKey, userId, role) {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/role`, {
+    method: 'PATCH',
+    headers: adminHeaders(adminKey),
+    body: JSON.stringify({ role }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to update user role')
+  return json
+}
+
+export async function adminUpdateUserStatus(adminKey, userId, status) {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}/status`, {
+    method: 'PATCH',
+    headers: adminHeaders(adminKey),
+    body: JSON.stringify({ status }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to update user status')
+  return json
+}
+
+export async function adminDeleteUser(adminKey, userId) {
+  const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
+    method: 'DELETE',
+    headers: adminHeaders(adminKey),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to delete user')
+  return json
+}
+
+export async function adminPromoteUser(adminKey, identity) {
+  const res = await fetch(`${API_BASE}/admin/promote`, {
+    method: 'POST',
+    headers: adminHeaders(adminKey),
+    body: JSON.stringify({ identity }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to promote user')
+  return json
 }
 

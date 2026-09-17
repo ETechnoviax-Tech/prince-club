@@ -7,7 +7,8 @@ class SlotSoundEngine {
     this.ctx = null
     this.isMuted = false
     try {
-      this.isMuted = localStorage.getItem('prince_slot_muted') === 'true'
+      const saved = localStorage.getItem('club69_slot_muted') || localStorage.getItem('prince_slot_muted')
+      this.isMuted = saved === 'true'
     } catch {
       this.isMuted = false
     }
@@ -27,7 +28,7 @@ class SlotSoundEngine {
   toggleMute() {
     this.isMuted = !this.isMuted
     try {
-      localStorage.setItem('prince_slot_muted', String(this.isMuted))
+      localStorage.setItem('club69_slot_muted', String(this.isMuted))
     } catch {}
     return this.isMuted
   }

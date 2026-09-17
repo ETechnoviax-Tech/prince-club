@@ -36,7 +36,7 @@ export async function sendWhatsAppOTP({ to, otpCode, username = 'Player' }) {
     throw new Error('Valid WhatsApp phone number with country code is required (e.g. +919876543210)')
   }
 
-  const messageText = `🔒 *Prince Club Verification*\n\nHello ${username},\nYour security OTP verification code is:\n\n👉 *${otpCode}*\n\nThis code is valid for 15 minutes. Do not share this OTP with anyone for account safety.`
+  const messageText = `🔒 *69 Club Verification*\n\nHello ${username},\nYour security OTP verification code is:\n\n👉 *${otpCode}*\n\nThis code is valid for 15 minutes. Do not share this OTP with anyone for account safety.`
 
   const metaToken = process.env.WHATSAPP_API_TOKEN
   const metaPhoneId = process.env.WHATSAPP_PHONE_NUMBER_ID
@@ -129,11 +129,11 @@ export async function sendEmailOTP({ to, otpCode, username = 'Player' }) {
     throw new Error('Valid email address is required')
   }
 
-  const subject = `Prince Club - Your Verification Code: ${otpCode}`
-  const textBody = `Hello ${username},\n\nYour Prince Club security verification code is: ${otpCode}\n\nValid for 15 minutes. Do not share this OTP.`
+  const subject = `69 Club - Your Verification Code: ${otpCode}`
+  const textBody = `Hello ${username},\n\nYour 69 Club security verification code is: ${otpCode}\n\nValid for 15 minutes. Do not share this OTP.`
   const htmlBody = `
     <div style="font-family: Arial, sans-serif; background: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; max-width: 480px;">
-      <h2 style="color: #38bdf8; margin-top: 0;">Prince Club Verification</h2>
+      <h2 style="color: #38bdf8; margin-top: 0;">69 Club Verification</h2>
       <p style="font-size: 14px; color: #94a3b8;">Hello <strong>${username}</strong>,</p>
       <p style="font-size: 14px; color: #cbd5e1;">Use the following 6-digit one-time verification code to verify your account or reset your password:</p>
       <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 18px; text-align: center; margin: 20px 0;">
@@ -145,7 +145,7 @@ export async function sendEmailOTP({ to, otpCode, username = 'Player' }) {
 
   // 1. Resend REST API integration (if RESEND_API_KEY is configured)
   const resendKey = process.env.RESEND_API_KEY
-  const senderEmail = process.env.EMAIL_FROM || 'Prince Club <noreply@princeclub.in>'
+  const senderEmail = process.env.EMAIL_FROM || '69 Club <noreply@club69.in>'
 
   if (resendKey) {
     try {

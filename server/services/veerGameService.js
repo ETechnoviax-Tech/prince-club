@@ -8,18 +8,20 @@ const CLUB55_ORIGIN = 'https://ayhbaw55.com'
 const VEER_API_BASE = 'https://api.veergameapi.com/api/webapi'
 const VEER_ORIGIN = 'https://www.veergame32.com'
 
-// 3. Tertiary mirror
-const MIRROR3_API_BASE = 'https://api.55clubapi.net/api/webapi'
-const MIRROR3_ORIGIN = 'https://www.55club.io'
+// 3. Tertiary mirror (disabled — domain unreachable)
+// const MIRROR3_API_BASE = 'https://api.55clubapi.net/api/webapi'
+// const MIRROR3_ORIGIN = 'https://www.55club.io'
 
 // Circuit breaker — prevents hammering unreachable servers
 const circuit = {
   failures: 0,
   open: false,
   openedAt: 0,
-  THRESHOLD: 1,          // open immediately on first all-server failure
+  THRESHOLD: 3,          // require 3 consecutive all-server failures before opening
   RESET_AFTER_MS: 60000, // retry after 60s
   lastWarnAt: 0,         // throttle console.warn to once per 60s
+  startupGraceMs: 8000,  // ignore failures for 8s after process start (network warmup)
+  startedAt: Date.now(),
 }
 
 function generateRandomHex() {
@@ -86,7 +88,6 @@ export async function call55ClubAPI(endpoint, data = {}) {
   const servers = [
     { base: CLUB55_API_BASE, origin: CLUB55_ORIGIN, name: '55club' },
     { base: VEER_API_BASE, origin: VEER_ORIGIN, name: 'veergame' },
-    { base: MIRROR3_API_BASE, origin: MIRROR3_ORIGIN, name: '55club_mirror3' },
   ]
 
   let lastErr = null
@@ -121,12 +122,15 @@ export async function call55ClubAPI(endpoint, data = {}) {
     }
   }
 
-  // All servers failed — trip circuit breaker
-  circuit.failures++
-  if (circuit.failures >= circuit.THRESHOLD && !circuit.open) {
-    circuit.open = true
-    circuit.openedAt = Date.now()
-    console.warn('[55CLUB API] Circuit breaker OPEN — all servers unreachable. Switching to local fallback for 60s.')
+  // All servers failed — trip circuit breaker (ignore during startup grace period)
+  const inGrace = (Date.now() - circuit.startedAt) < circuit.startupGraceMs
+  if (!inGrace) {
+    circuit.failures++
+    if (circuit.failures >= circuit.THRESHOLD && !circuit.open) {
+      circuit.open = true
+      circuit.openedAt = Date.now()
+      console.warn('[55CLUB API] Circuit breaker OPEN — all servers unreachable. Switching to local fallback for 60s.')
+    }
   }
 
   throw lastErr || new Error(`All 55club API servers failed for ${endpoint}`)

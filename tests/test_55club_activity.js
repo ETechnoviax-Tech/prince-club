@@ -29,7 +29,7 @@ function runTests() {
   const activityJsxPath = path.join(rootDir, 'frontend', 'src', 'components', 'ActivityView.jsx')
   const activityJsx = fs.readFileSync(activityJsxPath, 'utf8')
 
-  assert(activityJsx.includes('PRINCE CLUB'), 'ActivityView contains PRINCE CLUB branding text')
+  assert(activityJsx.includes('69 CLUB'), 'ActivityView contains 69 CLUB branding text')
   assert(activityJsx.includes('Today\'s bonus') && activityJsx.includes('Total bonus'), 'ActivityView displays Today\'s and Total bonus counters')
   assert(activityJsx.includes('Bonus details'), 'ActivityView contains Bonus details trigger button')
   assert(
@@ -60,9 +60,9 @@ function runTests() {
     'ActivityView contains ARBET Invite Friends sports promotional banner'
   )
   assert(
-    activityJsx.includes('PRINCE CLUB MEGA SPIN WHEEL') ||
+    activityJsx.includes('69 CLUB MEGA SPIN WHEEL') ||
     activityJsx.includes('Mega Spin Wheel'),
-    'ActivityView contains PRINCE CLUB Mega Spin Wheel banner'
+    'ActivityView contains 69 CLUB Mega Spin Wheel banner'
   )
 
   // 4. Check Modals

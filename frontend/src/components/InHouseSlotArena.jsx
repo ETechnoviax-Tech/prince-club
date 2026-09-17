@@ -326,7 +326,7 @@ export function InHouseSlotArena({
           <span className="slot-brand-logo">👑</span>
           <div>
             <h1 className="slot-title">{SLOT_GAMES.find(g => g.id === activeGame)?.name}</h1>
-            <span className="slot-tag">PRINCE CASINO · 0% FEE</span>
+            <span className="slot-tag">69 CASINO · 0% FEE</span>
           </div>
         </div>
 

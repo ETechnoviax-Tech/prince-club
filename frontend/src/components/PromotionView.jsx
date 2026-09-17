@@ -35,14 +35,14 @@ export function PromotionView({ userId, onCopyNotification }) {
 
   const handleShareWhatsApp = () => {
     const text = encodeURIComponent(
-      `🔥 Join me on Prince Club! Real-time Color Trading & Aviator games with instant UPI payouts. Use my invite code: ${referralCode} to get free ₹100 welcome bonus!\n${referralLink}`
+      `🔥 Join me on 69 Club! Real-time Color Trading & Aviator games with instant UPI payouts. Use my invite code: ${referralCode} to get free ₹100 welcome bonus!\n${referralLink}`
     )
     window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank')
   }
 
   const handleShareTelegram = () => {
     const text = encodeURIComponent(
-      `🔥 Join Prince Club! Color Prediction & Aviator. Code: ${referralCode}`
+      `🔥 Join 69 Club! Color Prediction & Aviator. Code: ${referralCode}`
     )
     window.open(`https://t.me/share/url?url=${encodeURIComponent(referralLink)}&text=${text}`, '_blank')
   }
