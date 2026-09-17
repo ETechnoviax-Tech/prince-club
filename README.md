@@ -211,6 +211,36 @@ You can deploy the backend to Render either using the native Node environment or
    - `ADMIN_IDENTIFIER`: `your-admin-phone`
 5. In Render **Settings** -> **Custom Domains**, add `api.69club1.site`. Add the CNAME record indicated by Render to your DNS provider.
 
+#### Method B: AWS EC2 / Ubuntu VPS Deployment
+1. Connect to your EC2 instance via SSH:
+   ```bash
+   ssh -i your-key.pem ubuntu@YOUR_EC2_IP
+   ```
+2. Install Node.js 20, Git, and PM2:
+   ```bash
+   curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+   sudo apt-get install -y nodejs git
+   sudo npm install -g pm2
+   ```
+3. Clone repository and install dependencies:
+   ```bash
+   git clone https://github.com/ETechnoviax-Tech/prince-club.git
+   cd prince-club
+   npm install --omit=dev
+   ```
+4. Copy production environment file:
+   ```bash
+   cp .env.production.example .env.production
+   nano .env.production  # input your Supabase keys
+   ```
+5. Launch backend with PM2 cluster:
+   ```bash
+   pm2 start ecosystem.config.cjs
+   pm2 save
+   pm2 startup
+   ```
+6. In Cloudflare DNS, add an **A record** for `api` pointing to your EC2 Public IP (`api.69club1.site` -> `YOUR_EC2_IP`).
+
 ---
 
 ### 2. Frontend on Cloudflare Pages (`69club1.site`)

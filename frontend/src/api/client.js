@@ -25,28 +25,27 @@ export function resolveApiBase() {
       return clean.endsWith('/api') ? clean : `${clean}/api`
     }
 
-    // B. Single-deployment platforms (e.g. Vercel preview/production *.vercel.app)
-    if (hostname.endsWith('.vercel.app')) {
-      return `${window.location.origin}/api`
-    }
-
-    // C. Production custom domain in browser (e.g. 69club1.site or any future domain)
-    if (explicitUrl && !explicitUrl.includes('localhost') && !explicitUrl.includes('127.0.0.1')) {
+    // B. Explicit external production API URL (e.g. when pointing frontend to Render https://api.69club1.site)
+    if (
+      explicitUrl &&
+      (explicitUrl.startsWith('https://') || explicitUrl.startsWith('http://')) &&
+      !explicitUrl.includes('localhost') &&
+      !explicitUrl.includes('127.0.0.1')
+    ) {
       const clean = String(explicitUrl).replace(/\/+$/, '')
       return clean.endsWith('/api') ? clean : `${clean}/api`
     }
 
-    // Extract root domain (removes 'www.' or any subdomain prefix)
+    // C. Dynamic subdomain routing for custom production domains (e.g. 69club1.site -> https://api.69club1.site/api)
     const hostParts = hostname.split('.')
-    const rootDomain =
-      hostParts.length > 2 && hostParts[0] === 'www'
-        ? hostParts.slice(1).join('.')
-        : hostname
+    if (hostParts.length >= 2 && !hostname.endsWith('.vercel.app')) {
+      const rootDomain = hostParts.length > 2 && hostParts[0] === 'www' ? hostParts.slice(1).join('.') : hostname
+      const apiDomain = metaEnv.VITE_API_DOMAIN || procEnv.VITE_API_DOMAIN || `api.${rootDomain}`
+      return `https://${apiDomain}/api`
+    }
 
-    // Resolve to configured API subdomain from env or default to `api.${rootDomain}`
-    const apiDomain = metaEnv.VITE_API_DOMAIN || procEnv.VITE_API_DOMAIN || `api.${rootDomain}`
-    const protocol = window.location.protocol === 'http:' ? 'http:' : 'https:'
-    return `${protocol}//${apiDomain}/api`
+    // D. Fallback for single-deployment preview environments
+    return `${window.location.origin}/api`
   }
 
   // SSR / Node testing fallback
