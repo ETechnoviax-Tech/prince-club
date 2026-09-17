@@ -11,7 +11,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **Dragon vs Tiger**: 2-card table duel with an 8-deck shoe simulation, 10s countdown intervals, and bead plate roadmap history.
   - **In-House Slots**: Native slots including Crazy 777 (with 4th bonus reel), Fortune Gems (with 15x multiplier wheel), and Super Ace (243 ways).
 - **Lottery Games**: Live period rounds across Win Go (30s, 1m, 3m, 5m) synchronized with official live draw streams, K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
-- **Aviator Crash Game**: Multiplier curve rendered on HTML5 canvas with manual and auto cashout.
+- **Real-Time Aviator Crash Game**: Authoritative Spribe-style multiplayer crash game with per-user concurrency mutex locks, 60 FPS interpolated flight curves, animated preparation loading bar, community player roster, and live cashouts ticker.
 - **Dual-Verification Admin Management & Risk Matrix**:
   - **Dual Security Layer**: Mandatory 2-step verification requiring Database Role validation (`admin`) AND Backend Master Secret (`ADMIN_SECRET_KEY`).
   - **Live Bet Distribution Matrix**: Real-time aggregation of bet volumes across Color markets (Red, Green, Violet), Size markets (Big, Small), and individual Digits (0 to 9).
@@ -32,6 +32,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - Dedicated full-screen subpages with seamless back-navigation: Wallet Center (`WalletPage.jsx`), Fast Deposit (`DepositPage.jsx`), Instant Withdrawal (`WithdrawPage.jsx`), VIP Club (`VIPPage.jsx`), Notification Center (`NotificationPage.jsx`), Gifts & Hongbao Rewards (`GiftsPage.jsx`), Top-Up Coupons (`CouponsPage.jsx`), Security Center (`SecurityPage.jsx`), and 24/7 Customer Service (`CustomerServicePage.jsx`).
 - **Anti-Inspect & Client Security Shield**:
   - Global protection engine (`antiInspect.js`) blocking right-click context menu, DevTools inspection shortcuts (`F12`, `Ctrl+Shift+I/J/C`), and source view (`Ctrl+U`), paired with CSS text-selection lockout and console sanitization.
+- **Universal Site Loading Spinner & Top Progress Bar**: Automated API interceptor driving a sleek neon gradient top progress bar during network operations and a branded double-ring spinner overlay for high-friction workflows.
 - **Audio Isolation & Sound Shield**: Zero background sounds or countdown ticks for unauthenticated visitors, authentication modals, or non-active game viewports; game audio only initializes for logged-in players inside active game arenas.
 - **Bonus & Activity System**: Daily attendance streak rewards, gift redemption codes, betting rebates, and daily fortune wheel spins.
 - **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, iOS Safe Area insets, touch targets, and desktop-centered canvas.

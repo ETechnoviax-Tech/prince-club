@@ -62,6 +62,7 @@ import ActivityView from './components/ActivityView'
 import PromotionView from './components/PromotionView'
 import AccountView from './components/AccountView'
 import { AdminDashboard } from './components/admin/AdminDashboard'
+import GlobalLoadingSpinner from './components/GlobalLoadingSpinner'
 
 import WalletPage from './components/pages/WalletPage'
 import DepositPage from './components/pages/DepositPage'
@@ -996,6 +997,9 @@ export function App() {
   return (
     <div className="mobile-app-wrapper">
       <div className="mobile-app-container">
+        {/* Universal Site Loading Spinner & Top Progress Bar */}
+        <GlobalLoadingSpinner />
+
         {/* MAIN SCROLLABLE VIEWPORT */}
         <div className="app-main-viewport">
           {/* 1. Aviator Game Arena */}

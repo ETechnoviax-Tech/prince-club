@@ -56,6 +56,24 @@ export function resolveApiBase() {
 
 export const API_BASE = resolveApiBase()
 
+// Global loading bus hooks
+import { triggerLoadingStart, triggerLoadingEnd } from '../components/GlobalLoadingSpinner.jsx'
+
+export async function apiFetch(url, options = {}, loadingText = 'Loading...', withOverlay = false) {
+  const isSilent = Boolean(options?.silent)
+  if (!isSilent) {
+    triggerLoadingStart(loadingText, withOverlay)
+  }
+  try {
+    const res = await fetch(url, options)
+    return res
+  } finally {
+    if (!isSilent) {
+      triggerLoadingEnd()
+    }
+  }
+}
+
 // Token Management (Browser & Node safe)
 let inMemoryToken = null
 
@@ -103,11 +121,11 @@ function authHeaders() {
 }
 
 export async function loginUser(username, password) {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  const res = await apiFetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password }),
-  })
+  }, 'Logging in...', true)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(json.error || 'Failed to authenticate')
@@ -119,11 +137,11 @@ export async function loginUser(username, password) {
 }
 
 export async function signupUser(username, email, password, referralCode) {
-  const res = await fetch(`${API_BASE}/auth/signup`, {
+  const res = await apiFetch(`${API_BASE}/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, email, password, referralCode }),
-  })
+  }, 'Creating account...', true)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(json.error || 'Failed to register')
@@ -135,14 +153,14 @@ export async function signupUser(username, email, password, referralCode) {
 }
 
 export async function forgotPassword(identity, channel = 'AUTO') {
-  const res = await fetch(`${API_BASE}/auth/forgot-password`, {
+  const res = await apiFetch(`${API_BASE}/auth/forgot-password`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identity, channel }),
-  })
+  }, 'Sending OTP...', true)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
-    throw new Error(json.error || 'Failed to request reset code')
+    throw new Error(json.error || 'Failed to send OTP')
   }
   return json
 }

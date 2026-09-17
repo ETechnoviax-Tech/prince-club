@@ -4539,8 +4539,62 @@ button {
   pointer-events: none;
 }
 
+.aviator-live-stats-bar {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.aviator-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #cbd5e1;
+  backdrop-filter: blur(4px);
+}
+
+.aviator-live-tag {
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  animation: pulse 1.2s infinite alternate;
+}
+
+.aviator-history-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  padding-left: 6px;
+}
+
 .aviator-waiting-box {
   text-align: center;
+  width: 85%;
+  max-width: 320px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 16px 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
 }
 
 .aviator-spinner {
@@ -4549,57 +4603,182 @@ button {
   border-radius: 50%;
   border: 3px solid rgba(255, 255, 255, 0.1);
   border-top-color: #ef4444;
-  margin: 0 auto 10px;
-  animation: spinSlow 1s linear infinite;
+  margin: 0 auto 8px;
+  animation: spinSlow 0.9s linear infinite;
 }
 
 .aviator-wait-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
+  color: #cbd5e1;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.aviator-wait-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
   color: #94a3b8;
-  letter-spacing: 0.5px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.aviator-progress-track {
-  width: 140px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  margin: 0 auto;
+.aviator-wait-countdown strong {
+  font-size: 18px;
+  font-weight: 900;
+  color: #ef4444;
+  font-family: monospace;
+}
+
+/* HIGH-VISIBILITY ANIMATED LOADING BAR */
+.aviator-loading-bar-container {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  margin: 0 auto 10px;
   overflow: hidden;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.5);
+  position: relative;
 }
 
-.aviator-progress-fill {
+.aviator-loading-bar-fill {
   height: 100%;
-  background: #ef4444;
-  transition: width 0.1s linear;
+  background: linear-gradient(90deg, #f59e0b 0%, #ef4444 60%, #dc2626 100%);
+  border-radius: 8px;
+  transition: width 0.15s ease-out;
+  position: relative;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.8);
+}
+
+.aviator-loading-bar-shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmer 1.2s infinite;
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.aviator-wait-subtext {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.inline-icon {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.aviator-flying-box {
+  text-align: center;
 }
 
 .aviator-mult-num {
-  font-size: 54px;
+  font-size: 58px;
   font-weight: 900;
   color: #ffffff;
   font-family: monospace;
-  text-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+  text-shadow: 0 4px 24px rgba(239, 68, 68, 0.6);
+  line-height: 1;
+}
+
+.aviator-flight-speed {
+  font-size: 11px;
+  font-weight: 800;
+  color: #fca5a5;
+  letter-spacing: 1.5px;
+  margin-top: 6px;
+  animation: pulse 1s infinite alternate;
 }
 
 .aviator-crashed-box {
   text-align: center;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 16px 24px;
+  border-radius: 16px;
+  backdrop-filter: blur(8px);
 }
 
 .aviator-crash-label {
   font-size: 20px;
   font-weight: 900;
   color: #ef4444;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 }
 
 .aviator-crash-mult {
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 900;
   color: #ef4444;
   font-family: monospace;
+}
+
+.aviator-crash-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+/* Floating Cashout Ticker */
+.aviator-live-cashout-ticker {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(16, 185, 129, 0.9);
+  color: #ffffff;
+  border-radius: 20px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 800;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+  animation: slideUpFade 0.3s ease-out;
+  z-index: 10;
+}
+
+.ticker-badge {
+  background: rgba(0, 0, 0, 0.25);
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+.ticker-mult {
+  color: #fef08a;
+  font-weight: 900;
+}
+
+.ticker-payout {
+  font-weight: 900;
+}
+
+@keyframes slideUpFade {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Aviator Betting Panel */
@@ -4760,6 +4939,113 @@ button {
   color: #ffffff;
   font-size: 14px;
   cursor: not-allowed;
+}
+
+.btn-loading {
+  opacity: 0.85;
+  cursor: wait !important;
+}
+
+.btn-inner-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-spin {
+  animation: spinSlow 1s linear infinite;
+}
+
+/* Aviator Live Bets Roster */
+.aviator-roster-section {
+  margin: 14px 14px 20px;
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.aviator-roster-tabs {
+  display: flex;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.roster-tab {
+  flex: 1;
+  padding: 10px 0;
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.roster-tab.active {
+  color: #ef4444;
+  border-bottom-color: #ef4444;
+  background: #ffffff;
+}
+
+.aviator-roster-content {
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 8px 12px;
+}
+
+.roster-empty {
+  text-align: center;
+  font-size: 12px;
+  color: #94a3b8;
+  padding: 24px 0;
+}
+
+.roster-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 4px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 12px;
+}
+
+.roster-row:last-child {
+  border-bottom: none;
+}
+
+.roster-user {
+  font-weight: 700;
+  color: #334155;
+  flex: 1;
+}
+
+.roster-bet {
+  font-weight: 700;
+  color: #64748b;
+  width: 60px;
+  text-align: right;
+}
+
+.roster-mult {
+  font-weight: 800;
+  color: #d97706;
+  width: 60px;
+  text-align: right;
+}
+
+.roster-payout {
+  font-weight: 900;
+  color: #16a34a;
+  width: 75px;
+  text-align: right;
+}
+
+.row-lost .roster-payout {
+  color: #ef4444;
 }
 
 /* ==========================================================================
@@ -14625,6 +14911,142 @@ input, textarea {
   line-height: 1.4;
 }
 
+/* ==========================================================================
+   UNIVERSAL SITE LOADING SPINNER & TOP PROGRESS BAR
+   ========================================================================== */
+.site-top-loader-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3.5px;
+  background: rgba(239, 68, 68, 0.15);
+  z-index: 9999;
+  overflow: hidden;
+  pointer-events: none;
+}
 
+.site-top-loader-progress {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff6054 0%, #f2413b 40%, #fbbf24 80%, #ff6054 100%);
+  background-size: 200% 100%;
+  animation: siteTopLoaderAnim 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  box-shadow: 0 0 10px rgba(242, 65, 59, 0.8);
+}
 
+@keyframes siteTopLoaderAnim {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(0%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
 
+.site-loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 9998;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.site-loading-card {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  border-radius: 20px;
+  padding: 24px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.35);
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 160px;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.site-loading-spinner-ring {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 3.5px solid #f1f5f9;
+  border-top-color: #f2413b;
+  border-right-color: #ff6054;
+  position: relative;
+  animation: siteSpinnerRotate 0.8s linear infinite;
+  box-shadow: 0 0 14px rgba(242, 65, 59, 0.25);
+}
+
+.spinner-inner-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  margin-left: -4px;
+  border-radius: 50%;
+  background: #f2413b;
+  animation: pulse 1s infinite alternate;
+}
+
+@keyframes siteSpinnerRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.site-loading-brand {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 14px;
+}
+
+.site-loading-brand .brand-badge {
+  background: linear-gradient(135deg, #f2413b 0%, #d32f2f 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(242, 65, 59, 0.4);
+}
+
+.site-loading-brand .brand-name {
+  font-size: 12px;
+  font-weight: 900;
+  color: #1e293b;
+  letter-spacing: 0.8px;
+}
+
+.site-loading-text {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  margin-top: 6px;
+  letter-spacing: 0.2px;
+}

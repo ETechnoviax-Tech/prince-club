@@ -191,3 +191,20 @@
 - Files: `frontend/src/utils/audio.js`, `frontend/src/App.jsx`, `tests/test_audio_guards.js`
 - Dependencies: Web Audio API, React 18
 - Last change: 2026-09-17 — Silenced Win Go countdown and settlement sounds for unauthenticated or non-gaming states.
+
+## Aviator Real-Time Multiplayer Engine & Concurrency Shield
+- Status: done
+- Purpose: High-frequency authoritative Aviator crash game with concurrency mutex locks and glowing loading bar.
+- Key logic: Per-user Promise mutex preventing concurrent double-spends; 60 FPS RAF canvas multiplier interpolation; 6s waiting countdown loading bar; live community player roster and cashouts ticker.
+- Files: `server/controllers/aviatorController.js`, `frontend/src/components/AviatorGame.jsx`, `frontend/src/styles.css`, `tests/test_aviator_concurrency.js`
+- Dependencies: Web Audio API, Canvas API, Express, Supabase
+- Last change: 2026-09-17 — Added per-user mutex locks, live community bets simulation, 60 FPS interpolation, and takeoff loading bar.
+
+## Universal Site Loading Spinner & Top Progress Bar
+- Status: done
+- Purpose: Universal animated loading progress bar and branded spinner overlay across the entire application.
+- Key logic: Automated API interceptor in `apiFetch`, top animated gradient progress line, 55CLUB branded double-ring spinner overlay with backdrop blur.
+- Files: `frontend/src/components/GlobalLoadingSpinner.jsx`, `frontend/src/api/client.js`, `frontend/src/styles.css`, `frontend/src/App.jsx`
+- Dependencies: React 18, Vanilla CSS
+- Last change: 2026-09-17 — Integrated global top loading bar and branded loading overlay for all async network operations.
+
