@@ -49,8 +49,8 @@ app.use(
   })
 )
 
-// Health check with dynamic domain information
-app.get('/api/health', (req, res) => {
+// Health check with dynamic domain information (supports /health, /api/health, /ping, /)
+const healthHandler = (req, res) => {
   res.json({
     status: 'ok',
     service: '69 Club API',
@@ -64,7 +64,12 @@ app.get('/api/health', (req, res) => {
     supabaseConnected: isSupabaseConfigured,
     timestamp: new Date().toISOString(),
   })
-})
+}
+
+app.get('/health', healthHandler)
+app.get('/api/health', healthHandler)
+app.get('/ping', healthHandler)
+app.get('/', healthHandler)
 
 // Routes
 app.use('/api/auth', authRoutes)
