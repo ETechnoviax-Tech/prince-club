@@ -180,9 +180,9 @@
 ## Containerization & Cloud Deployment (Docker, EC2, Render, Cloudflare)
 - Status: done
 - Purpose: Multi-target deployment setup for AWS EC2/PM2 or Render (backend) and Cloudflare Pages (frontend).
-- Key logic: Root ecosystem.config.cjs for EC2 cluster, render.yaml & Dockerfiles for containerized API, SPA _redirects for Cloudflare Pages.
-- Files: `ecosystem.config.cjs`, `render.yaml`, `Dockerfile.server`, `server/Dockerfile`, `frontend/public/_redirects`, `frontend/.env.production`
+- Key logic: Root ecosystem.config.cjs for EC2 cluster, render.yaml & Dockerfiles for containerized API, native wrangler.jsonc SPA assets config for Cloudflare.
+- Files: `ecosystem.config.cjs`, `render.yaml`, `Dockerfile.server`, `server/Dockerfile`, `frontend/wrangler.jsonc`, `frontend/.env.production`
 - Dependencies: Docker, PM2, Render, Cloudflare Pages
-- Last change: 2026-09-17 — Added PM2 cluster configuration for EC2 and configured production Cloudflare Pages API routing.
+- Last change: 2026-09-17 — Replaced _redirects with native Cloudflare wrangler.jsonc SPA assets config (code 100324 fix).
 
 
