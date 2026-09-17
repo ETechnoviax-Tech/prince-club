@@ -91,15 +91,30 @@ cd frontend && npm install && cd ..
 ```
 
 ### 2. Environment Setup
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (see `.env.example` for full reference):
 ```env
 PORT=5000
+NODE_ENV=development
+
+# Domain & API Routing Configuration (Change here to switch domains without touching code)
+APP_DOMAIN=69club1.site
+API_DOMAIN=api.69club1.site
+FRONTEND_URL=https://69club1.site
+API_URL=https://api.69club1.site
+
+# Frontend Vite Environment
+VITE_APP_DOMAIN=69club1.site
+VITE_API_DOMAIN=api.69club1.site
 VITE_API_BASE_URL=http://localhost:5000
+VITE_API_URL=http://localhost:5000/api
+
+# Database & Security
 SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 JWT_SECRET=your-jwt-secret-key
 ADMIN_SECRET_KEY=your-admin-secret-key
+ADMIN_IDENTIFIER=your-admin-phone-or-email
 PAYMENT_WEBHOOK_SECRET=your-webhook-hmac-secret
 MERCHANT_UPI_VPA=merchant@upi
 MERCHANT_NAME=69 Club
@@ -107,8 +122,13 @@ MERCHANT_NAME=69 Club
 
 Create `frontend/.env`:
 ```env
+VITE_APP_DOMAIN=69club1.site
+VITE_API_DOMAIN=api.69club1.site
 VITE_API_BASE_URL=http://localhost:5000
+VITE_API_URL=http://localhost:5000/api
 ```
+
+> **Note on Zero-Hardcoding**: When you change domains in production, simply update `APP_DOMAIN` and `API_DOMAIN` in `.env`. The backend dynamically updates CORS, origin filters, and health checks, and the frontend automatically resolves to `api.<domain>` in production while seamlessly using `localhost:5000` in local development.
 
 ### 3. Database Migration
 1. Run `server/db/schema.sql` in your Supabase SQL editor to create the core tables and game schemas.

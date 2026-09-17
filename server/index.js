@@ -10,6 +10,7 @@ dotenv.config({ path: path.resolve(__dirname, '.env') })
 dotenv.config()
 
 import { isSupabaseConfigured } from './config/supabase.js'
+import { APP_DOMAIN, API_DOMAIN, FRONTEND_URL, API_URL, isOriginAllowed } from './config/domain.js'
 import authRoutes from './routes/authRoutes.js'
 import gameRoutes from './routes/gameRoutes.js'
 import paymentRoutes from './routes/paymentRoutes.js'
@@ -19,20 +20,47 @@ import adminRoutes from './routes/adminRoutes.js'
 const app = express()
 const PORT = process.env.PORT || 5000
 
+// Dynamic CORS: supports localhost in dev & dynamic APP_DOMAIN/API_DOMAIN from .env
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isOriginAllowed(origin)) {
+      return callback(null, true)
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`))
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'x-admin-key',
+    'Idempotency-Key',
+    'x-webhook-signature',
+  ],
+}
+
 // Middleware
-app.use(cors())
-app.use(express.json({
-  verify: (req, res, buf) => {
-    req.rawBody = buf.toString()
-  }
-}))
+app.use(cors(corsOptions))
+app.use(
+  express.json({
+    verify: (req, res, buf) => {
+      req.rawBody = buf.toString()
+    },
+  })
+)
 
-
-// Health check
+// Health check with dynamic domain information
 app.get('/api/health', (req, res) => {
   res.json({
     status: 'ok',
     service: '69 Club API',
+    domain: {
+      app: APP_DOMAIN,
+      api: API_DOMAIN,
+      frontendUrl: FRONTEND_URL,
+      apiUrl: API_URL,
+      environment: process.env.NODE_ENV || 'development',
+    },
     supabaseConnected: isSupabaseConfigured,
     timestamp: new Date().toISOString(),
   })

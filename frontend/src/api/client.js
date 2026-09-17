@@ -1,16 +1,56 @@
-// Environment-aware Base URL detection (Vite client, Node test, or SSR)
+// Environment-aware & Domain-aware Base URL detection (Zero hardcoding)
+// Automatically handles:
+// 1. Local Development (localhost:5173 -> localhost:5000)
+// 2. Production with .env (VITE_API_URL or VITE_API_BASE_URL)
+// 3. Browser runtime domain auto-detection: If hosted on 69club1.site (or any future domain),
+//    automatically resolves to `https://api.${rootDomain}/api`!
 const metaEnv = typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env : {}
 const procEnv = typeof process !== 'undefined' && process.env ? process.env : {}
 
-const ENV_URL =
-  metaEnv.VITE_API_BASE_URL ||
-  metaEnv.VITE_API_URL ||
-  procEnv.VITE_API_BASE_URL ||
-  procEnv.VITE_API_URL ||
-  'http://localhost:5000'
+export function resolveApiBase() {
+  const explicitUrl =
+    metaEnv.VITE_API_URL ||
+    metaEnv.VITE_API_BASE_URL ||
+    procEnv.VITE_API_URL ||
+    procEnv.VITE_API_BASE_URL
 
-const CLEAN_URL = String(ENV_URL).replace(/\/+$/, '')
-const API_BASE = CLEAN_URL.endsWith('/api') ? CLEAN_URL : `${CLEAN_URL}/api`
+  // Browser runtime detection
+  if (typeof window !== 'undefined' && window.location) {
+    const hostname = window.location.hostname
+
+    // A. Localhost development
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+      const localBase = explicitUrl || 'http://localhost:5000'
+      const clean = String(localBase).replace(/\/+$/, '')
+      return clean.endsWith('/api') ? clean : `${clean}/api`
+    }
+
+    // B. Production custom domain in browser (e.g. 69club1.site or any future domain)
+    if (explicitUrl && !explicitUrl.includes('localhost') && !explicitUrl.includes('127.0.0.1')) {
+      const clean = String(explicitUrl).replace(/\/+$/, '')
+      return clean.endsWith('/api') ? clean : `${clean}/api`
+    }
+
+    // Extract root domain (removes 'www.' or any subdomain prefix)
+    const hostParts = hostname.split('.')
+    const rootDomain =
+      hostParts.length > 2 && hostParts[0] === 'www'
+        ? hostParts.slice(1).join('.')
+        : hostname
+
+    // Resolve to configured API subdomain from env or default to `api.${rootDomain}`
+    const apiDomain = metaEnv.VITE_API_DOMAIN || procEnv.VITE_API_DOMAIN || `api.${rootDomain}`
+    const protocol = window.location.protocol === 'http:' ? 'http:' : 'https:'
+    return `${protocol}//${apiDomain}/api`
+  }
+
+  // SSR / Node testing fallback
+  const fallback = explicitUrl || 'http://localhost:5000'
+  const clean = String(fallback).replace(/\/+$/, '')
+  return clean.endsWith('/api') ? clean : `${clean}/api`
+}
+
+export const API_BASE = resolveApiBase()
 
 // Token Management (Browser & Node safe)
 let inMemoryToken = null

@@ -17,7 +17,11 @@ export function PromotionView({ userId, onCopyNotification }) {
   const [copiedLink, setCopiedLink] = useState(false)
 
   const referralCode = `PC${String(userId || '78291').replace(/\D/g, '').slice(-5) || '78291'}`
-  const referralLink = `${window.location.origin}?ref=${referralCode}`
+  const appOrigin =
+    (typeof window !== 'undefined' && window.location?.origin && !window.location.origin.includes('localhost'))
+      ? window.location.origin
+      : (import.meta.env?.VITE_APP_DOMAIN ? `https://${import.meta.env.VITE_APP_DOMAIN}` : (typeof window !== 'undefined' ? window.location.origin : 'https://69club1.site'))
+  const referralLink = `${appOrigin}?ref=${referralCode}`
 
   const handleCopyCode = () => {
     navigator.clipboard?.writeText(referralCode)

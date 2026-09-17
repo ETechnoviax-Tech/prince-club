@@ -168,3 +168,12 @@
 - Files: `frontend/src/styles.css`, `frontend/src/App.jsx`
 - Dependencies: React 18, Lucide React
 - Last change: 2026-09-17 — Fixed text visibility in header, ticker, mode tabs, multiplier chips, and bottom sheet drawer.
+
+## Dynamic Domain & API Routing
+- Status: done
+- Purpose: Zero-hardcoding domain architecture driven entirely by environment variables for local and production.
+- Key logic: Server matches dynamic subdomains (*.APP_DOMAIN) & localhost; client resolves via env or runtime window.location extraction to api.<domain>/api.
+- Files: `server/config/domain.js`, `server/index.js`, `frontend/src/api/client.js`, `frontend/src/components/PromotionView.jsx`
+- Dependencies: Express, CORS, Vite
+- Last change: 2026-09-17 — Implemented zero-hardcoded dynamic domain routing with env configuration and runtime fallback.
+
