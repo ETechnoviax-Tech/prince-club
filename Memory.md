@@ -172,10 +172,10 @@
 ## Dynamic Domain & API Routing
 - Status: done
 - Purpose: Zero-hardcoding domain architecture driven entirely by environment variables for local and production.
-- Key logic: Server matches dynamic subdomains (*.APP_DOMAIN) & localhost; client resolves via env or runtime window.location extraction to api.<domain>/api.
+- Key logic: Server matches dynamic subdomains (*.APP_DOMAIN) & localhost; client resolves via env or runtime window.location extraction to api.<domain>/api; multi-alias health check (/health, /api/health, /ping, /).
 - Files: `server/config/domain.js`, `server/index.js`, `frontend/src/api/client.js`, `frontend/src/components/PromotionView.jsx`
 - Dependencies: Express, CORS, Vite
-- Last change: 2026-09-17 — Implemented zero-hardcoded dynamic domain routing with env configuration and runtime fallback.
+- Last change: 2026-09-17 — Mounted health check on /health, /api/health, /ping, and verified live on https://api.69club1.site/health.
 
 ## Containerization & Cloud Deployment (Docker, EC2, Render, Cloudflare)
 - Status: done
