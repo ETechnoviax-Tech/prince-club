@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: club69-api
+    runtime: docker
+    dockerfilePath: ./Dockerfile.server
+    plan: free
+    region: oregon
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: APP_DOMAIN
+        value: 69club1.site
+      - key: API_DOMAIN
+        value: api.69club1.site
+      - key: FRONTEND_URL
+        value: https://69club1.site
+      - key: API_URL
+        value: https://api.69club1.site
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ADMIN_SECRET_KEY
+        sync: false
+      - key: ADMIN_IDENTIFIER
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: MERCHANT_UPI_VPA
+        value: princeclub@upi
+      - key: MERCHANT_NAME
+        value: 69 Club

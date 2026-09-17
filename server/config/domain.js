@@ -56,6 +56,14 @@ export function isOriginAllowed(origin) {
     return true
   }
 
+  // Vercel preview & production domains (*.vercel.app)
+  try {
+    const parsedHost = new URL(origin).hostname
+    if (parsedHost.endsWith('.vercel.app')) {
+      return true
+    }
+  } catch {}
+
   return false
 }
 

@@ -166,20 +166,87 @@ node tests/test_multi_game_modes.js
 
 ## Deployment
 
-### Frontend (Static SPA)
-```bash
-cd frontend
-npm run build
-```
-Deploy the generated `frontend/dist` directory to Vercel, Netlify, Cloudflare Pages, or an Nginx web root.
+### 1. Temporary Testing Deployment on Vercel (Frontend + Server Together)
 
-### Backend (Node.js)
-Deploy `server/` to any Node.js host (Render, Railway, VPS, or Docker container):
+Both the Express backend and React Vite frontend can be deployed together in a single Vercel project with zero extra configuration:
+
+1. Import the repository into [Vercel](https://vercel.com/new).
+2. Framework Preset: **Other** (Root directory: `./`).
+3. Build Settings are automatically picked up from [`vercel.json`](file:///c:/Users/deepe/Desktop/prince-club/vercel.json):
+   - **Build Command**: `vite build frontend`
+   - **Output Directory**: `frontend/dist`
+   - **API Routes**: Handled serverless via `api/index.js`
+4. Add Environment Variables in Vercel project settings:
+   - `SUPABASE_URL`: `https://your-project.supabase.co`
+   - `SUPABASE_ANON_KEY`: `your-anon-key`
+   - `SUPABASE_SERVICE_ROLE_KEY`: `your-service-role-key`
+   - `ADMIN_SECRET_KEY`: `your-admin-secret-key`
+   - `ADMIN_IDENTIFIER`: `your-admin-phone`
+5. Click **Deploy**. Both the client and API will be live on your `*.vercel.app` URL immediately.
+
+---
+
+### 2. Backend on Render (`api.69club1.site`)
+
+You can deploy the backend to Render either using the native Node environment or Docker:
+
+#### Method A: Docker Deployment (Recommended)
+1. In Render Dashboard, click **New +** -> **Web Service**.
+2. Connect your GitHub repository: `ETechnoviax-Tech/prince-club`.
+3. Set the following settings:
+   - **Environment**: `Docker`
+   - **Dockerfile Path**: `./Dockerfile.server` (or set Root Directory to `server` and use `server/Dockerfile`)
+   - **Health Check Path**: `/api/health`
+4. Add Environment Variables in Render:
+   - `PORT`: `5000`
+   - `NODE_ENV`: `production`
+   - `APP_DOMAIN`: `69club1.site`
+   - `API_DOMAIN`: `api.69club1.site`
+   - `FRONTEND_URL`: `https://69club1.site`
+   - `API_URL`: `https://api.69club1.site`
+   - `SUPABASE_URL`: `https://your-project.supabase.co`
+   - `SUPABASE_ANON_KEY`: `your-anon-key`
+   - `SUPABASE_SERVICE_ROLE_KEY`: `your-service-role-key`
+   - `ADMIN_SECRET_KEY`: `your-admin-secret-key`
+   - `ADMIN_IDENTIFIER`: `your-admin-phone`
+5. In Render **Settings** -> **Custom Domains**, add `api.69club1.site`. Add the CNAME record indicated by Render to your DNS provider.
+
+---
+
+### 2. Frontend on Cloudflare Pages (`69club1.site`)
+
+1. In Cloudflare Dashboard, navigate to **Workers & Pages** -> **Create application** -> **Pages** -> **Connect to Git**.
+2. Select your repository `prince-club`.
+3. Configure Build Settings:
+   - **Framework preset**: `Vite`
+   - **Root directory**: `frontend`
+   - **Build command**: `npm run build`
+   - **Build output directory**: `dist`
+4. Add Environment Variables:
+   - `NODE_VERSION`: `20`
+   - `VITE_APP_DOMAIN`: `69club1.site`
+   - `VITE_API_DOMAIN`: `api.69club1.site`
+   - `VITE_SUPABASE_URL`: `https://your-project.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY`: `your-anon-key`
+5. Click **Save and Deploy**.
+6. In Cloudflare Pages project settings -> **Custom domains**, add `69club1.site` (and `www.69club1.site`). Cloudflare will automatically provision SSL certificates and routing.
+7. *Note*: SPA route fallback is preconfigured via `frontend/public/_redirects` (`/* /index.html 200`).
+
+---
+
+### 3. Full-Stack Docker Deployment (Local or VPS)
+
+To run both frontend (Nginx) and backend (Node.js) in containers:
 ```bash
-node server/index.js
+# Build and start services in background
+docker compose up -d --build
+
+# View container logs
+docker compose logs -f
 ```
 
 ---
 
 ## License
 MIT
+

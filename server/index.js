@@ -84,7 +84,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' })
 })
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`[69 Club API] Server running on http://localhost:${PORT}`)
     console.log(`[69 Club API] Supabase status: ${isSupabaseConfigured ? 'Configured' : 'Fallback local store'}`)

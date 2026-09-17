@@ -25,7 +25,12 @@ export function resolveApiBase() {
       return clean.endsWith('/api') ? clean : `${clean}/api`
     }
 
-    // B. Production custom domain in browser (e.g. 69club1.site or any future domain)
+    // B. Single-deployment platforms (e.g. Vercel preview/production *.vercel.app)
+    if (hostname.endsWith('.vercel.app')) {
+      return `${window.location.origin}/api`
+    }
+
+    // C. Production custom domain in browser (e.g. 69club1.site or any future domain)
     if (explicitUrl && !explicitUrl.includes('localhost') && !explicitUrl.includes('127.0.0.1')) {
       const clean = String(explicitUrl).replace(/\/+$/, '')
       return clean.endsWith('/api') ? clean : `${clean}/api`

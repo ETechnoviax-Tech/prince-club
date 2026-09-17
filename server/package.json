@@ -7,6 +7,11 @@
     "dev": "node --watch-path=controllers --watch-path=middleware --watch-path=routes --watch-path=services --watch-path=config --watch-path=index.js index.js"
   },
   "dependencies": {
-    "pg": "^8.23.0"
+    "@supabase/supabase-js": "^2.116.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.23.0",
+    "qrcode": "^1.5.4"
   }
 }

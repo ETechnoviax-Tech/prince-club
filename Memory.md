@@ -177,3 +177,12 @@
 - Dependencies: Express, CORS, Vite
 - Last change: 2026-09-17 — Implemented zero-hardcoded dynamic domain routing with env configuration and runtime fallback.
 
+## Containerization & Cloud Deployment (Docker, Vercel, Render, Cloudflare)
+- Status: done
+- Purpose: Multi-target deployment setup for Vercel (unified testing), Docker Compose (containers), Render (API), and Cloudflare Pages (frontend).
+- Key logic: Root vercel.json + api/index.js for unified Vercel deployment; multi-stage Dockerfiles + docker-compose.yml; SPA _redirects for Cloudflare Pages.
+- Files: `docker-compose.yml`, `vercel.json`, `api/index.js`, `server/Dockerfile`, `frontend/Dockerfile`, `Dockerfile.server`, `render.yaml`
+- Dependencies: Docker, Vercel, Render, Cloudflare Pages
+- Last change: 2026-09-17 — Added vercel.json unified full-stack config, docker-compose.yml, and deployment manifests.
+
+
