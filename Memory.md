@@ -110,7 +110,7 @@
 - Key logic: Split monolithic dashboard into 5 dedicated components: `AdminGate.jsx` (security barrier), `AdminMatrixView.jsx` (live pool risk & financials), `AdminBetsView.jsx` (bets & winners ledger), `AdminUsersView.jsx` (user CRUD & status management), and `AdminBalanceModal.jsx` (audit balance adjustments); styled via dedicated mobile-responsive `admin.css`.
 - Files: `frontend/src/components/admin/AdminDashboard.jsx`, `frontend/src/components/admin/AdminGate.jsx`, `frontend/src/components/admin/AdminMatrixView.jsx`, `frontend/src/components/admin/AdminBetsView.jsx`, `frontend/src/components/admin/AdminUsersView.jsx`, `frontend/src/components/admin/AdminBalanceModal.jsx`, `frontend/src/components/admin/admin.css`
 - Dependencies: Express, Supabase, React 18, Lucide React
-- Last change: 2026-09-17 — Split AdminDashboard into modular components with mobile-responsive layouts.
+- Last change: 2026-09-17 — Fixed DB bets query in getAdminMatrix/getBetsLedger, removed round_id NOT NULL constraint, and backfilled real bet transactions.
 
 ## 55CLUB Live WebAPI Sync & Failover Engine
 - Status: done

@@ -58,8 +58,20 @@ export async function getAdminMatrix(req, res) {
       }
     }
 
-    // Process Bets from memory & DB
-    const allBets = Array.from(memoryBets.values())
+    // Process Bets from Supabase DB & live in-memory pool
+    let allBets = []
+    if (isSupabaseConfigured) {
+      const { data: dbBets } = await supabase.from('bets').select('*')
+      const betMap = new Map()
+      ;(dbBets || []).forEach((b) => betMap.set(b.id, b))
+      for (const [id, mb] of memoryBets.entries()) {
+        betMap.set(id, { ...betMap.get(id), ...mb })
+      }
+      allBets = Array.from(betMap.values())
+    } else {
+      allBets = Array.from(memoryBets.values())
+    }
+
     totalBetsCount = allBets.length
 
     // Live matrix buckets ("kispar kitna paisa laga")
@@ -120,7 +132,31 @@ export async function getAdminMatrix(req, res) {
 export async function getBetsLedger(req, res) {
   try {
     const { status, mode, round, limit = 100 } = req.query
-    let bets = Array.from(memoryBets.values())
+    let bets = []
+
+    if (isSupabaseConfigured) {
+      let query = supabase.from('bets').select('*, profiles(username, email)')
+      if (status) query = query.ilike('status', status)
+      if (mode) query = query.ilike('game_mode', mode)
+      if (round) query = query.eq('round_number', round)
+      query = query.order('created_at', { ascending: false }).limit(Number(limit))
+
+      const { data: dbBets, error } = await query
+      if (!error && dbBets) {
+        bets = dbBets.map((b) => ({
+          ...b,
+          username: b.profiles?.username || b.user_id?.slice(0, 8) || 'Player',
+        }))
+      }
+    }
+
+    // Merge in-memory active bets if not already in DB
+    const betIds = new Set(bets.map((b) => b.id))
+    for (const [id, mb] of memoryBets.entries()) {
+      if (!betIds.has(id)) {
+        bets.unshift(mb)
+      }
+    }
 
     if (status) {
       bets = bets.filter((b) => String(b.status).toUpperCase() === String(status).toUpperCase())
@@ -137,7 +173,7 @@ export async function getBetsLedger(req, res) {
 
     const paged = bets.slice(0, Number(limit))
 
-    // Enrich with username if missing
+    // Enrich with unified fields for both frontend formats
     const enriched = paged.map((b) => {
       let uname = b.username
       if (!uname) {
@@ -147,13 +183,18 @@ export async function getBetsLedger(req, res) {
       return {
         id: b.id,
         userId: b.user_id,
+        user: uname,
         username: uname,
+        period: b.round_number,
         roundNumber: b.round_number,
         gameMode: b.game_mode || 'PARITY',
-        targetSelection: b.selection, // "kispar"
-        amountPlaced: Number(b.amount || 0), // "kitna paisa laga"
-        status: b.status, // PENDING | WON | LOST
-        amountWon: Number(b.payout || 0), // "kon kitna jeeta"
+        selection: b.selection,
+        targetSelection: b.selection,
+        amount: Number(b.amount || 0),
+        amountPlaced: Number(b.amount || 0),
+        status: b.status,
+        payout: Number(b.payout || 0),
+        amountWon: Number(b.payout || 0),
         multiplier: b.multiplier,
         outcome: b.outcome || null,
         placedAt: b.created_at || new Date().toISOString(),

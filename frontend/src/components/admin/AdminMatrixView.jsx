@@ -48,6 +48,22 @@ export function AdminMatrixView({ matrixData, loading, onRefresh }) {
           </strong>
           <span className="stat-subtext">Margin: {matrixData?.profitMarginPct ?? 0}%</span>
         </div>
+
+        <div className="admin-stat-card">
+          <span className="stat-label">Approved Deposits</span>
+          <strong className="stat-number green">
+            ₹{Number(matrixData?.totalDepositsAmount || 0).toLocaleString('en-IN')}
+          </strong>
+          <span className="stat-subtext">Total Verified Inflow</span>
+        </div>
+
+        <div className="admin-stat-card">
+          <span className="stat-label">Approved Payouts</span>
+          <strong className="stat-number" style={{ color: '#ea580c' }}>
+            ₹{Number(matrixData?.totalWithdrawalsAmount || 0).toLocaleString('en-IN')}
+          </strong>
+          <span className="stat-subtext">Total Processed Withdrawals</span>
+        </div>
       </div>
 
       {/* 2. Live Round Bet Distribution Matrix ("Kispar Kitna Paisa Laga") */}
