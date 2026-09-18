@@ -42,19 +42,11 @@ export function K3Game({
 }) {
   const [selectedK3Tab, setSelectedK3Tab] = useState('1m')
   const [activeBetCategory, setActiveBetCategory] = useState('total') // 'total', 'two_same', 'three_same', 'different'
-  const [seconds, setSeconds] = useState(48)
-  const [periodNumber, setPeriodNumber] = useState('20260913100030412')
-  const [diceRoll, setDiceRoll] = useState([2, 5, 4])
+  const [seconds] = useState(0)
+  const [periodNumber] = useState('—')
+  const [diceRoll] = useState([0, 0, 0])
   const [rolling, setRolling] = useState(false)
-  const [history, setHistory] = useState([
-    { period: '20260913100030411', dice: [3, 3, 5], sum: 11, size: 'Big', parity: 'Odd' },
-    { period: '20260913100030410', dice: [1, 2, 4], sum: 7, size: 'Small', parity: 'Odd' },
-    { period: '20260913100030409', dice: [4, 6, 6], sum: 16, size: 'Big', parity: 'Even' },
-    { period: '20260913100030408', dice: [2, 2, 2], sum: 6, size: 'Small', parity: 'Even' },
-    { period: '20260913100030407', dice: [5, 1, 3], sum: 9, size: 'Small', parity: 'Odd' },
-    { period: '20260913100030406', dice: [6, 4, 3], sum: 13, size: 'Big', parity: 'Odd' },
-    { period: '20260913100030405', dice: [2, 3, 5], sum: 10, size: 'Small', parity: 'Even' },
-  ])
+  const [history] = useState([])
 
   // Betting sheet
   const [betSheetOpen, setBetSheetOpen] = useState(false)
@@ -68,6 +60,8 @@ export function K3Game({
 
   // Period clock loop
   useEffect(() => {
+    return undefined
+    /* Live provider integration goes here; locally generated outcomes are intentionally disabled.
     const timer = setInterval(() => {
       setSeconds((prev) => {
         if (prev <= 1) {
@@ -99,9 +93,14 @@ export function K3Game({
       })
     }, 1000)
     return () => clearInterval(timer)
+    */
   }, [activeModeObj.duration, periodNumber])
 
   const handleOpenBet = (betObj) => {
+    if (seconds === 0) {
+      setToast?.({ type: 'warning', title: 'Live Data Unavailable', detail: 'K3 betting is paused until a verified live provider is connected.' })
+      return
+    }
     if (isLocked) {
       setToast?.({
         type: 'warning',
@@ -140,14 +139,11 @@ export function K3Game({
         title: 'Bet Placed Successfully',
         detail: `K3 ${selectedBet.label} - ₹${total} (Period: ${periodNumber.slice(-4)})`,
       })
-    } catch {
-      onBalanceUpdate?.(balance - total)
-      sound.playBet?.()
-      setBetSheetOpen(false)
+    } catch (error) {
       setToast?.({
-        type: 'success',
-        title: 'Bet Placed (Local)',
-        detail: `K3 ${selectedBet.label} - ₹${total}`,
+        type: 'loss',
+        title: 'Bet Not Placed',
+        detail: error.message || 'Live K3 service is unavailable. No amount was deducted.',
       })
     }
   }

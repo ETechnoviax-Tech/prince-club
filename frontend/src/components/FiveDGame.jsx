@@ -31,17 +31,18 @@ export function FiveDGame({
 }) {
   const [selectedTab, setSelectedTab] = useState('1m')
   const [activePosition, setActivePosition] = useState('Total') // 'Total', 'A', 'B', 'C', 'D', 'E'
-  const [seconds, setSeconds] = useState(42)
-  const [periodNumber, setPeriodNumber] = useState('20260913100050821')
-  const [reels, setReels] = useState([3, 7, 1, 8, 4])
+  const [seconds] = useState(0)
+  const [periodNumber] = useState('—')
+  const [reels] = useState([0, 0, 0, 0, 0])
   const [spinning, setSpinning] = useState(false)
-  const [history, setHistory] = useState([
+  const [history] = useState([])
+  /*
     { period: '20260913100050820', reels: [5, 9, 2, 4, 8], sum: 28 },
     { period: '20260913100050819', reels: [1, 0, 7, 3, 6], sum: 17 },
     { period: '20260913100050818', reels: [8, 8, 4, 2, 9], sum: 31 },
     { period: '20260913100050817', reels: [2, 3, 5, 1, 0], sum: 11 },
     { period: '20260913100050816', reels: [9, 6, 7, 8, 5], sum: 35 },
-  ])
+  */
 
   // Bet Drawer State
   const [betSheetOpen, setBetSheetOpen] = useState(false)
@@ -55,6 +56,8 @@ export function FiveDGame({
 
   // Period Countdown & Result Loop
   useEffect(() => {
+    return undefined
+    /* Live provider integration goes here; locally generated outcomes are intentionally disabled.
     const timer = setInterval(() => {
       setSeconds((prev) => {
         if (prev <= 1) {
@@ -83,9 +86,14 @@ export function FiveDGame({
       })
     }, 1000)
     return () => clearInterval(timer)
+    */
   }, [activeMode.duration, periodNumber])
 
   const handleOpenBet = (bet) => {
+    if (seconds === 0) {
+      setToast?.({ type: 'warning', title: 'Live Data Unavailable', detail: '5D betting is paused until a verified live provider is connected.' })
+      return
+    }
     if (isLocked) {
       setToast?.({
         type: 'warning',
@@ -124,14 +132,11 @@ export function FiveDGame({
         title: 'Bet Placed Successfully',
         detail: `5D [${activePosition}] ${selectedBet.label} - ₹${total}`,
       })
-    } catch {
-      onBalanceUpdate?.(balance - total)
-      sound.playBet?.()
-      setBetSheetOpen(false)
+    } catch (error) {
       setToast?.({
-        type: 'success',
-        title: 'Bet Placed (Local)',
-        detail: `5D [${activePosition}] ${selectedBet.label} - ₹${total}`,
+        type: 'loss',
+        title: 'Bet Not Placed',
+        detail: error.message || 'Live 5D service is unavailable. No amount was deducted.',
       })
     }
   }

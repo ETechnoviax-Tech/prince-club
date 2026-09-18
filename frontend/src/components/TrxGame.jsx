@@ -31,18 +31,19 @@ export function TrxGame({
   setToast,
 }) {
   const [selectedTab, setSelectedTab] = useState('1m')
-  const [seconds, setSeconds] = useState(36)
-  const [periodNumber, setPeriodNumber] = useState('20260913100070528')
-  const [blockHeight, setBlockHeight] = useState(62819405)
-  const [blockHash, setBlockHash] = useState('0000000003b8d910a9c84e6f12ab7')
-  const [lastDigit, setLastDigit] = useState(7)
-  const [history, setHistory] = useState([
+  const [seconds] = useState(0)
+  const [periodNumber] = useState('—')
+  const [blockHeight] = useState(null)
+  const [blockHash] = useState('Live data unavailable')
+  const [lastDigit] = useState(null)
+  const [history] = useState([])
+  /*
     { period: '20260913100070527', block: 62819404, hash: '...3a8f9', digit: 9, color: 'green', size: 'Big' },
     { period: '20260913100070526', block: 62819403, hash: '...9c1e2', digit: 2, color: 'red', size: 'Small' },
     { period: '20260913100070525', block: 62819402, hash: '...0d4a0', digit: 0, color: 'violet', size: 'Small' },
     { period: '20260913100070524', block: 62819401, hash: '...7e8f5', digit: 5, color: 'violet', size: 'Big' },
     { period: '20260913100070523', block: 62819400, hash: '...b23c4', digit: 4, color: 'red', size: 'Small' },
-  ])
+  */
 
   // Bet Drawer State
   const [betSheetOpen, setBetSheetOpen] = useState(false)
@@ -56,6 +57,8 @@ export function TrxGame({
 
   // Period Loop
   useEffect(() => {
+    return undefined
+    /* Live provider integration goes here; locally generated outcomes are intentionally disabled.
     const timer = setInterval(() => {
       setSeconds((prev) => {
         if (prev <= 1) {
@@ -88,9 +91,14 @@ export function TrxGame({
       })
     }, 1000)
     return () => clearInterval(timer)
+    */
   }, [activeMode.duration, periodNumber, blockHeight])
 
   const handleOpenBet = (bet) => {
+    if (seconds === 0) {
+      setToast?.({ type: 'warning', title: 'Live Data Unavailable', detail: 'TRX Win Go betting is paused until a verified live provider is connected.' })
+      return
+    }
     if (isLocked) {
       setToast?.({
         type: 'warning',
@@ -129,14 +137,11 @@ export function TrxGame({
         title: 'Bet Placed Successfully',
         detail: `TRX Win Go ${selectedBet.label} - ₹${total}`,
       })
-    } catch {
-      onBalanceUpdate?.(balance - total)
-      sound.playBet?.()
-      setBetSheetOpen(false)
+    } catch (error) {
       setToast?.({
-        type: 'success',
-        title: 'Bet Placed (Local)',
-        detail: `TRX Win Go ${selectedBet.label} - ₹${total}`,
+        type: 'loss',
+        title: 'Bet Not Placed',
+        detail: error.message || 'Live TRX service is unavailable. No amount was deducted.',
       })
     }
   }

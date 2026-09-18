@@ -71,11 +71,11 @@ export async function call55ClubAPI(endpoint, data = {}) {
   if (circuit.open) {
     const elapsed = Date.now() - circuit.openedAt
     if (elapsed < circuit.RESET_AFTER_MS) {
-      // Silently use fallback — warn only once per minute
+      // Do not fabricate round data when the live provider is unavailable.
       const now = Date.now()
       if (now - circuit.lastWarnAt > 60000) {
         circuit.lastWarnAt = now
-        console.warn(`[55CLUB API] All servers unreachable — using local fallback (retry in ${Math.ceil((circuit.RESET_AFTER_MS - elapsed) / 1000)}s)`)
+        console.warn(`[55CLUB API] All servers unreachable — live data paused (retry in ${Math.ceil((circuit.RESET_AFTER_MS - elapsed) / 1000)}s)`)
       }
       throw new Error('circuit open')
     }
@@ -129,7 +129,7 @@ export async function call55ClubAPI(endpoint, data = {}) {
     if (circuit.failures >= circuit.THRESHOLD && !circuit.open) {
       circuit.open = true
       circuit.openedAt = Date.now()
-      console.warn('[55CLUB API] Circuit breaker OPEN — all servers unreachable. Switching to local fallback for 60s.')
+      console.warn('[55CLUB API] Circuit breaker OPEN — all servers unreachable. Live data is unavailable for 60s.')
     }
   }
 
@@ -204,26 +204,7 @@ export async function getLiveIssue(typeId = 30) {
       inFlightRequests.delete(inFlightKey)
     }
 
-    // Resilient fallback if upstream is down/slow
-    const now = Date.now()
-    const intervalSec = typeId === 30 ? 30 : typeId === 1 ? 60 : typeId === 2 ? 180 : 300
-    const intervalMs = intervalSec * 1000
-    const roundIdx = Math.floor(now / intervalMs)
-    const msRem = Math.max(0, (roundIdx + 1) * intervalMs - now)
-    const d = new Date()
-    const yyyymmdd = d.toISOString().slice(0, 10).replace(/-/g, '')
-    const fallbackIssue = `${yyyymmdd}${typeId === 30 ? '10005' : '10001'}${String(roundIdx % 10000).padStart(4, '0')}`
-
-    const fallbackResult = {
-      success: true,
-      source: 'fallback',
-      typeId,
-      issueNumber: fallbackIssue,
-      secondsRemaining: Math.ceil(msRem / 1000),
-      isLocked: Math.ceil(msRem / 1000) <= 5,
-    }
-    issueCache.set(typeId, { data: fallbackResult, timestamp: Date.now() })
-    return fallbackResult
+    throw new Error('Live Win Go issue is temporarily unavailable')
   })()
 
   inFlightRequests.set(inFlightKey, promise)
@@ -283,30 +264,7 @@ export async function getLiveHistory(typeId = 30, page = 1) {
       inFlightRequests.delete(inFlightKey)
     }
 
-    // Fallback history generator
-    const fallbackList = []
-    const currentIssue = Math.floor(Date.now() / 30000)
-    for (let i = 1; i <= 15; i++) {
-      const r = currentIssue - i
-      const digit = (r * 37 + 17) % 10
-      const color = digit === 0 || digit === 5 ? 'violet' : digit % 2 === 0 ? 'red' : 'green'
-      fallbackList.push({
-        issueNumber: `2026091210005${String(r % 10000).padStart(4, '0')}`,
-        digit,
-        color,
-        rawColour: color,
-        size: digit >= 5 ? 'Big' : 'Small',
-      })
-    }
-
-    const fallbackResult = {
-      success: true,
-      source: 'fallback',
-      typeId,
-      list: fallbackList,
-    }
-    historyCache.set(cacheKey, { data: fallbackResult, timestamp: Date.now() })
-    return fallbackResult
+    throw new Error('Live Win Go history is temporarily unavailable')
   })()
 
   inFlightRequests.set(inFlightKey, promise)

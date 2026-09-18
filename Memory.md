@@ -237,3 +237,10 @@
 - Key logic: Added a visible three-step betting guide, quick stake selector, explicit market payout/range labels, and clearer stake/ticket/confirmation copy; removed the random-bet and ambiguous multiplier shortcut from the primary screen.
 - Files: `frontend/src/App.jsx`, `frontend/src/styles.css`
 - Last change: 2026-09-18 — Reorganized the Win Go betting UI into a clear stake → market → confirm journey.
+
+## Live-Data Integrity Controls
+- Status: done
+- Purpose: Prevent fabricated game activity, results, and successful-bet messages from reaching players.
+- Key logic: Win Go now fails closed when its live provider is unavailable; Aviator excludes simulated community activity and uses server-generated cryptographic entropy; K3, 5D, and TRX show a failed request rather than deducting balance or claiming a local bet success.
+- Files: `server/services/veerGameService.js`, `server/controllers/aviatorController.js`, `frontend/src/App.jsx`, `frontend/src/components/AviatorGame.jsx`, `frontend/src/components/K3Game.jsx`, `frontend/src/components/FiveDGame.jsx`, `frontend/src/components/TrxGame.jsx`
+- Last change: 2026-09-18 — Removed user-facing generated Win Go fallback data and simulated Aviator player/pool activity.

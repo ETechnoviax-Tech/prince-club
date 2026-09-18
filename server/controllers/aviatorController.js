@@ -18,8 +18,7 @@ const state = {
     { roundId: 100000, crashPoint: 1.62 },
   ],
   bets: new Map(), // key: betId -> betRecord
-  communityBets: [], // simulated active multiplayer participants
-  recentCashouts: [], // live cashouts in the current flight
+  recentCashouts: [], // cashouts from real bets in the current flight
 }
 
 const WAITING_DURATION_MS = 6000
@@ -53,21 +52,21 @@ async function withUserLock(userId, fn) {
 // Cashout Mutex per betId to prevent double-spending on simultaneous cashout triggers
 const activeCashouts = new Set()
 
-// Generate weighted crash point (fair distribution curve)
+// Generate the server-authoritative crash point with cryptographically secure entropy.
 function generateCrashPoint() {
-  const rand = Math.random()
+  const rand = crypto.randomInt(0, 1_000_000) / 1_000_000
   if (rand < 0.08) {
     // 8% instant/low crash: 1.01x - 1.15x
-    return +(1.01 + Math.random() * 0.14).toFixed(2)
+    return +(1.01 + crypto.randomInt(0, 15) / 100).toFixed(2)
   } else if (rand < 0.60) {
     // 52% standard flight: 1.16x - 3.20x
-    return +(1.16 + Math.random() * 2.04).toFixed(2)
+    return +(1.16 + crypto.randomInt(0, 205) / 100).toFixed(2)
   } else if (rand < 0.90) {
     // 30% high flight: 3.21x - 10.00x
-    return +(3.21 + Math.random() * 6.79).toFixed(2)
+    return +(3.21 + crypto.randomInt(0, 680) / 100).toFixed(2)
   } else {
     // 10% mega flight: 10.01x - 88.00x
-    return +(10.01 + Math.random() * 77.99).toFixed(2)
+    return +(10.01 + crypto.randomInt(0, 7800) / 100).toFixed(2)
   }
 }
 
@@ -87,35 +86,17 @@ export function durationForCrashPoint(crashPoint) {
   return Math.round(seconds * 1000)
 }
 
-// Helper: generate mock multiplayer community bets for authentic real-time atmosphere
-function generateCommunityBets() {
-  const count = 15 + Math.floor(Math.random() * 25) // 15-40 players
-  const bets = []
-  const chipSizes = [20, 50, 100, 200, 500, 1000, 2000]
-  for (let i = 0; i < count; i++) {
-    const amount = chipSizes[Math.floor(Math.random() * chipSizes.length)]
-    const targetMult = +(1.2 + Math.random() * 8.0).toFixed(2)
-    const randomSuffix = Math.floor(1000 + Math.random() * 9000)
-    bets.push({
-      id: `comm_${i}_${Date.now()}`,
-      username: `MEMBER***${randomSuffix}`,
-      amount,
-      targetMult,
-      cashedOut: false,
-      payout: 0,
-    })
-  }
-  return bets
-}
-
 // Aviator Authoritative Server Loop
 function startAviatorLoop() {
   state.phase = 'WAITING'
   state.startTime = Date.now()
-  state.communityBets = generateCommunityBets()
   state.recentCashouts = []
+  let tickInFlight = false
 
   const tick = async () => {
+    if (tickInFlight) return
+    tickInFlight = true
+    try {
     const now = Date.now()
 
     if (state.phase === 'WAITING') {
@@ -132,30 +113,14 @@ function startAviatorLoop() {
       const elapsed = now - state.startTime
       const currentMult = calculateMultiplier(elapsed)
 
-      // 1. Process community simulated cashouts
-      for (const cb of state.communityBets) {
-        if (!cb.cashedOut && currentMult >= cb.targetMult && cb.targetMult < state.crashPoint) {
-          cb.cashedOut = true
-          cb.payout = Math.round(cb.amount * cb.targetMult)
-          state.recentCashouts.unshift({
-            username: cb.username,
-            amount: cb.amount,
-            multiplier: cb.targetMult,
-            payout: cb.payout,
-            time: Date.now(),
-          })
-          if (state.recentCashouts.length > 20) state.recentCashouts.pop()
-        }
-      }
-
-      // 2. Process user auto-cashouts
+      // Process real user auto-cashouts.
       for (const [betId, b] of state.bets.entries()) {
         if (b.status === 'ACTIVE' && b.autoCashout && currentMult >= b.autoCashout && b.autoCashout < state.crashPoint) {
           await settleCashout(b, b.autoCashout)
         }
       }
 
-      // 3. Check for Crash condition
+      // Check for crash condition.
       if (elapsed >= state.flightDurationMs || currentMult >= state.crashPoint) {
         // Plane Flew Away!
         state.phase = 'CRASHED'
@@ -184,9 +149,13 @@ function startAviatorLoop() {
         state.phase = 'WAITING'
         state.startTime = Date.now()
         state.bets.clear()
-        state.communityBets = generateCommunityBets()
         state.recentCashouts = []
       }
+    }
+    } catch (err) {
+      console.error('[Aviator loop error]:', err)
+    } finally {
+      tickInFlight = false
     }
   }
 
@@ -285,13 +254,10 @@ export function getAviatorState(req, res) {
   }
 
   // Calculate live multiplayer totals
-  const totalUserBets = state.bets.size
-  const totalCommBets = state.communityBets.length
-  const totalPlayers = totalUserBets + totalCommBets
+  const totalPlayers = new Set(Array.from(state.bets.values()).map((bet) => bet.userId)).size
 
   let totalPool = 0
   for (const b of state.bets.values()) totalPool += b.amount
-  for (const cb of state.communityBets) totalPool += cb.amount
 
   return res.json({
     roundId: state.roundId,

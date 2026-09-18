@@ -149,11 +149,11 @@ const PRESET_AMOUNTS = [10, 50, 100, 500, 1000]
 const MULTIPLIERS = [1, 5, 10, 20]
 
 const WINNER_TICKERS = [
-  '🔥 Member 98***34 won ₹2,420 on Green!',
-  '⚡ Instant UPI Deposits via PhonePe / GPay verified!',
-  '🎉 Member 87***12 won ₹4,500 on Violet!',
-  '💎 Member 91***88 won ₹9,000 on Number 7!',
-  '🛡️ Verified Fair Algorithm - 45s Synchronized Rounds',
+  'Live results are shown only after provider verification.',
+  'Your placed bets and wallet balance are synced from the server.',
+  'Betting pauses automatically when a live round is unavailable.',
+  'Check the Rules tab for market payout information.',
+  'Never share your account password or OTP with anyone.',
 ]
 
 function outcomeFor(round) {
@@ -395,13 +395,11 @@ export function App() {
   })
 
   // Game Engine State
-  const [roundNumber, setRoundNumber] = useState(842182)
-  const [seconds, setSeconds] = useState(38)
-  const [phase, setPhase] = useState('open') // 'open', 'locked', 'result'
+  const [roundNumber, setRoundNumber] = useState('')
+  const [seconds, setSeconds] = useState(0)
+  const [phase, setPhase] = useState('locked') // Server-authoritative only
   const [lastOutcome, setLastOutcome] = useState(null)
-  const [history, setHistory] = useState(() =>
-    Array.from({ length: 20 }, (_, i) => outcomeFor(842181 - i))
-  )
+  const [history, setHistory] = useState([])
 
   // Betting Sheet (Mobile Drawer) State
   const [betSheetOpen, setBetSheetOpen] = useState(false)
@@ -513,34 +511,7 @@ export function App() {
       }
     } catch {}
 
-    // 3. Fallback if VeerGame is slow or offline
-    if (!synced) {
-      try {
-        const data = await fetchCurrentRound(selectedMode)
-        setServerOnline(true)
-        if (data.roundNumber) {
-          setRoundNumber(data.roundNumber)
-          setSeconds((currSec) => {
-            if (Math.abs(currSec - data.secondsRemaining) >= 2 || phase === 'result') {
-              return data.secondsRemaining
-            }
-            return currSec
-          })
-          setPhase(data.isLocked ? 'locked' : 'open')
-          if (Array.isArray(data.history) && data.history.length > 0) {
-            const formatted = data.history.map((h) => ({
-              round: h.roundNumber,
-              digit: h.digit,
-              color: h.color,
-              multiplier: h.color === 'violet' ? 4.5 : 2.0,
-            }))
-            setHistory(formatted)
-          }
-        }
-      } catch {
-        setServerOnline(false)
-      }
-    }
+    if (!synced) setServerOnline(false)
 
     // Authoritative Server Wallet Balance & Bets Sync
     if (userId && currentUser) {
@@ -643,80 +614,10 @@ export function App() {
     setIsMuted(next)
   }
 
-  // Settle Round outcome
+  // Results and settlements are supplied by the live provider only.
   const settleCurrentRound = useCallback(() => {
-    const outcome = outcomeFor(roundNumber)
-    setLastOutcome(outcome)
-    setHistory((prev) => [outcome, ...prev.slice(0, 19)])
-
-    const currentPending = betsRef.current.filter(
-      (b) => b.status === 'pending' && b.round === roundNumber
-    )
-
-    if (currentPending.length === 0) {
-      console.log('[Win Go Debug] Period settled without user bets:', {
-        period: roundNumber,
-        winningDigit: outcome.digit,
-        color: outcome.color,
-      })
-      return
-    }
-
-    let totalWinCredits = 0
-    let hasWin = false
-    let userBetsInRound = 0
-
-    setBets((prev) =>
-      prev.map((b) => {
-        if (b.status === 'pending' && b.round === roundNumber) {
-          userBetsInRound++
-          let won = false
-          if (b.type === 'color' && b.selection === outcome.color) won = true
-          if (b.type === 'number' && Number(b.selection) === outcome.digit) won = true
-          if (b.type === 'size' && (String(b.selection).toLowerCase() === (outcome.digit >= 5 ? 'big' : 'small'))) won = true
-
-          const payout = won ? Math.round(b.amount * b.multiplier) : 0
-          if (won) {
-            hasWin = true
-            totalWinCredits += payout
-          }
-          return {
-            ...b,
-            status: won ? 'won' : 'lost',
-            payout,
-            outcome,
-            settledAt: 'Just now',
-          }
-        }
-        return b
-      })
-    )
-
-    const isWinGoPlaying = Boolean(currentUser && !authModalOpen && activeNav === 'home' && currentGame === 'wingo')
-
-    if (hasWin) {
-      setBalance((curr) => curr + totalWinCredits)
-      if (isWinGoPlaying) {
-        sound.playWin()
-        setToast({
-          type: 'success',
-          title: '🎉 Congratulations! You Won!',
-          detail: `Period ${formatPeriod(roundNumber)}: +₹${formatCredits(totalWinCredits)} credited to your wallet balance.`,
-        })
-      }
-      console.log('[Win Go Debug] Round Won! Credits added:', totalWinCredits)
-    } else {
-      console.log('[Win Go Debug] Round Lost. Outcome:', outcome)
-      if (isWinGoPlaying && userBetsInRound > 0) {
-        sound.playLockTick()
-        setToast({
-          type: 'loss',
-          title: 'Round Settled',
-          detail: `Period ${formatPeriod(roundNumber)} result: ${outcome.digit} (${outcome.color.toUpperCase()}) - ${outcome.digit >= 5 ? 'BIG' : 'SMALL'}. Better luck next round!`,
-        })
-      }
-    }
-  }, [roundNumber, currentUser, authModalOpen, activeNav, currentGame])
+    return undefined
+  }, [])
 
   // Timer Tick Engine
   useEffect(() => {
@@ -735,18 +636,9 @@ export function App() {
           return next
         }
 
-        // Cycle phase
-        if (phase === 'result') {
-          setRoundNumber((r) => r + 1)
-          setPhase('open')
-          setLastOutcome(null)
-          return ROUND_SECONDS
-        }
-
-        // Trigger result phase
-        settleCurrentRound()
-        setPhase('result')
-        return RESULT_SECONDS
+        // Wait for the provider sync instead of manufacturing the next round or result.
+        setPhase('locked')
+        return 0
       })
     }, 1000)
 

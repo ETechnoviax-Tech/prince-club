@@ -18,16 +18,10 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
   const [remainingMs, setRemainingMs] = useState(6000)
   const [waitingDurationMs, setWaitingDurationMs] = useState(6000)
   const [serverStartTime, setServerStartTime] = useState(Date.now())
-  const [totalPlayers, setTotalPlayers] = useState(24)
-  const [totalPool, setTotalPool] = useState(14800)
+  const [totalPlayers, setTotalPlayers] = useState(0)
+  const [totalPool, setTotalPool] = useState(0)
   const [recentCashouts, setRecentCashouts] = useState([])
-  const [history, setHistory] = useState([
-    { roundId: 101, crashPoint: 1.25 },
-    { roundId: 102, crashPoint: 3.42 },
-    { roundId: 103, crashPoint: 1.05 },
-    { roundId: 104, crashPoint: 12.80 },
-    { roundId: 105, crashPoint: 2.10 },
-  ])
+  const [history, setHistory] = useState([])
 
   // Bet Deck 1 State
   const [betAmount, setBetAmount] = useState(50)
@@ -41,6 +35,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
   const [activeBetsTab, setActiveBetsTab] = useState('all') // 'all' | 'my'
   const [myBetsHistory, setMyBetsHistory] = useState([])
   const [toast, setToast] = useState(null)
+  const [connectionState, setConnectionState] = useState('connecting')
 
   const canvasRef = useRef(null)
   const animationFrameRef = useRef(null)
@@ -52,6 +47,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
     try {
       const data = await fetchAviatorState()
       if (data) {
+        setConnectionState('live')
         setPhase(data.phase)
         setRemainingMs(data.remainingMs)
         if (data.waitingDurationMs) setWaitingDurationMs(data.waitingDurationMs)
@@ -105,14 +101,14 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
         }
       }
     } catch (err) {
-      // Quiet fail during temporary network drops
+      setConnectionState('offline')
     }
   }, [activeBet])
 
   // Fast 250ms polling loop for state sync
   useEffect(() => {
     syncState()
-    const interval = setInterval(syncState, 250)
+    const interval = setInterval(syncState, 750)
     return () => clearInterval(interval)
   }, [syncState])
 
@@ -239,17 +235,19 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
   // Place Bet Handler (with concurrency guard and instant loading indicator)
   const handlePlaceBet = async () => {
     if (activeBet && activeBet.status !== 'LOST' && activeBet.status !== 'CASHED_OUT') return
-    if (isPlacingBet) return
+    if (isPlacingBet || phase !== 'WAITING' || connectionState !== 'live') return
+
+    const cleanAmount = Math.min(50000, Math.max(10, Math.floor(Number(betAmount) || 0)))
 
     setIsPlacingBet(true)
     try {
       sound.playTick()
       const cleanAuto = autoCashoutEnabled ? Number(autoCashout) : null
-      const res = await placeAviatorBet(userId, betAmount, cleanAuto)
+      const res = await placeAviatorBet(userId, cleanAmount, cleanAuto)
 
       setActiveBet({
         betId: res.betId,
-        amount: betAmount,
+        amount: cleanAmount,
         autoCashout: cleanAuto,
         status: phase === 'FLYING' ? 'ACTIVE' : 'PLACED',
       })
@@ -261,7 +259,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
       setToast({
         type: 'success',
         title: 'Bet Placed Successfully!',
-        detail: `₹${betAmount} confirmed for Round #${res.roundId}`,
+        detail: `₹${cleanAmount} confirmed for Round #${res.roundId}`,
       })
     } catch (err) {
       setToast({
@@ -343,6 +341,11 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
         </div>
       </div>
 
+      <div className={`aviator-connection-state ${connectionState}`}>
+        <span />
+        {connectionState === 'live' ? 'Live server data' : connectionState === 'offline' ? 'Connection lost — betting paused' : 'Connecting to live server…'}
+      </div>
+
       {/* 2. Top Multiplier History Bar */}
       <div className="aviator-history-bar">
         <div className="aviator-history-title">
@@ -350,7 +353,9 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
           <span>ROUNDS</span>
         </div>
         <div className="aviator-history-pills">
-          {history.map((h, i) => {
+          {history.length === 0 ? (
+            <span className="aviator-history-empty">No completed live rounds yet</span>
+          ) : history.map((h, i) => {
             const isHigh = h.crashPoint >= 5.0
             const isMid = h.crashPoint >= 2.0 && h.crashPoint < 5.0
             return (
@@ -405,7 +410,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
 
               <div className="aviator-wait-subtext">
                 <Users size={12} className="inline-icon" />
-                <span>{totalPlayers} players betting right now</span>
+                <span>{totalPlayers} live player{totalPlayers === 1 ? '' : 's'} in this round</span>
               </div>
             </div>
           )}
@@ -458,13 +463,13 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
                 type="number"
                 className="aviator-amount-input"
                 value={betAmount}
-                onChange={(e) => setBetAmount(Math.max(10, Number(e.target.value)))}
+                onChange={(e) => setBetAmount(Math.min(50000, Math.max(10, Number(e.target.value) || 10)))}
                 disabled={isPlacingBet}
               />
             </div>
             <button
               className="aviator-stepper-btn"
-              onClick={() => setBetAmount((a) => a + 10)}
+              onClick={() => setBetAmount((a) => Math.min(50000, a + 10))}
               disabled={isPlacingBet}
             >
               +
@@ -484,7 +489,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
             ))}
             <button
               className="aviator-chip-btn chip-2x"
-              onClick={() => setBetAmount((a) => a * 2)}
+              onClick={() => setBetAmount((a) => Math.min(50000, a * 2))}
               disabled={isPlacingBet}
             >
               2X
@@ -549,14 +554,14 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
           <button
             className={`aviator-action-btn btn-bet ${isPlacingBet ? 'btn-loading' : ''}`}
             onClick={handlePlaceBet}
-            disabled={phase === 'FLYING' || isPlacingBet}
+            disabled={phase !== 'WAITING' || isPlacingBet || connectionState !== 'live'}
           >
             {isPlacingBet ? (
               <span className="btn-loading-text">PLACING BET...</span>
             ) : (
               <>
                 <span>BET ₹{betAmount}</span>
-                <small>{phase === 'WAITING' ? 'Takeoff Soon' : 'Next Round'}</small>
+                <small>{connectionState !== 'live' ? 'Waiting for live connection' : phase === 'WAITING' ? 'Takeoff soon' : 'Next round'}</small>
               </>
             )}
           </button>

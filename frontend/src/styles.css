@@ -4542,6 +4542,36 @@ button {
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.aviator-connection-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 28px;
+  background: #111827;
+  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.aviator-connection-state span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f59e0b;
+}
+
+.aviator-connection-state.live span { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+.aviator-connection-state.offline { background: #3f1115; color: #fecaca; }
+.aviator-connection-state.offline span { background: #ef4444; }
+
+.aviator-history-empty {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .aviator-back-btn {
   display: flex;
   align-items: center;
