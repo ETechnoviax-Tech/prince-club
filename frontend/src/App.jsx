@@ -411,7 +411,6 @@ export function App() {
   const [agreeTerms, setAgreeTerms] = useState(true)
   const [gameMode, setGameMode] = useState('30s')
   const [howToPlayOpen, setHowToPlayOpen] = useState(false)
-  const [quickMultiplier, setQuickMultiplier] = useState(1)
 
   // Toast & Notifications
   const [toast, setToast] = useState(null)
@@ -781,35 +780,6 @@ export function App() {
     sound.playTick()
     setSelectedTarget({ type, val, multiplier })
     setBetSheetOpen(true)
-  }
-
-  // Pick random lottery number
-  const handleRandomBet = () => {
-    if (!currentUser) {
-      console.log('[Win Go Bet Debug] Random bet clicked without login')
-      setToast({
-        type: 'warning',
-        title: 'Login Required',
-        detail: 'Please sign in to your 69 Club account to place bets.',
-      })
-      setAuthMode('login')
-      setAuthModalOpen(true)
-      return
-    }
-
-    if (isLocked || seconds <= activeLevel.lock) {
-      console.log('[Win Go Bet Debug] Random bet blocked: round locked')
-      setToast({
-        type: 'warning',
-        title: 'Round Locked',
-        detail: 'Bets are closed for this period. Please wait for next round.',
-      })
-      return
-    }
-
-    sound.playTick()
-    const randomDigit = Math.floor(Math.random() * 10)
-    handleSelectTarget('number', randomDigit, 9.0)
   }
 
   // Confirm bet placement
@@ -1592,33 +1562,65 @@ export function App() {
                 </div>
               </div>
 
+              <section className="wingo-bet-guide" aria-label="How to place a Win Go bet">
+                <span className="wingo-guide-step"><strong>1</strong> Choose stake</span>
+                <span className="wingo-guide-arrow">→</span>
+                <span className="wingo-guide-step"><strong>2</strong> Pick a market</span>
+                <span className="wingo-guide-arrow">→</span>
+                <span className="wingo-guide-step"><strong>3</strong> Confirm</span>
+              </section>
+
+              <section className="wingo-stake-picker" aria-label="Quick stake selection">
+                <div className="wingo-section-heading">
+                  <span>Choose your stake</span>
+                  <strong>₹{baseAmount} per ticket</strong>
+                </div>
+                <div className="wingo-stake-options">
+                  {PRESET_AMOUNTS.map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      className={`wingo-stake-option ${baseAmount === amount ? 'active' : ''}`}
+                      onClick={() => setBaseAmount(amount)}
+                    >
+                      ₹{amount}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
               {/* PRIMARY 3 COLOR ACTION BUTTONS */}
+              <div className="wingo-market-label">Choose a color <span>Tap to continue</span></div>
               <div className="raja-color-buttons">
                 <button
                   className="raja-color-btn raja-btn--green"
                   disabled={isLocked}
                   onClick={() => handleSelectTarget('color', 'green', 2.0)}
                 >
-                  green
+                  <span>Green</span><small>2x payout</small>
                 </button>
                 <button
                   className="raja-color-btn raja-btn--purple"
                   disabled={isLocked}
                   onClick={() => handleSelectTarget('color', 'violet', 4.5)}
                 >
-                  purple
+                  <span>Violet</span><small>4.5x payout</small>
                 </button>
                 <button
                   className="raja-color-btn raja-btn--red"
                   disabled={isLocked}
                   onClick={() => handleSelectTarget('color', 'red', 2.0)}
                 >
-                  red
+                  <span>Red</span><small>2x payout</small>
                 </button>
               </div>
 
               {/* NUMBER LOTTERY BALLS (0-9) 2X5 GRID */}
               <div className="raja-numbers-card">
+                <div className="wingo-section-heading">
+                  <span>Choose a number</span>
+                  <strong>9x payout</strong>
+                </div>
                 <div className="raja-numbers-grid">
                   {NUMBER_OPTIONS.map((num) => (
                     <button
@@ -1635,46 +1637,22 @@ export function App() {
                 </div>
               </div>
 
-              {/* MULTIPLIER & RANDOM BET BAR */}
-              <div className="raja-multiplier-bar">
-                <button
-                  className="raja-random-btn"
-                  disabled={isLocked}
-                  onClick={handleRandomBet}
-                >
-                  random bet
-                </button>
-                <div className="raja-multiplier-chips">
-                  {[1, 5, 10, 20, 50, 100].map((mul) => (
-                    <button
-                      key={mul}
-                      className={`raja-mul-chip ${quickMultiplier === mul ? 'active' : ''}`}
-                      onClick={() => {
-                        setQuickMultiplier(mul)
-                        setBetQuantity(mul)
-                      }}
-                    >
-                      X{mul}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {/* BIG / SMALL SPLIT BUTTONS */}
+              <div className="wingo-market-label">Choose a size <span>2x payout</span></div>
               <div className="raja-bigsmall-bar">
                 <button
                   className="raja-bs-btn raja-btn--big"
                   disabled={isLocked}
                   onClick={() => handleSelectTarget('size', 'Big', 2.0)}
                 >
-                  Big
+                  <span>Big</span><small>5 – 9</small>
                 </button>
                 <button
                   className="raja-bs-btn raja-btn--small"
                   disabled={isLocked}
                   onClick={() => handleSelectTarget('size', 'Small', 2.0)}
                 >
-                  Small
+                  <span>Small</span><small>0 – 4</small>
                 </button>
               </div>
 
@@ -2149,7 +2127,7 @@ export function App() {
               </div>
 
               {/* Amount Presets */}
-              <div className="sheet-row-label">Contract Amount</div>
+              <div className="sheet-row-label">Stake per ticket</div>
               <div className="sheet-preset-chips">
                 {PRESET_AMOUNTS.map((amt) => (
                   <button
@@ -2163,7 +2141,7 @@ export function App() {
               </div>
 
               {/* Multiplier / Quantity Stepper */}
-              <div className="sheet-row-label">Quantity Multiplier</div>
+              <div className="sheet-row-label">Number of tickets</div>
               <div className="sheet-stepper-row">
                 <div className="stepper-controls">
                   <button
@@ -2197,11 +2175,11 @@ export function App() {
               {/* Total Calculation & Terms */}
               <div className="sheet-summary-box">
                 <div className="sum-row">
-                  <span>Total Bet:</span>
+                  <span>Total stake:</span>
                   <strong>₹{formatCredits(totalBetAmount)}</strong>
                 </div>
                 <div className="sum-row highlight">
-                  <span>Potential Win:</span>
+                  <span>Potential payout:</span>
                   <strong>₹{formatCredits(potentialPayout)}</strong>
                 </div>
               </div>
@@ -2215,7 +2193,7 @@ export function App() {
                   checked={agreeTerms}
                   onChange={(e) => setAgreeTerms(e.target.checked)}
                 />
-                <span>I agree to the Presale Rule</span>
+                <span>I have checked my selection and stake</span>
               </div>
 
               {/* Action Buttons */}
@@ -2233,7 +2211,7 @@ export function App() {
                 >
                   {totalBetAmount > balance
                     ? 'Insufficient Balance'
-                    : `Total ₹${formatCredits(totalBetAmount)} Confirm`}
+                    : `Confirm ₹${formatCredits(totalBetAmount)} bet`}
                 </button>
               </div>
             </div>

@@ -230,3 +230,10 @@
 - Key logic: Risk Matrix retains Color, Big/Small, and digit totals and now renders every pending selection per game, ordered by exposure; outcomes remain controlled only by the authoritative game engines.
 - Files: `frontend/src/components/admin/AdminMatrixView.jsx`, `frontend/src/components/admin/admin.css`
 - Last change: 2026-09-18 — Expanded the all-games exposure table from only the largest side to all active market sides.
+
+## Win Go Simplified Betting UX
+- Status: done
+- Purpose: Make the Win Go market selection and bet confirmation flow easier to understand on mobile.
+- Key logic: Added a visible three-step betting guide, quick stake selector, explicit market payout/range labels, and clearer stake/ticket/confirmation copy; removed the random-bet and ambiguous multiplier shortcut from the primary screen.
+- Files: `frontend/src/App.jsx`, `frontend/src/styles.css`
+- Last change: 2026-09-18 — Reorganized the Win Go betting UI into a clear stake → market → confirm journey.

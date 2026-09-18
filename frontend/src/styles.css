@@ -3158,7 +3158,90 @@ button {
   margin: 0 12px 12px;
 }
 
+.wingo-bet-guide,
+.wingo-stake-picker {
+  margin: 0 12px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.wingo-bet-guide {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 8px;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.wingo-guide-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.wingo-guide-step strong {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  place-items: center;
+  border-radius: 50%;
+  background: #e62c25;
+  color: #ffffff;
+  font-size: 10px;
+}
+
+.wingo-guide-arrow { color: #94a3b8; }
+
+.wingo-stake-picker { padding: 11px; }
+
+.wingo-section-heading,
+.wingo-market-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.wingo-section-heading { margin-bottom: 9px; }
+.wingo-section-heading strong,
+.wingo-market-label span { color: #dc2626; font-size: 11px; }
+
+.wingo-stake-options {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+
+.wingo-stake-option {
+  min-height: 34px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.wingo-stake-option.active {
+  border-color: #dc2626;
+  background: #fff1f2;
+  color: #b91c1c;
+}
+
+.wingo-market-label { margin: 0 14px 7px; }
+
 .raja-color-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   padding: 13px 0;
   border-radius: 30px;
   font-size: 15px;
@@ -3168,6 +3251,13 @@ button {
   letter-spacing: 0.5px;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
   border: none;
+}
+
+.raja-color-btn small,
+.raja-bs-btn small {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.88;
 }
 
 .raja-color-btn:hover:not(:disabled) {
@@ -3357,6 +3447,10 @@ button {
 }
 
 .raja-bs-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   padding: 14px 0;
   border-radius: 30px;
   font-size: 17px;

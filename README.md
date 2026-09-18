@@ -11,6 +11,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **Dragon vs Tiger**: 2-card table duel with an 8-deck shoe simulation, 10s countdown intervals, and bead plate roadmap history.
   - **In-House Slots**: Native slots including Crazy 777 (with 4th bonus reel), Fortune Gems (with 15x multiplier wheel), and Super Ace (243 ways).
 - **Lottery Games**: Live period rounds across Win Go (30s, 1m, 3m, 5m) synchronized with official live draw streams, K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
+  - **Simplified Win Go Betting**: Clear stake → market → confirmation flow with visible payout and number-range labels.
 - **Real-Time Aviator Crash Game**: Authoritative Spribe-style multiplayer crash game with per-user concurrency mutex locks, 60 FPS interpolated flight curves, animated preparation loading bar, community player roster, and live cashouts ticker.
 - **Dual-Verification Admin Management & Risk Matrix**:
   - **Dual Security Layer**: Mandatory 2-step verification requiring Database Role validation (`admin`) AND Backend Master Secret (`ADMIN_SECRET_KEY`).
