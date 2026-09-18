@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   ArrowLeft, Coins, Clock, Trophy, Flame, Zap, HelpCircle,
-  RefreshCw, Check, Sparkles
+  RefreshCw, Check, Sparkles, Loader2
 } from 'lucide-react'
 import { fetchDragonTigerState, placeDragonTigerBet } from '../api/client'
 import slotAudio from '../utils/slotAudio'
@@ -164,8 +164,8 @@ export function DragonTigerGame({ userId, balance, onBalanceUpdate, onBackToLobb
             onClick={() => handleBet('DRAGON')}
             disabled={isDealing}
           >
-            <span className="sector-icon">🐉</span>
-            <strong className="sector-title">DRAGON</strong>
+            {isDealing && selectedMarket === 'DRAGON' ? <Loader2 size={22} className="spin-anim" /> : <span className="sector-icon">🐉</span>}
+            <strong className="sector-title">{isDealing && selectedMarket === 'DRAGON' ? 'PLACING...' : 'DRAGON'}</strong>
             <span className="sector-payout">1 : 1</span>
           </button>
 
@@ -175,8 +175,8 @@ export function DragonTigerGame({ userId, balance, onBalanceUpdate, onBackToLobb
             onClick={() => handleBet('TIE')}
             disabled={isDealing}
           >
-            <span className="sector-icon">⚖️</span>
-            <strong className="sector-title">TIE</strong>
+            {isDealing && selectedMarket === 'TIE' ? <Loader2 size={22} className="spin-anim" /> : <span className="sector-icon">⚖️</span>}
+            <strong className="sector-title">{isDealing && selectedMarket === 'TIE' ? 'PLACING...' : 'TIE'}</strong>
             <span className="sector-payout">1 : 8</span>
           </button>
 
@@ -186,8 +186,8 @@ export function DragonTigerGame({ userId, balance, onBalanceUpdate, onBackToLobb
             onClick={() => handleBet('TIGER')}
             disabled={isDealing}
           >
-            <span className="sector-icon">🐯</span>
-            <strong className="sector-title">TIGER</strong>
+            {isDealing && selectedMarket === 'TIGER' ? <Loader2 size={22} className="spin-anim" /> : <span className="sector-icon">🐯</span>}
+            <strong className="sector-title">{isDealing && selectedMarket === 'TIGER' ? 'PLACING...' : 'TIGER'}</strong>
             <span className="sector-payout">1 : 1</span>
           </button>
         </div>

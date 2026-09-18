@@ -21,6 +21,7 @@ import {
   Home,
   Info,
   Layers,
+  Loader2,
   Lock,
   Minus,
   Plus,
@@ -2147,7 +2148,7 @@ export function App() {
                   onClick={handleConfirmBet}
                 >
                   {isPlacingBet
-                    ? 'Placing bet...'
+                    ? <><Loader2 size={16} className="spin-anim" /> Placing bet...</>
                     : totalBetAmount > balance
                     ? 'Insufficient Balance'
                     : `Confirm ₹${formatCredits(totalBetAmount)} bet`}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   ArrowLeft, Volume2, VolumeX, Zap, Play, Square, HelpCircle,
-  Trophy, Sparkles, Coins, RefreshCw, X, ChevronRight, Flame
+  Trophy, Sparkles, Coins, RefreshCw, X, ChevronRight, Flame, Loader2
 } from 'lucide-react'
 import { executeInHouseSlotSpin } from '../api/client'
 import slotAudio from '../utils/slotAudio'
@@ -593,7 +593,7 @@ export function InHouseSlotArena({
             disabled={isSpinning}
           >
             {isSpinning ? (
-              <RefreshCw size={28} className="spin-anim" />
+              <><Loader2 size={28} className="spin-anim" /><span className="spin-btn-text">PLAYING...</span></>
             ) : (
               <>
                 <span className="spin-btn-text">SPIN</span>
