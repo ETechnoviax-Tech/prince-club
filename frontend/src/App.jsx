@@ -1478,7 +1478,27 @@ export function App() {
                       ₹{amount}
                     </button>
                   ))}
+                  <label className="wingo-custom-stake">
+                    <span>Custom</span>
+                    <span className="wingo-custom-input-wrap">
+                      <span>₹</span>
+                      <input
+                        type="number"
+                        min="10"
+                        max="50000"
+                        step="1"
+                        inputMode="numeric"
+                        value={baseAmount || ''}
+                        onChange={(event) => {
+                          const value = event.target.value
+                          setBaseAmount(value === '' ? 0 : Math.min(50000, Math.max(0, Math.floor(Number(value)))))
+                        }}
+                        aria-label="Custom stake amount"
+                      />
+                    </span>
+                  </label>
                 </div>
+                <small className="wingo-stake-hint">Custom amount: ₹10–₹50,000, whole numbers only</small>
               </section>
 
               {/* PRIMARY 3 COLOR ACTION BUTTONS */}
@@ -2030,7 +2050,27 @@ export function App() {
                     ₹{amt}
                   </button>
                 ))}
+                <label className="sheet-custom-stake">
+                  <span>Custom</span>
+                  <span className="sheet-custom-input-wrap">
+                    <span>₹</span>
+                    <input
+                      type="number"
+                      min="10"
+                      max="50000"
+                      step="1"
+                      inputMode="numeric"
+                      value={baseAmount || ''}
+                      onChange={(event) => {
+                        const value = event.target.value
+                        setBaseAmount(value === '' ? 0 : Math.min(50000, Math.max(0, Math.floor(Number(value)))))
+                      }}
+                      aria-label="Custom stake amount"
+                    />
+                  </span>
+                </label>
               </div>
+              <small className="sheet-stake-hint">₹10–₹50,000 per ticket · whole numbers only</small>
 
               {/* Multiplier / Quantity Stepper */}
               <div className="sheet-row-label">Number of tickets</div>
