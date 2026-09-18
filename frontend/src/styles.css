@@ -11988,6 +11988,107 @@ html, body, #root {
   color: #ffffff !important;
 }
 
+/* Aviator contrast palette: keep the flight arena dark and the controls readable. */
+.aviator-container {
+  background: #f4f7fb !important;
+  color: #172033 !important;
+}
+
+.aviator-header,
+.aviator-history-bar {
+  background: #172033 !important;
+  color: #f8fafc !important;
+  border-color: #29364d !important;
+}
+
+.aviator-back-btn {
+  background: #26344b !important;
+  border-color: #40516b !important;
+  color: #f8fafc !important;
+}
+
+.aviator-brand-text {
+  color: #ff4d5a !important;
+}
+
+.aviator-wallet-pill {
+  background: #26344b !important;
+  color: #fbbf24 !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
+}
+
+.aviator-connection-state {
+  background: #202c40 !important;
+  color: #cbd5e1 !important;
+}
+
+.aviator-arena {
+  background: #101a2b !important;
+  border-color: #30415c !important;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.2) !important;
+}
+
+.aviator-stat-chip {
+  background: rgba(23, 32, 51, 0.88) !important;
+  border-color: #40516b !important;
+  color: #dbeafe !important;
+}
+
+.aviator-history-title {
+  color: #cbd5e1 !important;
+}
+
+.aviator-bet-panel,
+.aviator-roster-section {
+  background: #ffffff !important;
+  color: #172033 !important;
+  border-color: #dbe3ef !important;
+  box-shadow: 0 6px 18px rgba(30, 41, 59, 0.08) !important;
+}
+
+.aviator-stepper-btn {
+  background: #26344b !important;
+  border-color: #40516b !important;
+  color: #ffffff !important;
+}
+
+.aviator-amount-wrap,
+.aviator-auto-input-wrap {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+}
+
+.aviator-amount-input,
+.aviator-auto-val {
+  color: #172033 !important;
+}
+
+.aviator-chip-btn {
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+.aviator-chip-btn:hover,
+.aviator-chip-btn.active {
+  background: #fff1f2 !important;
+  border-color: #ff4d5a !important;
+  color: #c52232 !important;
+}
+
+.aviator-auto-row,
+.aviator-auto-toggle {
+  color: #475569 !important;
+}
+
+.aviator-action-btn.btn-bet {
+  background: linear-gradient(135deg, #16a34a, #15803d) !important;
+}
+
+.aviator-action-btn.btn-cashout {
+  background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+}
+
 /* Third Party & Slot White Theme */
 .thirdparty-game-stage, .thirdparty-game-header, .thirdparty-control-console {
   background: #ffffff !important;
