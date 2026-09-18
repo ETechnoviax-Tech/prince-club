@@ -12,6 +12,7 @@ import {
   X,
   Minus,
   Plus,
+  Loader2,
 } from 'lucide-react'
 import { sound } from '../utils/audio'
 import { placeBet as apiPlaceBet } from '../api/client'
@@ -53,6 +54,7 @@ export function K3Game({
   const [selectedBet, setSelectedBet] = useState(null)
   const [baseAmount, setBaseAmount] = useState(10)
   const [betMultiplier, setBetMultiplier] = useState(1)
+  const [isPlacingBet, setIsPlacingBet] = useState(false)
   const [isMuted, setIsMuted] = useState(sound.isMuted)
 
   const activeModeObj = K3_MODES.find((m) => m.id === selectedK3Tab) || K3_MODES[0]
@@ -115,6 +117,7 @@ export function K3Game({
   }
 
   const handleConfirmBet = async () => {
+    if (isPlacingBet || !selectedBet) return
     const total = baseAmount * betMultiplier
     if (total > balance) {
       setToast?.({
@@ -125,6 +128,7 @@ export function K3Game({
       return
     }
 
+    setIsPlacingBet(true)
     try {
       await apiPlaceBet(userId, selectedBet.label, total, {
         mode: 'K3_' + selectedK3Tab.toUpperCase(),
@@ -145,6 +149,8 @@ export function K3Game({
         title: 'Bet Not Placed',
         detail: error.message || 'Live K3 service is unavailable. No amount was deducted.',
       })
+    } finally {
+      setIsPlacingBet(false)
     }
   }
 
@@ -484,9 +490,11 @@ export function K3Game({
                 <button
                   className="btn-confirm"
                   onClick={handleConfirmBet}
-                  disabled={baseAmount * betMultiplier > balance}
+                  disabled={isPlacingBet || baseAmount * betMultiplier > balance}
                 >
-                  {baseAmount * betMultiplier > balance
+                  {isPlacingBet
+                    ? <><Loader2 size={16} className="spin-anim" /> Placing bet...</>
+                    : baseAmount * betMultiplier > balance
                     ? 'Insufficient Funds'
                     : `Confirm Bet ₹${baseAmount * betMultiplier}`}
                 </button>

@@ -11,6 +11,7 @@ import {
   Plus,
   ShieldCheck,
   Zap,
+  Loader2,
 } from 'lucide-react'
 import { sound } from '../utils/audio'
 import { placeBet as apiPlaceBet } from '../api/client'
@@ -50,6 +51,7 @@ export function TrxGame({
   const [selectedBet, setSelectedBet] = useState(null)
   const [baseAmount, setBaseAmount] = useState(10)
   const [betMultiplier, setBetMultiplier] = useState(1)
+  const [isPlacingBet, setIsPlacingBet] = useState(false)
   const [isMuted, setIsMuted] = useState(sound.isMuted)
 
   const activeMode = TRX_MODES.find((m) => m.id === selectedTab) || TRX_MODES[0]
@@ -113,6 +115,7 @@ export function TrxGame({
   }
 
   const handleConfirmBet = async () => {
+    if (isPlacingBet || !selectedBet) return
     const total = baseAmount * betMultiplier
     if (total > balance) {
       setToast?.({
@@ -123,6 +126,7 @@ export function TrxGame({
       return
     }
 
+    setIsPlacingBet(true)
     try {
       await apiPlaceBet(userId, selectedBet.label, total, {
         mode: 'TRX_' + selectedTab.toUpperCase(),
@@ -143,6 +147,8 @@ export function TrxGame({
         title: 'Bet Not Placed',
         detail: error.message || 'Live TRX service is unavailable. No amount was deducted.',
       })
+    } finally {
+      setIsPlacingBet(false)
     }
   }
 
@@ -382,9 +388,11 @@ export function TrxGame({
                 <button
                   className="btn-confirm"
                   onClick={handleConfirmBet}
-                  disabled={baseAmount * betMultiplier > balance}
+                  disabled={isPlacingBet || baseAmount * betMultiplier > balance}
                 >
-                  {baseAmount * betMultiplier > balance
+                  {isPlacingBet
+                    ? <><Loader2 size={16} className="spin-anim" /> Placing bet...</>
+                    : baseAmount * betMultiplier > balance
                     ? 'Insufficient Funds'
                     : `Confirm Bet ₹${baseAmount * betMultiplier}`}
                 </button>

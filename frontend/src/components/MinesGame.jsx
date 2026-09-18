@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import {
   ArrowLeft, Bomb, Gem, Coins, RefreshCw, Volume2, VolumeX,
-  HelpCircle, ShieldCheck, Trophy, Sparkles, AlertTriangle
+  HelpCircle, ShieldCheck, Trophy, Sparkles, AlertTriangle, Loader2
 } from 'lucide-react'
 import { startMines, revealMinesTile, cashoutMines } from '../api/client'
 import slotAudio from '../utils/slotAudio'
@@ -243,8 +243,14 @@ export function MinesGame({ userId, balance, onBalanceUpdate, onBackToLobby, set
             onClick={handleCashout}
             disabled={gemsRevealed === 0 || isProcessing}
           >
-            <span className="cashout-txt">CASHOUT</span>
-            <span className="cashout-amt">₹{currentPayout.toFixed(2)} ({currentMultiplier.toFixed(2)}x)</span>
+            {isProcessing ? (
+              <><Loader2 size={18} className="spin-anim" /> Processing...</>
+            ) : (
+              <>
+                <span className="cashout-txt">CASHOUT</span>
+                <span className="cashout-amt">₹{currentPayout.toFixed(2)} ({currentMultiplier.toFixed(2)}x)</span>
+              </>
+            )}
           </button>
         ) : (
           <button
@@ -252,8 +258,14 @@ export function MinesGame({ userId, balance, onBalanceUpdate, onBackToLobby, set
             onClick={handleStart}
             disabled={isProcessing}
           >
-            <span className="btn-main-txt">BET ₹{betAmount}</span>
-            <span className="btn-sub-txt">START GAME</span>
+            {isProcessing ? (
+              <><Loader2 size={18} className="spin-anim" /> Placing bet...</>
+            ) : (
+              <>
+                <span className="btn-main-txt">BET ₹{betAmount}</span>
+                <span className="btn-sub-txt">START GAME</span>
+              </>
+            )}
           </button>
         )}
 

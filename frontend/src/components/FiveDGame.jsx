@@ -9,6 +9,7 @@ import {
   X,
   Minus,
   Plus,
+  Loader2,
 } from 'lucide-react'
 import { sound } from '../utils/audio'
 import { placeBet as apiPlaceBet } from '../api/client'
@@ -49,6 +50,7 @@ export function FiveDGame({
   const [selectedBet, setSelectedBet] = useState(null)
   const [baseAmount, setBaseAmount] = useState(10)
   const [betMultiplier, setBetMultiplier] = useState(1)
+  const [isPlacingBet, setIsPlacingBet] = useState(false)
   const [isMuted, setIsMuted] = useState(sound.isMuted)
 
   const activeMode = FIVED_MODES.find((m) => m.id === selectedTab) || FIVED_MODES[0]
@@ -108,6 +110,7 @@ export function FiveDGame({
   }
 
   const handleConfirmBet = async () => {
+    if (isPlacingBet || !selectedBet) return
     const total = baseAmount * betMultiplier
     if (total > balance) {
       setToast?.({
@@ -118,6 +121,7 @@ export function FiveDGame({
       return
     }
 
+    setIsPlacingBet(true)
     try {
       await apiPlaceBet(userId, `${activePosition}_${selectedBet.label}`, total, {
         mode: '5D_' + selectedTab.toUpperCase(),
@@ -138,6 +142,8 @@ export function FiveDGame({
         title: 'Bet Not Placed',
         detail: error.message || 'Live 5D service is unavailable. No amount was deducted.',
       })
+    } finally {
+      setIsPlacingBet(false)
     }
   }
 
@@ -401,9 +407,11 @@ export function FiveDGame({
                 <button
                   className="btn-confirm"
                   onClick={handleConfirmBet}
-                  disabled={baseAmount * betMultiplier > balance}
+                  disabled={isPlacingBet || baseAmount * betMultiplier > balance}
                 >
-                  {baseAmount * betMultiplier > balance
+                  {isPlacingBet
+                    ? <><Loader2 size={16} className="spin-anim" /> Placing bet...</>
+                    : baseAmount * betMultiplier > balance
                     ? 'Insufficient Funds'
                     : `Confirm Bet ₹${baseAmount * betMultiplier}`}
                 </button>

@@ -406,6 +406,7 @@ export function App() {
   const [selectedTarget, setSelectedTarget] = useState(null) // { type: 'color' | 'number' | 'size', val: 'green' | 5 | 'big', multiplier: 2 | 9 }
   const [baseAmount, setBaseAmount] = useState(10)
   const [betQuantity, setBetQuantity] = useState(1)
+  const [isPlacingBet, setIsPlacingBet] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(true)
   const [gameMode, setGameMode] = useState('30s')
   const [howToPlayOpen, setHowToPlayOpen] = useState(false)
@@ -677,6 +678,7 @@ export function App() {
   // Confirm bet placement
   const handleConfirmBet = async () => {
     if (!selectedTarget) return
+    if (isPlacingBet) return
 
     if (!currentUser) {
       setToast({
@@ -742,6 +744,7 @@ export function App() {
       balance,
     })
 
+    setIsPlacingBet(true)
     // Try backend placeBet
     try {
       const typeId = gameMode === '30s' ? 30 : gameMode === '1m' ? 1 : gameMode === '3m' ? 2 : 3
@@ -785,6 +788,8 @@ export function App() {
         title: 'Bet Rejected',
         detail: err.message || 'Server rejected bet. Please try again.',
       })
+    } finally {
+      setIsPlacingBet(false)
     }
   }
 
@@ -2138,10 +2143,12 @@ export function App() {
                 </button>
                 <button
                   className="sheet-submit-btn"
-                  disabled={!agreeTerms || totalBetAmount <= 0 || totalBetAmount > balance}
+                  disabled={isPlacingBet || !agreeTerms || totalBetAmount <= 0 || totalBetAmount > balance}
                   onClick={handleConfirmBet}
                 >
-                  {totalBetAmount > balance
+                  {isPlacingBet
+                    ? 'Placing bet...'
+                    : totalBetAmount > balance
                     ? 'Insufficient Balance'
                     : `Confirm ₹${formatCredits(totalBetAmount)} bet`}
                 </button>
