@@ -1121,3 +1121,28 @@
   font-weight: 600;
   margin: 0;
 }
+.admin-exposure-selections {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 180px;
+}
+
+.admin-exposure-selection {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid #dbe4ef;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.admin-exposure-selection strong {
+  color: #0f172a;
+  text-transform: capitalize;
+}

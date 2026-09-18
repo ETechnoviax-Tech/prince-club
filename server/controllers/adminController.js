@@ -81,20 +81,37 @@ export async function getAdminMatrix(req, res) {
       digits: { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 },
       totalPendingVolume: 0,
     }
+    const gameExposure = new Map()
 
     for (const b of allBets) {
       const amt = Number(b.amount || 0)
       const payout = Number(b.payout || 0)
       totalBetsAmount += amt
+      const gameMode = String(b.game_mode || 'PARITY').toUpperCase()
+      const exposure = gameExposure.get(gameMode) || {
+        gameMode,
+        pendingVolume: 0,
+        pendingBets: 0,
+        totalVolume: 0,
+        totalBets: 0,
+        wonPayouts: 0,
+        selections: {},
+      }
+      exposure.totalVolume += amt
+      exposure.totalBets += 1
 
       if (b.status === 'WON') {
         totalPayoutsAmount += payout
+        exposure.wonPayouts += payout
       }
 
       // If pending, categorize into live pool matrix
       if (b.status === 'PENDING') {
         poolMatrix.totalPendingVolume += amt
+        exposure.pendingVolume += amt
+        exposure.pendingBets += 1
         const sel = String(b.selection || '').toLowerCase()
+        exposure.selections[sel] = (exposure.selections[sel] || 0) + amt
 
         if (sel === 'red' || sel === 'green' || sel === 'violet') {
           poolMatrix.colors[sel] = (poolMatrix.colors[sel] || 0) + amt
@@ -104,9 +121,18 @@ export async function getAdminMatrix(req, res) {
           poolMatrix.digits[sel] = (poolMatrix.digits[sel] || 0) + amt
         }
       }
+      gameExposure.set(gameMode, exposure)
     }
 
     const platformNetProfit = totalBetsAmount - totalPayoutsAmount
+    const gameExposureList = Array.from(gameExposure.values())
+      .map((game) => ({
+        ...game,
+        selections: Object.entries(game.selections)
+          .map(([selection, volume]) => ({ selection, volume }))
+          .sort((a, b) => b.volume - a.volume),
+      }))
+      .sort((a, b) => b.pendingVolume - a.pendingVolume)
 
     return res.json({
       success: true,
@@ -120,6 +146,7 @@ export async function getAdminMatrix(req, res) {
         platformNetProfit,
         profitMarginPct: totalBetsAmount > 0 ? Number(((platformNetProfit / totalBetsAmount) * 100).toFixed(2)) : 0,
         poolMatrix,
+        gameExposure: gameExposureList,
       },
     })
   } catch (err) {

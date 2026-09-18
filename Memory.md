@@ -216,4 +216,17 @@
 - Dependencies: React 18, HTML5 Canvas, Lucide React
 - Last change: 2026-09-17 — Built authentic 55CLUB slide-to-verify jigsaw puzzle captcha before login/register submit.
 
+## Git Repository & Remote Version Control
+- Status: done
+- Purpose: Push clean codebase to 69club1/69clubgame remote and uninitialize local git.
+- Key logic: Successfully pushed branch `main` to `https://github.com/69club1/69clubgame.git`; removed local `.git` directory per user request.
+- Files: `.gitignore`, `Memory.md`
+- Dependencies: Git, GitHub
+- Last change: 2026-09-18 — Pushed code to 69clubgame.git and removed local .git directory.
 
+## Admin Game Exposure Detail
+- Status: done
+- Purpose: Give verified admins a complete, read-only view of pending stake distribution for each game and market.
+- Key logic: Risk Matrix retains Color, Big/Small, and digit totals and now renders every pending selection per game, ordered by exposure; outcomes remain controlled only by the authoritative game engines.
+- Files: `frontend/src/components/admin/AdminMatrixView.jsx`, `frontend/src/components/admin/admin.css`
+- Last change: 2026-09-18 — Expanded the all-games exposure table from only the largest side to all active market sides.

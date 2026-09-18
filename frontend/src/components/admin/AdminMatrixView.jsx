@@ -7,6 +7,7 @@ export function AdminMatrixView({ matrixData, loading, onRefresh }) {
   const colors = pool.colors || { green: 0, red: 0, violet: 0 }
   const sizes = pool.sizes || { big: 0, small: 0 }
   const digits = pool.digits || { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, 8: 0, 9: 0 }
+  const gameExposure = matrixData?.gameExposure || []
 
   const calcPct = (val) => {
     if (!totalPending || totalPending <= 0) return 0
@@ -168,6 +169,59 @@ export function AdminMatrixView({ matrixData, loading, onRefresh }) {
             })}
           </div>
         </div>
+      </div>
+
+      <div className="admin-card-section">
+        <div className="card-section-header">
+          <h4>All Games Exposure</h4>
+          <span className="live-badge-vol">Read-only risk view</span>
+        </div>
+        <p className="admin-risk-disclaimer">
+          Pending stakes are shown for monitoring, limits and player protection. Outcomes are generated and settled by the game
+          engines and cannot be changed from this console.
+        </p>
+        {gameExposure.length === 0 ? (
+          <div className="admin-empty-state">No bets recorded yet.</div>
+        ) : (
+          <div className="admin-exposure-table-wrap">
+            <table className="admin-exposure-table">
+              <thead>
+                <tr>
+                  <th>Game</th>
+                  <th>Pending volume</th>
+                  <th>Pending bets</th>
+                  <th>All pending sides</th>
+                  <th>Total volume</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gameExposure.map((game) => {
+                  const selections = game.selections || []
+                  return (
+                    <tr key={game.gameMode}>
+                      <td><strong>{game.gameMode}</strong></td>
+                      <td>₹{Number(game.pendingVolume || 0).toLocaleString('en-IN')}</td>
+                      <td>{game.pendingBets || 0}</td>
+                      <td>
+                        {selections.length > 0 ? (
+                          <div className="admin-exposure-selections" aria-label={`${game.gameMode} pending market distribution`}>
+                            {selections.map((side) => (
+                              <span key={side.selection} className="admin-exposure-selection">
+                                <strong>{side.selection}</strong>
+                                <span>₹{Number(side.volume || 0).toLocaleString('en-IN')}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : '—'}
+                      </td>
+                      <td>₹{Number(game.totalVolume || 0).toLocaleString('en-IN')}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

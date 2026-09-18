@@ -15,6 +15,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
 - **Dual-Verification Admin Management & Risk Matrix**:
   - **Dual Security Layer**: Mandatory 2-step verification requiring Database Role validation (`admin`) AND Backend Master Secret (`ADMIN_SECRET_KEY`).
   - **Live Bet Distribution Matrix**: Real-time aggregation of bet volumes across Color markets (Red, Green, Violet), Size markets (Big, Small), and individual Digits (0 to 9).
+  - **Game-Wise Exposure Detail**: Read-only per-game breakdown of every active market side and its pending stake.
   - **Bets & Winners Ledger**: Detailed tracking of all placed bets, targets, wager amounts, winning outcomes, and exact payouts.
   - **Users Management (CRUD)**: Search users, adjust balances (credit/debit with audit trail), switch roles (`user`/`admin`), freeze accounts, and safely delete accounts.
 - **Production-Grade Payment Gateway**:
@@ -282,4 +283,3 @@ docker compose logs -f
 
 ## License
 MIT
-
