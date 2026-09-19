@@ -12,7 +12,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **In-House Slots**: Native slots including Crazy 777 (with 4th bonus reel), Fortune Gems (with 15x multiplier wheel), and Super Ace (243 ways).
 - **Lottery Games**: Live period rounds across Win Go (30s, 1m, 3m, 5m) synchronized with official live draw streams, K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
   - **Simplified Win Go Betting**: Clear stake → market → confirmation flow with visible payout and number-range labels.
-- **Real-Time Aviator Crash Game**: Authoritative Spribe-style multiplayer crash game with per-user concurrency mutex locks, 60 FPS interpolated flight curves, animated preparation loading bar, community player roster, and live cashouts ticker.
+- **Real-Time Aviator Crash Game**: Authoritative Spribe-style multiplayer crash game with per-user concurrency mutex locks, 1-bet-per-round anti-double-click protection, 60 FPS interpolated flight curves, pre-flight bet cancellations, server-reconciled auto-cashouts, and high-contrast dark cockpit styling.
 - **Private Admin Management & Risk Matrix**:
   - **Server-Authoritative Admin Security**: The dedicated `/admin` route requires an authenticated bearer session and a live database `admin` role on every request. No admin secret is accepted from the browser.
   - **Live Bet Distribution Matrix**: Real-time aggregation of bet volumes across Color markets (Red, Green, Violet), Size markets (Big, Small), and individual Digits (0 to 9).

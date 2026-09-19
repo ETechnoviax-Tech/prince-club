@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
-import { ArrowLeft, Volume2, VolumeX, History, RefreshCw, Zap, ShieldCheck, Users, TrendingUp, AlertCircle, Clock } from 'lucide-react'
-import { fetchAviatorState, placeAviatorBet, cashoutAviator } from '../api/client'
+import { ArrowLeft, Volume2, VolumeX, History, RefreshCw, Zap, ShieldCheck, Users, TrendingUp, AlertCircle, Clock, XCircle } from 'lucide-react'
+import { fetchAviatorState, placeAviatorBet, cashoutAviator, cancelAviatorBet, fetchUserBets } from '../api/client'
 import { sound } from '../utils/audio'
 
 // Client-side multiplier formula matching server authoritative math for 60 FPS interpolation
@@ -11,25 +11,57 @@ function calculateClientMultiplier(elapsedMs) {
   return +mult.toFixed(2)
 }
 
-export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby }) {
+export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby, onOpenAuth }) {
   const [phase, setPhase] = useState('WAITING') // 'WAITING' | 'FLYING' | 'CRASHED'
   const [multiplier, setMultiplier] = useState(1.0)
   const [crashPoint, setCrashPoint] = useState(null)
   const [remainingMs, setRemainingMs] = useState(6000)
   const [waitingDurationMs, setWaitingDurationMs] = useState(6000)
   const [serverStartTime, setServerStartTime] = useState(Date.now())
+  const [crashedAtTime, setCrashedAtTime] = useState(null)
   const [totalPlayers, setTotalPlayers] = useState(0)
   const [totalPool, setTotalPool] = useState(0)
   const [recentCashouts, setRecentCashouts] = useState([])
   const [history, setHistory] = useState([])
 
-  // Bet Deck 1 State
+  // Bet Deck State
   const [betAmount, setBetAmount] = useState(50)
   const [autoCashout, setAutoCashout] = useState(2.0)
   const [autoCashoutEnabled, setAutoCashoutEnabled] = useState(false)
   const [activeBet, setActiveBet] = useState(null) // { betId, amount, status: 'PLACED' | 'ACTIVE' | 'CASHED_OUT' | 'LOST' }
   const [isPlacingBet, setIsPlacingBet] = useState(false)
   const [isCashingOut, setIsCashingOut] = useState(false)
+  const [isCancellingBet, setIsCancellingBet] = useState(false)
+
+  // Synchronous double-click / concurrency prevention refs
+  const isPlacingRef = useRef(false)
+  const isCashingOutRef = useRef(false)
+  const isCancellingRef = useRef(false)
+  const lastBetClickTimeRef = useRef(0)
+  const lastCashoutClickTimeRef = useRef(0)
+
+  // Sound Mute State
+  const [isMuted, setIsMuted] = useState(() => {
+    try {
+      return localStorage.getItem('aviator_sound_muted') === 'true'
+    } catch {
+      return false
+    }
+  })
+  const isMutedRef = useRef(isMuted)
+  useEffect(() => {
+    isMutedRef.current = isMuted
+  }, [isMuted])
+
+  const toggleMute = () => {
+    setIsMuted((prev) => {
+      const next = !prev
+      try {
+        localStorage.setItem('aviator_sound_muted', String(next))
+      } catch {}
+      return next
+    })
+  }
 
   // Active view tab (Game vs Live Bets)
   const [activeBetsTab, setActiveBetsTab] = useState('all') // 'all' | 'my'
@@ -37,15 +69,46 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
   const [toast, setToast] = useState(null)
   const [connectionState, setConnectionState] = useState('connecting')
 
+  // Load historical Aviator bets from database so past bets always persist
+  const loadUserBetsHistory = useCallback(async () => {
+    if (!userId) return
+    try {
+      const data = await fetchUserBets(userId)
+      if (data && Array.isArray(data.bets)) {
+        const aviatorBets = data.bets
+          .filter((b) => (b.game_mode || '').toUpperCase() === 'AVIATOR')
+          .map((b) => ({
+            id: b.id,
+            amount: b.amount,
+            payout: b.payout || 0,
+            mult: b.cashout_multiplier || b.mult || (b.payout > 0 ? +(b.payout / b.amount).toFixed(2) : null),
+            status: b.status === 'CASHED_OUT' || b.payout > 0 ? 'WON' : b.status === 'ACTIVE' || b.status === 'PLACED' ? 'ACTIVE' : 'LOST',
+            time: b.placed_at || b.created_at ? new Date(b.placed_at || b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent',
+          }))
+        setMyBetsHistory(aviatorBets)
+      }
+    } catch (err) {
+      console.warn('[Aviator loadUserBetsHistory error]:', err)
+    }
+  }, [userId])
+
+  useEffect(() => {
+    loadUserBetsHistory()
+  }, [loadUserBetsHistory])
+
   const canvasRef = useRef(null)
   const animationFrameRef = useRef(null)
   const serverOffsetRef = useRef(0)
   const localMultiplierRef = useRef(1.0)
+  const activeBetRef = useRef(activeBet)
+  useEffect(() => {
+    activeBetRef.current = activeBet
+  }, [activeBet])
 
   // Sync state from authoritative server
   const syncState = useCallback(async () => {
     try {
-      const data = await fetchAviatorState()
+      const data = await fetchAviatorState(userId)
       if (data) {
         setConnectionState('live')
         setPhase(data.phase)
@@ -69,43 +132,100 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
           setCrashPoint(finalCrash)
           setMultiplier(finalCrash)
           localMultiplierRef.current = finalCrash
+          setCrashedAtTime((prev) => prev || Date.now())
         } else if (data.phase === 'WAITING') {
           setMultiplier(1.0)
           localMultiplierRef.current = 1.0
           setCrashPoint(null)
+          setCrashedAtTime(null)
+        }
+
+        // Reconcile user bets from server
+        const currentBet = activeBetRef.current
+        const serverUserBets = Array.isArray(data.userBets) ? data.userBets : []
+        const matchingBet = serverUserBets.find((b) => b.id === currentBet?.betId) ||
+          (currentBet ? null : serverUserBets.find((b) => b.roundId === data.roundId && (b.status === 'ACTIVE' || b.status === 'PLACED')))
+
+        if (matchingBet) {
+          if (matchingBet.status === 'CASHED_OUT' && currentBet?.status !== 'CASHED_OUT') {
+            // Auto-cashout confirmed by server
+            if (!isMutedRef.current) sound.playWin()
+            setActiveBet({
+              betId: matchingBet.id,
+              amount: matchingBet.amount,
+              status: 'CASHED_OUT',
+              payout: matchingBet.payout,
+              multiplier: matchingBet.cashoutMultiplier,
+            })
+            setToast({
+              type: 'success',
+              title: '🎉 Auto Cash Out Confirmed!',
+              detail: `Won +₹${matchingBet.payout} at ${matchingBet.cashoutMultiplier}x!`,
+            })
+            setMyBetsHistory((prev) => [
+              {
+                id: matchingBet.id,
+                amount: matchingBet.amount,
+                payout: matchingBet.payout,
+                mult: matchingBet.cashoutMultiplier,
+                status: 'WON',
+                time: 'Just now',
+              },
+              ...prev.slice(0, 19),
+            ])
+            if (onBalanceUpdate) {
+              onBalanceUpdate(balance + matchingBet.payout)
+            }
+          } else if (!currentBet && (matchingBet.status === 'ACTIVE' || matchingBet.status === 'PLACED')) {
+            // Restore active bet across tab switches / refreshes
+            setActiveBet({
+              betId: matchingBet.id,
+              amount: matchingBet.amount,
+              autoCashout: matchingBet.autoCashout,
+              status: matchingBet.status,
+            })
+          }
         }
 
         // Transition user bet status
-        if (activeBet && activeBet.status === 'PLACED' && data.phase === 'FLYING') {
+        if (currentBet && currentBet.status === 'PLACED' && data.phase === 'FLYING') {
           setActiveBet((prev) => ({ ...prev, status: 'ACTIVE' }))
         }
 
-        if (activeBet && activeBet.status === 'ACTIVE' && data.phase === 'CRASHED') {
-          setActiveBet((prev) => ({ ...prev, status: 'LOST' }))
-          setToast({
-            type: 'loss',
-            title: 'Flew Away!',
-            detail: `Plane crashed at ${(data.crashPoint || data.multiplier || 1.0).toFixed(2)}x`,
-          })
-          setMyBetsHistory((prev) => [
-            {
-              id: activeBet.betId,
-              amount: activeBet.amount,
-              payout: 0,
-              mult: data.crashPoint || data.multiplier,
-              status: 'LOST',
-              time: 'Just now',
-            },
-            ...prev.slice(0, 19),
-          ])
+        if (currentBet && currentBet.status === 'ACTIVE' && data.phase === 'CRASHED') {
+          // If already cashed out on server, do not mark as lost
+          if (!matchingBet || matchingBet.status !== 'CASHED_OUT') {
+            setActiveBet((prev) => ({ ...prev, status: 'LOST' }))
+            setToast({
+              type: 'loss',
+              title: 'Flew Away!',
+              detail: `Plane crashed at ${(data.crashPoint || data.multiplier || 1.0).toFixed(2)}x`,
+            })
+            setMyBetsHistory((prev) => [
+              {
+                id: currentBet.betId,
+                amount: currentBet.amount,
+                payout: 0,
+                mult: data.crashPoint || data.multiplier,
+                status: 'LOST',
+                time: 'Just now',
+              },
+              ...prev.slice(0, 19),
+            ])
+          }
+        }
+
+        // Clear completed bets when a new WAITING round begins
+        if (data.phase === 'WAITING' && currentBet && (currentBet.status === 'CASHED_OUT' || currentBet.status === 'LOST')) {
+          setActiveBet(null)
         }
       }
     } catch (err) {
       setConnectionState('offline')
     }
-  }, [activeBet])
+  }, [userId, balance, onBalanceUpdate])
 
-  // Fast 250ms polling loop for state sync
+  // Fast polling loop for state sync (750ms)
   useEffect(() => {
     syncState()
     const interval = setInterval(syncState, 750)
@@ -117,10 +237,8 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext('2d')
-    const width = (canvas.width = canvas.parentElement.clientWidth || 360)
+    const width = (canvas.width = canvas.parentElement?.clientWidth || 360)
     const height = (canvas.height = 250)
-
-    let lastTick = performance.now()
 
     const render = () => {
       ctx.clearRect(0, 0, width, height)
@@ -149,10 +267,11 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
         localMultiplierRef.current = currentM
         setMultiplier(currentM)
 
-        // Trajectory math
-        const progress = Math.min(1, (currentM - 1.0) / 4.5)
-        const planeX = 40 + progress * (width - 95)
-        const planeY = height - 35 - Math.pow(progress, 0.75) * (height - 90)
+        // Continuous asymptotic curve that never freezes past 5.5x
+        const progress = Math.min(0.92, (currentM - 1.0) / (currentM + 2.5))
+        const floatBob = Math.sin(now / 220) * 4
+        const planeX = 35 + progress * (width - 80)
+        const planeY = height - 35 - Math.pow(progress, 0.82) * (height - 85) + floatBob
 
         // Trail curve
         ctx.save()
@@ -179,7 +298,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
         // Draw animated stylized Red Supersonic Jet
         ctx.save()
         ctx.translate(planeX, planeY)
-        ctx.rotate(-0.22 + Math.sin(Date.now() / 150) * 0.04)
+        ctx.rotate(-0.22 + Math.sin(now / 150) * 0.04)
 
         // Engine afterburner flame
         ctx.fillStyle = '#fbbf24'
@@ -216,11 +335,31 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
         ctx.fill()
         ctx.restore()
       } else if (phase === 'CRASHED') {
-        // Crashed explosion particles or static marker
+        const crashElapsed = crashedAtTime ? Date.now() - crashedAtTime : 0
+        if (crashElapsed < 900) {
+          // Animated flyoff exit to top-right
+          const flyProgress = crashElapsed / 900
+          const exitX = width * 0.85 + flyProgress * (width * 0.4)
+          const exitY = height * 0.25 - flyProgress * (height * 0.4)
+
+          ctx.save()
+          ctx.translate(exitX, exitY)
+          ctx.rotate(-0.45)
+          ctx.fillStyle = '#ef4444'
+          ctx.beginPath()
+          ctx.moveTo(22, 0)
+          ctx.lineTo(-14, -10)
+          ctx.lineTo(-8, 0)
+          ctx.lineTo(-14, 10)
+          ctx.closePath()
+          ctx.fill()
+          ctx.restore()
+        }
+
         ctx.save()
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.15)'
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.08)'
         ctx.beginPath()
-        ctx.arc(width / 2, height / 2, 60, 0, Math.PI * 2)
+        ctx.arc(width / 2, height / 2, 70, 0, Math.PI * 2)
         ctx.fill()
         ctx.restore()
       }
@@ -230,18 +369,29 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
 
     render()
     return () => cancelAnimationFrame(animationFrameRef.current)
-  }, [phase, serverStartTime])
+  }, [phase, serverStartTime, crashedAtTime])
 
-  // Place Bet Handler (with concurrency guard and instant loading indicator)
+  // Place Bet Handler (with strict synchronous double-click debounce)
   const handlePlaceBet = async () => {
+    const now = Date.now()
+    if (now - lastBetClickTimeRef.current < 600) return
+    if (isPlacingRef.current || isPlacingBet) return
     if (activeBet && activeBet.status !== 'LOST' && activeBet.status !== 'CASHED_OUT') return
-    if (isPlacingBet || phase !== 'WAITING' || connectionState !== 'live') return
+    if (phase !== 'WAITING' || connectionState !== 'live') return
 
+    if (!userId) {
+      if (onOpenAuth) onOpenAuth()
+      else setToast({ type: 'loss', title: 'Login Required', detail: 'Please log in to place Aviator bets' })
+      return
+    }
+
+    isPlacingRef.current = true
+    lastBetClickTimeRef.current = now
+    setIsPlacingBet(true)
     const cleanAmount = Math.min(50000, Math.max(10, Math.floor(Number(betAmount) || 0)))
 
-    setIsPlacingBet(true)
     try {
-      sound.playTick()
+      if (!isMutedRef.current) sound.playTick()
       const cleanAuto = autoCashoutEnabled ? Number(autoCashout) : null
       const res = await placeAviatorBet(userId, cleanAmount, cleanAuto)
 
@@ -261,6 +411,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
         title: 'Bet Placed Successfully!',
         detail: `₹${cleanAmount} confirmed for Round #${res.roundId}`,
       })
+      loadUserBetsHistory()
     } catch (err) {
       setToast({
         type: 'loss',
@@ -269,17 +420,52 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
       })
     } finally {
       setIsPlacingBet(false)
+      isPlacingRef.current = false
     }
   }
 
-  // Cash Out Handler (with atomic lock and celebratory sound)
-  const handleCashout = async () => {
-    if (!activeBet || activeBet.status !== 'ACTIVE' || isCashingOut) return
+  // Cancel Bet Handler (during WAITING phase before flight takeoff)
+  const handleCancelBet = async () => {
+    if (!activeBet || activeBet.status !== 'PLACED' || isCancellingBet) return
 
+    setIsCancellingBet(true)
+    try {
+      const res = await cancelAviatorBet(userId, activeBet.betId)
+      setActiveBet(null)
+
+      if (res.newBalance !== undefined && onBalanceUpdate) {
+        onBalanceUpdate(res.newBalance)
+      }
+
+      setToast({
+        type: 'success',
+        title: 'Bet Cancelled',
+        detail: `₹${res.refundAmount} refunded to your balance`,
+      })
+    } catch (err) {
+      setToast({
+        type: 'loss',
+        title: 'Cancellation Failed',
+        detail: err.message || 'Could not cancel bet',
+      })
+    } finally {
+      setIsCancellingBet(false)
+    }
+  }
+
+  // Cash Out Handler (with strict synchronous double-click debounce)
+  const handleCashout = async () => {
+    const now = Date.now()
+    if (now - lastCashoutClickTimeRef.current < 600) return
+    if (isCashingOutRef.current || isCashingOut) return
+    if (!activeBet || activeBet.status !== 'ACTIVE') return
+
+    isCashingOutRef.current = true
+    lastCashoutClickTimeRef.current = now
     setIsCashingOut(true)
     try {
       const res = await cashoutAviator(userId, activeBet.betId)
-      sound.playWin()
+      if (!isMutedRef.current) sound.playWin()
 
       setActiveBet({
         ...activeBet,
@@ -309,6 +495,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
         title: '🎉 Awesome Cash Out!',
         detail: `Won +₹${res.payout} at ${res.multiplier}x!`,
       })
+      loadUserBetsHistory()
     } catch (err) {
       setToast({
         type: 'loss',
@@ -317,6 +504,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
       })
     } finally {
       setIsCashingOut(false)
+      isCashingOutRef.current = false
     }
   }
 
@@ -335,6 +523,22 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
           <span className="aviator-logo-plane">✈️</span>
           <span className="aviator-brand-text">AVIATOR</span>
           <span className="aviator-live-tag">LIVE</span>
+          <button
+            className="aviator-sound-btn"
+            onClick={toggleMute}
+            title={isMuted ? 'Unmute Game Sounds' : 'Mute Game Sounds'}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: isMuted ? '#94a3b8' : '#22c55e',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              marginLeft: '6px',
+            }}
+          >
+            {isMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+          </button>
         </div>
         <div className="aviator-wallet-pill">
           <span>₹{Number(balance).toFixed(2)}</span>
@@ -523,7 +727,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
           )}
         </div>
 
-        {/* Main Action Button with Concurrency & Loading States */}
+        {/* Main Action Button with Concurrency, Loading, and Cancel States */}
         {activeBet?.status === 'ACTIVE' ? (
           <button
             className={`aviator-action-btn btn-cashout ${isCashingOut ? 'btn-loading' : ''}`}
@@ -538,12 +742,17 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
             </span>
           </button>
         ) : activeBet?.status === 'PLACED' ? (
-          <button className="aviator-action-btn btn-waiting" disabled>
+          <button
+            className="aviator-action-btn btn-waiting"
+            onClick={handleCancelBet}
+            disabled={isCancellingBet}
+            title="Click to cancel bet and receive instant refund"
+          >
             <div className="btn-inner-row">
-              <Clock size={16} className="btn-spin" />
-              <span>BET QUEUED (₹{activeBet.amount})</span>
+              <Clock size={16} className={isCancellingBet ? 'btn-spin' : ''} />
+              <span>{isCancellingBet ? 'CANCELLING...' : `CANCEL BET (₹${activeBet.amount})`}</span>
             </div>
-            <small>Waiting for flight takeoff...</small>
+            <small>Click to cancel and refund before takeoff</small>
           </button>
         ) : activeBet?.status === 'CASHED_OUT' ? (
           <button className="aviator-action-btn btn-won" disabled>
@@ -585,6 +794,14 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
           </button>
         </div>
 
+        {/* Table Column Headers */}
+        <div className="roster-table-header">
+          <span>{activeBetsTab === 'all' ? 'USER' : 'BET INFO'}</span>
+          <span>STAKE</span>
+          <span>MULT</span>
+          <span>PAYOUT</span>
+        </div>
+
         <div className="aviator-roster-content">
           {activeBetsTab === 'all' ? (
             <div className="aviator-recent-cashes-list">
@@ -604,13 +821,13 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby })
           ) : (
             <div className="aviator-my-bets-list">
               {myBetsHistory.length === 0 ? (
-                <div className="roster-empty">No bets placed in this session yet</div>
+                <div className="roster-empty">No bets placed in this account yet</div>
               ) : (
                 myBetsHistory.map((mb, idx) => (
-                  <div key={idx} className={`roster-row ${mb.status === 'WON' ? 'row-won' : 'row-lost'}`}>
-                    <span className="roster-user">Round Bet</span>
+                  <div key={mb.id || idx} className={`roster-row ${mb.status === 'WON' ? 'row-won' : 'row-lost'}`}>
+                    <span className="roster-user">{mb.time || 'Round Bet'}</span>
                     <span className="roster-bet">₹{mb.amount}</span>
-                    <span className="roster-mult">{mb.mult}x</span>
+                    <span className="roster-mult">{mb.mult ? `${mb.mult}x` : '-'}</span>
                     <span className="roster-payout">{mb.status === 'WON' ? `+₹${mb.payout}` : 'Lost'}</span>
                   </div>
                 ))

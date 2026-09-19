@@ -428,20 +428,24 @@ export async function fetchUserBets(userId) {
   return res.json()
 }
 
-export async function fetchAviatorState() {
-  const res = await fetch(`${API_BASE}/game/aviator/state`, {
+export async function fetchAviatorState(userId = null) {
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+  const res = await apiFetch(`${API_BASE}/game/aviator/state${query}`, {
     headers: authHeaders(),
+    silent: true,
+    timeoutMs: 5000,
   })
   if (!res.ok) throw new Error('Failed to fetch Aviator state')
   return res.json()
 }
 
 export async function placeAviatorBet(userId, amount, autoCashout = null) {
-  const res = await fetch(`${API_BASE}/game/aviator/bet`, {
+  const res = await apiFetch(`${API_BASE}/game/aviator/bet`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ userId, amount, autoCashout }),
-  })
+    timeoutMs: 8000,
+  }, 'Placing Aviator bet...', false)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(json.error || 'Failed to place Aviator bet')
@@ -450,11 +454,12 @@ export async function placeAviatorBet(userId, amount, autoCashout = null) {
 }
 
 export async function cashoutAviator(userId, betId) {
-  const res = await fetch(`${API_BASE}/game/aviator/cashout`, {
+  const res = await apiFetch(`${API_BASE}/game/aviator/cashout`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ userId, betId }),
-  })
+    timeoutMs: 8000,
+  }, 'Cashing out...', false)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(json.error || 'Failed to cash out')
@@ -462,9 +467,25 @@ export async function cashoutAviator(userId, betId) {
   return json
 }
 
-export async function fetchAviatorHistory() {
-  const res = await fetch(`${API_BASE}/game/aviator/history`, {
+export async function cancelAviatorBet(userId, betId) {
+  const res = await apiFetch(`${API_BASE}/game/aviator/cancel`, {
+    method: 'POST',
     headers: authHeaders(),
+    body: JSON.stringify({ userId, betId }),
+    timeoutMs: 8000,
+  }, 'Cancelling Aviator bet...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to cancel bet')
+  }
+  return json
+}
+
+export async function fetchAviatorHistory() {
+  const res = await apiFetch(`${API_BASE}/game/aviator/history`, {
+    headers: authHeaders(),
+    silent: true,
+    timeoutMs: 6000,
   })
   if (!res.ok) throw new Error('Failed to fetch Aviator history')
   return res.json()

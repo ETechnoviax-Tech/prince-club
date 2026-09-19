@@ -597,13 +597,20 @@ export async function getUserBets(req, res) {
         if (dbErr) throw dbErr
 
         const [aviator, slots, dragonTiger, provider] = await Promise.all([
-          supabase.from('aviator_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('aviator_bets').select('*').eq('user_id', userId).order('placed_at', { ascending: false }).limit(50),
           supabase.from('slot_spins').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
           supabase.from('dragon_tiger_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
           supabase.from('third_party_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
         ])
         const dedicatedBets = [
-          ...(aviator.data || []).map((bet) => ({ ...bet, game_mode: 'AVIATOR', selection: bet.auto_cashout ? `Auto ${bet.auto_cashout}x` : 'Manual', payout: bet.payout || 0 })),
+          ...(aviator.data || []).map((bet) => ({
+            ...bet,
+            created_at: bet.placed_at,
+            game_mode: 'AVIATOR',
+            selection: bet.auto_cashout ? `Auto ${bet.auto_cashout}x` : 'Manual',
+            mult: bet.cashout_multiplier,
+            payout: bet.payout || 0,
+          })),
           ...(slots.data || []).map((spin) => ({ ...spin, game_mode: spin.game_code || 'SLOT', selection: 'Spin', amount: spin.bet_amount, payout: spin.payout, status: spin.payout > 0 ? 'WON' : 'LOST' })),
           ...(dragonTiger.data || []).map((bet) => ({ ...bet, game_mode: 'DRAGON_TIGER', selection: bet.market, amount: bet.amount })),
           ...(provider.data || []).map((bet) => ({ ...bet, game_mode: bet.provider_code || 'PROVIDER', selection: bet.provider_game_id, amount: bet.amount })),

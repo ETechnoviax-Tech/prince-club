@@ -940,6 +940,7 @@ export function App() {
               balance={balance}
               onBalanceUpdate={(newBal) => setBalance(newBal)}
               onBackToLobby={() => setCurrentGame(null)}
+              onOpenAuth={() => setAuthModalOpen(true)}
             />
           )}
 

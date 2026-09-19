@@ -14,6 +14,8 @@ const state = {
   seedCommitment: null,
   startTime: Date.now(),
   flightDurationMs: 0,
+  flyingStartedAt: null,
+  crashedAt: null,
   history: [
     { roundId: 99995, crashPoint: 1.24 },
     { roundId: 99996, crashPoint: 3.85 },
@@ -119,23 +121,37 @@ async function ensureRoundRecord() {
   }
 
 function prepareRound() {
-    state.serverSeed = createServerSeed()
-    state.seedCommitment = commitmentForSeed(state.serverSeed)
-    state.crashPoint = null
-    state.roundDbId = null
-    state.roundEnsurePromise = null
+  state.serverSeed = createServerSeed()
+  state.seedCommitment = commitmentForSeed(state.serverSeed)
+  state.crashPoint = null
+  state.roundDbId = null
+  state.roundEnsurePromise = null
+  state.flyingStartedAt = null
+  state.crashedAt = null
 }
 
 async function finalizeRoundRecord() {
   if (!isSupabaseConfigured || !state.roundDbId) return
+
+  let totalBetAmount = 0
+  let totalPayout = 0
+  for (const b of state.bets.values()) {
+    totalBetAmount += Number(b.amount || 0)
+    totalPayout += Number(b.payout || 0)
+  }
+
   const { error } = await supabase
     .from('aviator_rounds')
     .update({
       phase: 'SETTLED',
       settled_at: new Date().toISOString(),
+      crashed_at: state.crashedAt || new Date().toISOString(),
+      flying_started_at: state.flyingStartedAt,
       server_seed_reveal: state.serverSeed,
       crash_point: state.crashPoint,
       flight_duration_ms: state.flightDurationMs,
+      total_bet_amount: totalBetAmount,
+      total_payout: totalPayout,
     })
     .eq('id', state.roundDbId)
   if (error) console.error('[Aviator round settlement error]:', error.message)
@@ -174,23 +190,30 @@ function startAviatorLoop() {
     if (state.phase === 'WAITING') {
       const elapsed = now - state.startTime
       if (elapsed >= WAITING_DURATION_MS) {
-        if (isSupabaseConfigured && !state.roundDbId) {
-          await ensureRoundRecord()
-        }
         // Transition to FLYING
         state.phase = 'FLYING'
+        state.flyingStartedAt = new Date().toISOString()
         state.crashPoint = generateCrashPoint(state.serverSeed)
         state.flightDurationMs = durationForCrashPoint(state.crashPoint)
         state.startTime = Date.now()
-        state.recentCashouts = []
+
+        if (isSupabaseConfigured && state.roundDbId) {
+          supabase
+            .from('aviator_rounds')
+            .update({ phase: 'FLYING', flying_started_at: state.flyingStartedAt })
+            .eq('id', state.roundDbId)
+            .then(({ error }) => {
+              if (error) console.error('[Aviator round flying update error]:', error.message)
+            })
+        }
       }
     } else if (state.phase === 'FLYING') {
       const elapsed = now - state.startTime
       const currentMult = calculateMultiplier(elapsed)
 
-      // Process real user auto-cashouts.
+      // Process real user auto-cashouts (<= crashPoint is safe and fair)
       for (const [betId, b] of state.bets.entries()) {
-        if (b.status === 'ACTIVE' && b.autoCashout && currentMult >= b.autoCashout && b.autoCashout < state.crashPoint) {
+        if (b.status === 'ACTIVE' && b.autoCashout && currentMult >= b.autoCashout && b.autoCashout <= state.crashPoint) {
           await settleCashout(b, b.autoCashout)
         }
       }
@@ -199,21 +222,28 @@ function startAviatorLoop() {
       if (elapsed >= state.flightDurationMs || currentMult >= state.crashPoint) {
         // Plane Flew Away!
         state.phase = 'CRASHED'
+        state.crashedAt = new Date().toISOString()
         state.startTime = Date.now()
 
         // Settle all remaining active user bets as LOST
+        const lostBetIds = []
         for (const [betId, b] of state.bets.entries()) {
           if (b.status === 'ACTIVE') {
             b.status = 'LOST'
             b.payout = 0
-            if (isSupabaseConfigured) {
-              const { error } = await supabase
-                .from('aviator_bets')
-                .update({ status: 'LOST', payout: 0 })
-                .eq('id', b.id)
-              if (error) console.error('[Aviator loss settlement error]:', error.message)
-            }
+            lostBetIds.push(b.id)
           }
+        }
+
+        // Batch update lost bets in Supabase
+        if (isSupabaseConfigured && lostBetIds.length > 0) {
+          supabase
+            .from('aviator_bets')
+            .update({ status: 'LOST', payout: 0 })
+            .in('id', lostBetIds)
+            .then(({ error }) => {
+              if (error) console.error('[Aviator batch loss settlement error]:', error.message)
+            })
         }
 
         // Record flight in history
@@ -230,7 +260,7 @@ function startAviatorLoop() {
         state.startTime = Date.now()
         prepareRound()
         state.bets.clear()
-        state.recentCashouts = []
+        if (state.recentCashouts.length > 30) state.recentCashouts.length = 30
       }
     }
     } catch (err) {
@@ -377,6 +407,26 @@ export function getAviatorState(req, res) {
   let totalPool = 0
   for (const b of state.bets.values()) totalPool += b.amount
 
+  // Include user bets for authenticated requester
+  const authUserId = req.user?.id || req.query.userId
+  const userBets = []
+  if (authUserId) {
+    for (const b of state.bets.values()) {
+      if (b.userId === authUserId) {
+        userBets.push({
+          id: b.id,
+          amount: b.amount,
+          autoCashout: b.autoCashout,
+          status: b.status,
+          cashoutMultiplier: b.cashoutMultiplier,
+          payout: b.payout,
+          roundId: b.roundId,
+          placedAt: b.placedAt,
+        })
+      }
+    }
+  }
+
   return res.json({
     game: 'AVIATOR',
     engine: 'in-house',
@@ -394,6 +444,7 @@ export function getAviatorState(req, res) {
     totalPlayers,
     totalPool,
     recentCashouts: state.recentCashouts.slice(0, 10),
+    userBets,
     serverTime: now,
   })
 }
@@ -435,15 +486,11 @@ export async function placeAviatorBet(req, res) {
         return res.status(400).json({ error: 'Round has already taken off' })
       }
 
-      // Limit active bets per round for a single user (max 2 bets, dual-deck standard)
-      let userActiveBetsCount = 0
+      // Strictly prevent double bets: check if user already has an active bet for this round
       for (const b of state.bets.values()) {
-        if (b.userId === authUserId && b.roundId === state.roundId && b.status !== 'LOST') {
-          userActiveBetsCount++
+        if (b.userId === authUserId && b.roundId === state.roundId && (b.status === 'ACTIVE' || b.status === 'PLACED')) {
+          return res.status(409).json({ error: 'You already have an active bet placed for this round' })
         }
-      }
-      if (userActiveBetsCount >= 2) {
-        return res.status(400).json({ error: 'Maximum 2 bets allowed per round' })
       }
 
       const betId = crypto.randomUUID()
@@ -585,6 +632,17 @@ export async function cashoutAviator(req, res) {
 
       if (currentMult >= state.crashPoint) {
         bet.status = 'LOST'
+        bet.payout = 0
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authUserId)
+        if (isSupabaseConfigured && isUuid) {
+          supabase
+            .from('aviator_bets')
+            .update({ status: 'LOST', payout: 0 })
+            .eq('id', betId)
+            .then(({ error }) => {
+              if (error) console.error('[Aviator late cashout loss update error]:', error.message)
+            })
+        }
         return res.status(400).json({ error: 'Too late! The plane already flew away.' })
       }
 
@@ -617,7 +675,82 @@ export async function cashoutAviator(req, res) {
   })
 }
 
-// 4. Get History
+// 4. Cancel Bet (during WAITING phase before takeoff)
+export async function cancelAviatorBet(req, res) {
+  const authUserId = req.user ? req.user.id : req.body.userId
+  const { betId } = req.body
+
+  if (!authUserId || !betId) {
+    return res.status(400).json({ error: 'Valid userId and betId required' })
+  }
+
+  return await withUserLock(authUserId, async () => {
+    try {
+      const bet = state.bets.get(betId)
+      if (!bet || bet.userId !== authUserId) {
+        return res.status(404).json({ error: 'Bet not found' })
+      }
+
+      if (state.phase !== 'WAITING') {
+        return res.status(400).json({ error: 'Cannot cancel bet once the flight is taking off or in flight' })
+      }
+
+      if (bet.status !== 'ACTIVE') {
+        return res.status(400).json({ error: `Cannot cancel bet with status: ${bet.status}` })
+      }
+
+      const refundAmount = bet.amount
+      bet.status = 'REFUNDED'
+      state.bets.delete(betId)
+
+      let newBalance = 1000
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authUserId)
+      if (isSupabaseConfigured && isUuid) {
+        const { data: wal } = await supabase.from('wallets').select('balance').eq('user_id', authUserId).single()
+        if (wal) {
+          newBalance = Number(wal.balance) + refundAmount
+          await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', authUserId)
+        }
+        await supabase.from('aviator_bets').update({ status: 'REFUNDED' }).eq('id', betId)
+        await supabase.from('wallet_transactions').insert({
+          user_id: authUserId,
+          type: 'BET_REFUND',
+          amount: refundAmount,
+          balance_after: newBalance,
+          reference_id: betId,
+          description: `Aviator Bet Cancelled Round #${state.roundId}`,
+        })
+      } else {
+        const prevBal = memoryWallets.get(authUserId) || 1000
+        newBalance = prevBal + refundAmount
+        memoryWallets.set(authUserId, newBalance)
+        memoryTransactions.push({
+          id: crypto.randomUUID(),
+          user_id: authUserId,
+          type: 'BET_REFUND',
+          amount: refundAmount,
+          balance_after: newBalance,
+          reference_id: betId,
+          description: `Aviator Bet Cancelled Round #${state.roundId}`,
+          created_at: new Date().toISOString(),
+        })
+      }
+
+      return res.json({
+        success: true,
+        message: 'Bet cancelled and refunded successfully',
+        betId,
+        refundAmount,
+        newBalance,
+      })
+    } catch (err) {
+      console.error('[cancelAviatorBet error]:', err)
+      return res.status(500).json({ error: 'Internal server error' })
+    }
+  })
+}
+
+// 5. Get History
 export function getAviatorHistory(req, res) {
   return res.json({
     history: state.history,

@@ -194,11 +194,11 @@
 
 ## Aviator Real-Time Multiplayer Engine & Concurrency Shield
 - Status: done
-- Purpose: High-frequency authoritative Aviator crash game with concurrency mutex locks and glowing loading bar.
-- Key logic: Per-user Promise mutex preventing concurrent double-spends; 60 FPS RAF canvas multiplier interpolation; 6s waiting countdown loading bar; live community player roster and cashouts ticker.
-- Files: `server/controllers/aviatorController.js`, `frontend/src/components/AviatorGame.jsx`, `frontend/src/styles.css`, `tests/test_aviator_concurrency.js`
-- Dependencies: Web Audio API, Canvas API, Express, Supabase
-- Last change: 2026-09-17 — Added per-user mutex locks, live community bets simulation, 60 FPS interpolation, and takeoff loading bar.
+- Purpose: Authoritative high-frequency Aviator crash game with zero-to-production correctness.
+- Key logic: Server-reconciled userBets state, auto-cashout <= boundary fix, late-cashout DB sync, batch loss updates, WAITING bet cancellation with instant refund, dynamic log trajectory past 5.5x, flyaway animation.
+- Files: `server/controllers/aviatorController.js`, `server/routes/gameRoutes.js`, `frontend/src/api/client.js`, `frontend/src/components/AviatorGame.jsx`, `frontend/src/App.jsx`
+- Dependencies: Express, Supabase, React 18, Web Audio API, Canvas API
+- Last change: 2026-09-19 — Fixed 11 production bugs: auto-cashout reconciliation, late-cashout DB sync, bet cancellation, and canvas dynamic trajectory.
 
 ## Universal Site Loading Spinner & Top Progress Bar
 - Status: done

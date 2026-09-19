@@ -4938,18 +4938,27 @@ button {
 .ticker-badge {
   background: rgba(0, 0, 0, 0.25);
   padding: 2px 6px;
-  border-radius: 8px;
-  font-size: 10px;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(8px);
+  padding: 5px 12px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  font-size: 11px;
+  animation: slideUpFade 0.3s ease;
+  white-space: nowrap;
+  z-index: 10;
 }
 
-.ticker-mult {
-  color: #fef08a;
-  font-weight: 900;
-}
-
-.ticker-payout {
-  font-weight: 900;
-}
+.ticker-user { font-weight: 800; color: #ffffff; }
+.ticker-badge { color: #94a3b8; font-size: 10px; }
+.ticker-mult { font-weight: 800; color: #facc15; }
+.ticker-payout { font-weight: 900; color: #22c55e; }
 
 @keyframes slideUpFade {
   from { opacity: 0; transform: translateY(10px); }
@@ -4958,15 +4967,16 @@ button {
 
 /* Aviator Betting Panel */
 .aviator-bet-panel {
-  background: #ffffff; color: #111827;
-  margin: 0 14px;
-  padding: 14px;
+  background: #141824;
+  margin: 0 12px;
+  padding: 12px;
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
 }
 
 .aviator-bet-header {
-  margin-bottom: 10px;
+  margin-bottom: 8px;
 }
 
 .aviator-bet-input-row {
@@ -4977,40 +4987,51 @@ button {
 }
 
 .aviator-stepper-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  background: #22242e;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #1f2537;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  font-size: 18px;
+  font-size: 20px;
   font-weight: 900;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.aviator-stepper-btn:active {
+  transform: scale(0.94);
+  background: #2a3249;
 }
 
 .aviator-amount-wrap {
   flex: 1;
   display: flex;
   align-items: center;
-  background: #ffffff; color: #111827;
-  border-radius: 8px;
+  background: #0c0f17;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  padding: 0 10px;
+  padding: 0 12px;
 }
 
 .aviator-curr {
   color: #facc15;
-  font-weight: 800;
+  font-weight: 900;
+  font-size: 15px;
+  margin-right: 4px;
 }
 
 .aviator-amount-input {
   width: 100%;
   background: none;
   border: none;
-  color: #ffffff;
+  color: #ffffff !important;
   font-size: 16px;
   font-weight: 800;
-  padding: 8px 6px;
+  padding: 8px 4px;
   outline: none;
 }
 
@@ -5022,20 +5043,33 @@ button {
 .aviator-chip-btn {
   flex: 1;
   padding: 6px 0;
-  border-radius: 6px;
-  background: #20222a;
+  border-radius: 8px;
+  background: #1a1f2e;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #94a3b8;
+  color: #cbd5e1;
   font-size: 11px;
   font-weight: 700;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.aviator-chip-btn:hover,
+.aviator-chip-btn.active {
+  background: #252c42;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.aviator-chip-btn.chip-2x {
+  color: #facc15;
+  font-weight: 900;
 }
 
 .aviator-auto-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   font-size: 12px;
   color: #94a3b8;
 }
@@ -5045,30 +5079,33 @@ button {
   align-items: center;
   gap: 6px;
   cursor: pointer;
+  user-select: none;
 }
 
 .aviator-auto-input-wrap {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: #ffffff; color: #111827;
+  background: #0c0f17;
   padding: 3px 8px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
 }
 
 .aviator-auto-val {
-  width: 42px;
+  width: 44px;
   background: none;
   border: none;
-  color: #ffffff;
+  color: #ffffff !important;
   font-weight: 800;
+  font-size: 13px;
   outline: none;
 }
 
 .aviator-action-btn {
   width: 100%;
-  padding: 14px 0;
+  padding: 13px 0;
   border-radius: 12px;
   border: none;
   cursor: pointer;
@@ -5078,6 +5115,11 @@ button {
   justify-content: center;
   font-weight: 900;
   transition: transform 0.15s ease;
+  user-select: none;
+}
+
+.aviator-action-btn:active {
+  transform: scale(0.98);
 }
 
 .btn-bet {
@@ -5099,14 +5141,19 @@ button {
   animation: pulse 1s infinite alternate;
 }
 
-.btn-cashout-label { font-size: 16px; }
+.btn-cashout-label { font-size: 15px; }
 .btn-cashout-val { font-size: 18px; color: #fef08a; }
 
 .btn-waiting {
-  background: #334155;
-  color: #94a3b8;
+  background: #2a3249;
+  color: #e2e8f0;
   font-size: 13px;
-  cursor: not-allowed;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.btn-waiting small {
+  color: #f87171;
+  font-size: 10px;
 }
 
 .btn-won {
@@ -5119,6 +5166,7 @@ button {
 .btn-loading {
   opacity: 0.85;
   cursor: wait !important;
+  pointer-events: none !important;
 }
 
 .btn-inner-row {
@@ -5133,59 +5181,77 @@ button {
 
 /* Aviator Live Bets Roster */
 .aviator-roster-section {
-  margin: 14px 14px 20px;
-  background: #ffffff;
+  margin: 12px 12px 20px;
+  background: #141824;
   border-radius: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
 }
 
 .aviator-roster-tabs {
   display: flex;
-  border-bottom: 1px solid #e2e8f0;
-  background: #f8fafc;
+  background: #0f121d;
+  padding: 4px;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .roster-tab {
   flex: 1;
-  padding: 10px 0;
+  padding: 9px 0;
   background: transparent;
   border: none;
+  border-radius: 8px;
   font-size: 12px;
   font-weight: 800;
   color: #64748b;
   cursor: pointer;
-  border-bottom: 2px solid transparent;
   transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .roster-tab.active {
-  color: #ef4444;
-  border-bottom-color: #ef4444;
-  background: #ffffff;
+  color: #ffffff;
+  background: #ef4444;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35);
+}
+
+.roster-table-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 10px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
 }
 
 .aviator-roster-content {
-  max-height: 160px;
+  max-height: 180px;
   overflow-y: auto;
-  padding: 8px 12px;
-}
-
-.roster-empty {
-  text-align: center;
-  font-size: 12px;
-  color: #94a3b8;
-  padding: 24px 0;
+  padding: 4px 8px;
 }
 
 .roster-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 7px 4px;
-  border-bottom: 1px solid #f1f5f9;
+  padding: 8px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   font-size: 12px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.roster-row:hover {
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .roster-row:last-child {
@@ -5194,21 +5260,24 @@ button {
 
 .roster-user {
   font-weight: 700;
-  color: #334155;
+  color: #e2e8f0;
   flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .roster-bet {
   font-weight: 700;
-  color: #64748b;
-  width: 60px;
+  color: #94a3b8;
+  width: 65px;
   text-align: right;
 }
 
 .roster-mult {
   font-weight: 800;
-  color: #d97706;
-  width: 60px;
+  color: #facc15;
+  width: 65px;
   text-align: right;
 }
 
@@ -5221,6 +5290,57 @@ button {
 
 .row-lost .roster-payout {
   color: #ef4444;
+}
+
+.roster-empty {
+  text-align: center;
+  font-size: 12px;
+  color: #64748b;
+  padding: 24px 0;
+}
+
+/* Floating Aviator Toast */
+.aviator-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 18px;
+  border-radius: 24px;
+  font-size: 12px;
+  z-index: 9999;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  animation: slideUpFade 0.3s ease-out;
+  pointer-events: none;
+  max-width: 90%;
+  text-align: center;
+}
+
+.toast-success {
+  background: rgba(16, 24, 38, 0.95);
+  border: 1px solid #22c55e;
+  color: #ffffff;
+}
+
+.toast-success strong {
+  color: #4ade80;
+  font-size: 13px;
+}
+
+.toast-loss {
+  background: rgba(24, 16, 20, 0.95);
+  border: 1px solid #ef4444;
+  color: #ffffff;
+}
+
+.toast-loss strong {
+  color: #f87171;
+  font-size: 13px;
 }
 
 /* ==========================================================================

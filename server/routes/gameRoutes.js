@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import {
+  cancelAviatorBet,
   cashoutAviator,
   getAviatorHistory,
   getAviatorState,
@@ -67,9 +68,10 @@ router.post('/bet', requireAuth, betRateLimit, validateBetPlacement, placeBet)
 router.get('/bets/:userId', requireAuth, getUserBets)
 
 // Aviator Crash Game Endpoints
-router.get('/aviator/state', getAviatorState)
+router.get('/aviator/state', optionalAuth, getAviatorState)
 router.get('/aviator/history', getAviatorHistory)
 router.post('/aviator/bet', requireAuth, betRateLimit, placeAviatorBet)
 router.post('/aviator/cashout', requireAuth, cashoutAviator)
+router.post('/aviator/cancel', requireAuth, cancelAviatorBet)
 
 export default router
