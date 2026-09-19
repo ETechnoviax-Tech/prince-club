@@ -35,7 +35,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
   const [isVerified, setIsVerified] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [verifyError, setVerifyError] = useState(null)
-  const [activeTab, setActiveTab] = useState('matrix') // 'matrix' | 'bets' | 'users' | 'payments'
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('club69_admin_tab') || 'matrix') // 'matrix' | 'bets' | 'users' | 'payments'
 
   // Data States
   const [matrixData, setMatrixData] = useState(null)
@@ -51,6 +51,10 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
   const [adjustReason, setAdjustReason] = useState('Admin adjustment')
   const [adjustLoading, setAdjustLoading] = useState(false)
   const [paymentsRefreshToken, setPaymentsRefreshToken] = useState(0)
+
+  useEffect(() => {
+    localStorage.setItem('club69_admin_tab', activeTab)
+  }, [activeTab])
 
   // 1. Handshake verification
   const handleVerifyAdmin = useCallback(async () => {

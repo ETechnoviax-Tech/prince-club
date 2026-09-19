@@ -79,17 +79,17 @@ export function GlobalLoadingSpinner() {
     }
   }, [])
 
-  if (!loadingState.isLoading) return null
-
   return (
     <>
       {/* 1. Universal Top Loading Progress Bar */}
-      <div className="site-top-loader-bar">
-        <div className="site-top-loader-progress" />
-      </div>
+      {loadingState.isLoading && (
+        <div className="site-top-loader-bar" role="progressbar" aria-label={loadingState.text}>
+          <div className="site-top-loader-progress" />
+        </div>
+      )}
 
       {/* 2. Global Branded Loading Spinner Overlay */}
-      {loadingState.showOverlay && (
+      {loadingState.isLoading && loadingState.showOverlay && (
         <div className="site-loading-overlay">
           <div className="site-loading-card">
             <div className="site-loading-spinner-ring">

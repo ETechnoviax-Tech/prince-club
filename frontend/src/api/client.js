@@ -157,7 +157,7 @@ function authHeaders() {
 }
 
 export async function fetchCaptchaChallenge() {
-  const res = await fetch(`${API_BASE}/auth/captcha`)
+  const res = await apiFetch(`${API_BASE}/auth/captcha`, {}, 'Verifying security...', false)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Unable to load CAPTCHA')
   return json

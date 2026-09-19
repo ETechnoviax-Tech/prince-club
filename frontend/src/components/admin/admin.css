@@ -1192,6 +1192,53 @@
   z-index: 2;
 }
 
+.admin-payments-toolbar {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.admin-payment-select {
+  min-height: 38px;
+  border: 1px solid var(--admin-border, #dbe3ef);
+  border-radius: 10px;
+  padding: 0 10px;
+  background: var(--admin-card, #fff);
+  color: inherit;
+}
+.admin-btn-secondary, .admin-copy-btn {
+  border: 1px solid var(--admin-border, #dbe3ef);
+  background: transparent;
+  border-radius: 9px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.admin-payments-list { display: grid; gap: 12px; }
+.admin-payment-card {
+  border: 1px solid var(--admin-border, #dbe3ef);
+  border-radius: 14px;
+  padding: 15px;
+  background: var(--admin-card, #fff);
+}
+.admin-payment-main, .admin-payment-meta, .admin-payment-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin-payment-main { justify-content: space-between; }
+.admin-payment-main strong { font-size: 20px; margin-right: 8px; }
+.admin-payment-status { font-size: 11px; border-radius: 999px; padding: 4px 8px; background: #fff7df; color: #996b00; }
+.admin-payment-meta { margin: 12px 0; color: #64748b; font-size: 12px; }
+.admin-payment-meta code { color: #1e293b; }
+.admin-copy-btn { padding: 3px 6px; margin-left: 4px; }
+.admin-payment-actions { justify-content: flex-end; }
+.admin-action-btn { border: 0; border-radius: 9px; padding: 9px 12px; color: #fff; display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.admin-action-btn.approve { background: #15803d; }
+.admin-action-btn.reject { background: #b91c1c; }
+.admin-payment-error { padding: 10px 12px; margin-bottom: 12px; border-radius: 9px; background: #fef2f2; color: #b91c1c; }
+
 @media (max-width: 640px) {
   .admin-page-body {
     padding: 14px 12px 28px;
@@ -1216,53 +1263,6 @@
     padding: 0 8px;
     font-size: 11px;
   }
-
-  .admin-payments-toolbar {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-    margin-bottom: 14px;
-  }
-  .admin-payment-select {
-    min-height: 38px;
-    border: 1px solid var(--admin-border, #dbe3ef);
-    border-radius: 10px;
-    padding: 0 10px;
-    background: var(--admin-card, #fff);
-    color: inherit;
-  }
-  .admin-btn-secondary, .admin-copy-btn {
-    border: 1px solid var(--admin-border, #dbe3ef);
-    background: transparent;
-    border-radius: 9px;
-    padding: 8px 12px;
-    cursor: pointer;
-  }
-  .admin-payments-list { display: grid; gap: 12px; }
-  .admin-payment-card {
-    border: 1px solid var(--admin-border, #dbe3ef);
-    border-radius: 14px;
-    padding: 15px;
-    background: var(--admin-card, #fff);
-  }
-  .admin-payment-main, .admin-payment-meta, .admin-payment-actions {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-  .admin-payment-main { justify-content: space-between; }
-  .admin-payment-main strong { font-size: 20px; margin-right: 8px; }
-  .admin-payment-status { font-size: 11px; border-radius: 999px; padding: 4px 8px; background: #fff7df; color: #996b00; }
-  .admin-payment-meta { margin: 12px 0; color: #64748b; font-size: 12px; }
-  .admin-payment-meta code { color: #1e293b; }
-  .admin-copy-btn { padding: 3px 6px; margin-left: 4px; }
-  .admin-payment-actions { justify-content: flex-end; }
-  .admin-action-btn { border: 0; border-radius: 9px; padding: 9px 12px; color: #fff; display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
-  .admin-action-btn.approve { background: #15803d; }
-  .admin-action-btn.reject { background: #b91c1c; }
-  .admin-payment-error { padding: 10px 12px; margin-bottom: 12px; border-radius: 9px; background: #fef2f2; color: #b91c1c; }
 
   .admin-page-shell .admin-toolbar-row {
     align-items: stretch;

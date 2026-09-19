@@ -230,13 +230,13 @@ function initialSeedBets() {
 
 export function App() {
   // Navigation & Core State
-  const [activeTab, setActiveTab] = useState('win') // 'win', 'trend', 'wallet', 'rules'
-  const [activeSubTab, setActiveSubTab] = useState('record') // 'record', 'chart', 'mybets'
+  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('club69_active_tab') || 'win') // 'win', 'trend', 'wallet', 'rules'
+  const [activeSubTab, setActiveSubTab] = useState(() => localStorage.getItem('club69_active_subtab') || 'record') // 'record', 'chart', 'mybets'
   const [depositModalOpen, setDepositModalOpen] = useState(false)
   const [isMuted, setIsMuted] = useState(sound.isMuted)
   const [serverOnline, setServerOnline] = useState(false)
-  const [currentGame, setCurrentGame] = useState(null) // null = 55 Club Lobby, 'wingo', 'aviator'
-  const [activeNav, setActiveNav] = useState('home') // 'home', 'activity', 'promotion', 'account'
+  const [currentGame, setCurrentGame] = useState(() => localStorage.getItem('club69_current_game') || null) // null = lobby
+  const [activeNav, setActiveNav] = useState(() => localStorage.getItem('club69_active_nav') || 'home')
   const [fortuneWheelOpen, setFortuneWheelOpen] = useState(false)
   const [activeThirdPartyGame, setActiveThirdPartyGame] = useState(null)
 
@@ -251,11 +251,21 @@ export function App() {
   })
   const [authModalOpen, setAuthModalOpen] = useState(false)
   const [authMode, setAuthMode] = useState('login')
-  const [selectedMode, setSelectedMode] = useState('PARITY') // 'PARITY' | 'SAPRE' | 'BCONE' | 'EMERD'
+  const [selectedMode, setSelectedMode] = useState(() => localStorage.getItem('club69_selected_mode') || 'PARITY') // 'PARITY' | 'SAPRE' | 'BCONE' | 'EMERD'
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false)
   const [transactionModalOpen, setTransactionModalOpen] = useState(false)
-  const [adminModalOpen, setAdminModalOpen] = useState(false)
+  const [adminModalOpen, setAdminModalOpen] = useState(() => localStorage.getItem('club69_admin_open') === 'true')
   const [vipBonusLoading, setVipBonusLoading] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem('club69_active_tab', activeTab)
+    localStorage.setItem('club69_active_subtab', activeSubTab)
+    localStorage.setItem('club69_selected_mode', selectedMode)
+    localStorage.setItem('club69_active_nav', activeNav)
+    if (currentGame) localStorage.setItem('club69_current_game', currentGame)
+    else localStorage.removeItem('club69_current_game')
+    localStorage.setItem('club69_admin_open', String(adminModalOpen))
+  }, [activeTab, activeSubTab, selectedMode, activeNav, currentGame, adminModalOpen])
 
   // Secure Admin Access Listener (URL hash '#admin', '?admin=1', or Ctrl+Shift+A)
   useEffect(() => {
