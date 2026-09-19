@@ -64,6 +64,7 @@ import PromotionView from './components/PromotionView'
 import AccountView from './components/AccountView'
 import { AdminDashboard } from './components/admin/AdminDashboard'
 import GlobalLoadingSpinner from './components/GlobalLoadingSpinner'
+import { abortAllApiRequests } from './api/client.js'
 
 import WalletPage from './components/pages/WalletPage'
 import DepositPage from './components/pages/DepositPage'
@@ -256,6 +257,61 @@ export function App() {
   const [transactionModalOpen, setTransactionModalOpen] = useState(false)
   const [adminModalOpen, setAdminModalOpen] = useState(() => localStorage.getItem('club69_admin_open') === 'true')
   const [vipBonusLoading, setVipBonusLoading] = useState(false)
+  const navigationReadyRef = useRef(false)
+  const restoringHistoryRef = useRef(false)
+
+  const closeTransientUi = useCallback(() => {
+    setDepositModalOpen(false)
+    setWithdrawModalOpen(false)
+    setTransactionModalOpen(false)
+    setFortuneWheelOpen(false)
+    setActiveThirdPartyGame(null)
+    setAuthModalOpen(false)
+    setAdminModalOpen(false)
+  }, [])
+
+  useEffect(() => {
+    const snapshot = () => ({
+      activeTab,
+      activeSubTab,
+      selectedMode,
+      activeNav,
+      currentGame,
+    })
+    const current = snapshot()
+    if (!window.history.state?.club69) {
+      window.history.replaceState({ club69: true, ...current }, '', window.location.href)
+    }
+    navigationReadyRef.current = true
+
+    const handlePopState = (event) => {
+      abortAllApiRequests()
+      closeTransientUi()
+      const state = event.state?.club69 ? event.state : null
+      if (!state) {
+        setCurrentGame(null)
+        setActiveNav('home')
+        return
+      }
+      restoringHistoryRef.current = true
+      setActiveTab(state.activeTab || 'win')
+      setActiveSubTab(state.activeSubTab || 'record')
+      setSelectedMode(state.selectedMode || 'PARITY')
+      setActiveNav(state.activeNav || 'home')
+      setCurrentGame(state.currentGame || null)
+      queueMicrotask(() => { restoringHistoryRef.current = false })
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [activeTab, activeSubTab, selectedMode, activeNav, currentGame, closeTransientUi])
+
+  useEffect(() => {
+    if (!navigationReadyRef.current || restoringHistoryRef.current) return
+    const state = { club69: true, activeTab, activeSubTab, selectedMode, activeNav, currentGame }
+    const previous = window.history.state
+    if (previous?.club69 && JSON.stringify({ ...previous, club69: undefined }) === JSON.stringify({ ...state, club69: undefined })) return
+    window.history.pushState(state, '', window.location.href)
+  }, [activeTab, activeSubTab, selectedMode, activeNav, currentGame])
 
   useEffect(() => {
     localStorage.setItem('club69_active_tab', activeTab)

@@ -63,6 +63,12 @@ import {
 } from '../components/GlobalLoadingSpinner.jsx'
 
 const DEFAULT_REQUEST_TIMEOUT_MS = 30000
+const activeRequestControllers = new Set()
+
+export function abortAllApiRequests() {
+  for (const controller of activeRequestControllers) controller.abort()
+  activeRequestControllers.clear()
+}
 
 export async function apiFetch(
   url,
@@ -75,6 +81,7 @@ export async function apiFetch(
     ? Math.max(1000, Number(options.timeoutMs))
     : DEFAULT_REQUEST_TIMEOUT_MS
   const controller = new AbortController()
+  activeRequestControllers.add(controller)
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
   const callerSignal = options?.signal
   const abortFromCaller = () => controller.abort()
@@ -104,6 +111,7 @@ export async function apiFetch(
   } finally {
     clearTimeout(timeoutId)
     callerSignal?.removeEventListener('abort', abortFromCaller)
+    activeRequestControllers.delete(controller)
     if (!isSilent) {
       triggerLoadingEnd(loadingToken)
     }
