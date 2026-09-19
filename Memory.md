@@ -270,3 +270,11 @@
 - Files: `server/controllers/paymentController.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/DepositHistoryPage.jsx`, `frontend/src/components/pages/WithdrawalHistoryPage.jsx`, `frontend/src/components/AccountView.jsx`, `frontend/src/App.jsx`
 - Dependencies: Express, Supabase, React 18, QRCode, Lucide React
 - Last change: 2026-09-20 — Fixed broken QR image rendering in DepositPage and built separate dedicated Deposit & Withdrawal History status pages.
+
+## Game History & Settlement Ledger
+- Status: done
+- Purpose: Production-grade multi-game ledger with real-time status normalization, round identifiers, and category filters.
+- Key logic: Relational join for aviator_rounds(round_number); normalized won/cashed_out/lost/pending statuses; game mode filters (Win Go, Aviator, Slots, Other); 1-click round number copy.
+- Files: `server/controllers/gameController.js`, `server/controllers/aviatorController.js`, `frontend/src/components/GameHistoryPage.jsx`, `frontend/src/App.jsx`, `frontend/src/styles.css`
+- Dependencies: Supabase, Express, React 18, Lucide React
+- Last change: 2026-09-20 — Fixed Aviator cashout PENDING status desync, resolved round numbers, and upgraded GameHistoryPage to 55 CLUB layout.

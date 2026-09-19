@@ -570,26 +570,34 @@ export function App() {
         const betsData = await fetchUserBets(userId)
         // Always replace bets from server — even if empty (clears stale seed/local bets)
         if (betsData && Array.isArray(betsData.bets)) {
-          const formatted = betsData.bets.map((b) => ({
-            id: b.id,
-            gameMode: String(b.game_mode || 'WINGO').toUpperCase(),
-            round: String(b.round_number),
-            selection: String(b.selection),
-            type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase())
-              ? 'color'
-              : ['big', 'small'].includes(String(b.selection).toLowerCase())
-              ? 'size'
-              : 'number',
-            amount: Number(b.amount),
-            multiplier: Number(b.multiplier),
-            potentialReturn: Math.round(Number(b.amount) * Number(b.multiplier)),
-            payout: Number(b.payout || 0),
-            status: String(b.status).toLowerCase(),
-            outcome: b.outcome || null,
-            createdAt: b.created_at
-              ? new Date(b.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
-              : 'Recently',
-          }))
+          const formatted = betsData.bets.map((b) => {
+            const rawStatus = String(b.status || '').toLowerCase()
+            const isWon = ['cashed_out', 'won'].includes(rawStatus) || Number(b.payout) > 0
+            const isLost = ['lost'].includes(rawStatus)
+            const normalizedStatus = isWon ? 'won' : isLost ? 'lost' : 'pending'
+            const roundNumber = String(b.round_number || b.round || b.issueNumber || '')
+
+            return {
+              id: b.id,
+              gameMode: String(b.game_mode || 'WINGO').toUpperCase(),
+              round: roundNumber,
+              selection: String(b.selection || 'Manual'),
+              type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase())
+                ? 'color'
+                : ['big', 'small'].includes(String(b.selection).toLowerCase())
+                ? 'size'
+                : 'number',
+              amount: Number(b.amount || 0),
+              multiplier: Number(b.multiplier || b.mult || b.cashout_multiplier || 1),
+              potentialReturn: Math.round(Number(b.amount || 0) * Number(b.multiplier || b.mult || b.cashout_multiplier || 1)),
+              payout: Number(b.payout || 0),
+              status: normalizedStatus,
+              outcome: b.outcome || null,
+              createdAt: b.created_at || b.placed_at
+                ? new Date(b.created_at || b.placed_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
+                : 'Recently',
+            }
+          })
 
           // Merge optimistic pending bets that haven't landed on server yet
           const serverIds = new Set(formatted.map((b) => b.id))

@@ -249,14 +249,26 @@ function startAviatorLoop() {
         }
 
         // Batch update lost bets in Supabase
-        if (isSupabaseConfigured && lostBetIds.length > 0) {
-          supabase
-            .from('aviator_bets')
-            .update({ status: 'LOST', payout: 0 })
-            .in('id', lostBetIds)
-            .then(({ error }) => {
-              if (error) console.error('[Aviator batch loss settlement error]:', error.message)
-            })
+        if (isSupabaseConfigured) {
+          if (lostBetIds.length > 0) {
+            supabase
+              .from('aviator_bets')
+              .update({ status: 'LOST', payout: 0 })
+              .in('id', lostBetIds)
+              .then(({ error }) => {
+                if (error) console.error('[Aviator batch loss settlement error]:', error.message)
+              })
+          }
+          if (state.roundDbId) {
+            supabase
+              .from('aviator_bets')
+              .update({ status: 'LOST', payout: 0 })
+              .eq('round_id', state.roundDbId)
+              .eq('status', 'ACTIVE')
+              .then(({ error }) => {
+                if (error) console.error('[Aviator roundDbId sweep error]:', error.message)
+              })
+          }
         }
 
         // Record flight in history
@@ -535,6 +547,7 @@ export async function placeAviatorBet(req, res) {
           amount: numAmount,
           auto_cashout: cleanAuto,
           status: 'ACTIVE',
+          metadata: { round_number: state.roundId },
         })
         if (betInsertError) {
           await supabase.from('wallets').update({ balance: Number(wal.balance) }).eq('user_id', authUserId)

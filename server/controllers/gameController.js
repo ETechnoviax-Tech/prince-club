@@ -597,26 +597,67 @@ export async function getUserBets(req, res) {
         if (dbErr) throw dbErr
 
         const [aviator, slots, dragonTiger, provider] = await Promise.all([
-          supabase.from('aviator_bets').select('*').eq('user_id', userId).order('placed_at', { ascending: false }).limit(50),
+          supabase
+            .from('aviator_bets')
+            .select('*, aviator_rounds(round_number)')
+            .eq('user_id', userId)
+            .order('placed_at', { ascending: false })
+            .limit(50),
           supabase.from('slot_spins').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
           supabase.from('dragon_tiger_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
           supabase.from('third_party_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
         ])
         const dedicatedBets = [
-          ...(aviator.data || []).map((bet) => ({
-            ...bet,
-            created_at: bet.placed_at,
-            game_mode: 'AVIATOR',
-            selection: bet.auto_cashout ? `Auto ${bet.auto_cashout}x` : 'Manual',
-            mult: bet.cashout_multiplier,
-            payout: bet.payout || 0,
+          ...(aviator.data || []).map((bet) => {
+            const isWon = bet.status === 'CASHED_OUT' || Number(bet.payout) > 0
+            const isLost = bet.status === 'LOST' || (bet.status === 'ACTIVE' && (Date.now() - new Date(bet.placed_at || bet.created_at).getTime() > 30000))
+            const status = isWon ? 'won' : isLost ? 'lost' : 'pending'
+            const mult = Number(bet.cashout_multiplier) || (isWon && Number(bet.amount) > 0 ? +(Number(bet.payout) / Number(bet.amount)).toFixed(2) : 1)
+            const roundNumber = bet.aviator_rounds?.round_number || bet.metadata?.round_number || bet.round_number || (bet.round_id ? String(bet.round_id).slice(0, 8) : '')
+            const selection = isWon
+              ? `Cashed out @ ${mult}x`
+              : bet.auto_cashout
+              ? `Auto @ ${bet.auto_cashout}x`
+              : 'Manual'
+
+            return {
+              ...bet,
+              created_at: bet.placed_at,
+              game_mode: 'AVIATOR',
+              selection,
+              mult,
+              multiplier: mult,
+              payout: Number(bet.payout || 0),
+              round_number: roundNumber,
+              status,
+            }
+          }),
+          ...(slots.data || []).map((spin) => ({
+            ...spin,
+            game_mode: spin.game_code || 'SLOT',
+            selection: 'Spin',
+            amount: spin.bet_amount,
+            payout: spin.payout,
+            status: Number(spin.payout) > 0 ? 'won' : 'lost',
+            round_number: spin.id ? String(spin.id).slice(0, 8) : '',
           })),
-          ...(slots.data || []).map((spin) => ({ ...spin, game_mode: spin.game_code || 'SLOT', selection: 'Spin', amount: spin.bet_amount, payout: spin.payout, status: spin.payout > 0 ? 'WON' : 'LOST' })),
-          ...(dragonTiger.data || []).map((bet) => ({ ...bet, game_mode: 'DRAGON_TIGER', selection: bet.market, amount: bet.amount })),
-          ...(provider.data || []).map((bet) => ({ ...bet, game_mode: bet.provider_code || 'PROVIDER', selection: bet.provider_game_id, amount: bet.amount })),
+          ...(dragonTiger.data || []).map((bet) => ({
+            ...bet,
+            game_mode: 'DRAGON_TIGER',
+            selection: bet.market,
+            amount: bet.amount,
+            status: String(bet.status || '').toLowerCase(),
+          })),
+          ...(provider.data || []).map((bet) => ({
+            ...bet,
+            game_mode: bet.provider_code || 'PROVIDER',
+            selection: bet.provider_game_id,
+            amount: bet.amount,
+            status: String(bet.status || '').toLowerCase(),
+          })),
         ]
         const history = [...(dbBets || []), ...dedicatedBets]
-          .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+          .sort((a, b) => new Date(b.created_at || b.placed_at || 0) - new Date(a.created_at || a.placed_at || 0))
           .slice(0, 100)
         return res.json({ bets: history })
       } catch (err) {
