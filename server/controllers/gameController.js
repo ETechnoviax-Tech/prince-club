@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { memoryWallets } from '../db/store.js'
+import { persistWingoBet } from '../db/gamePersistence.js'
 import { getLiveHistory, getLiveIssue } from '../services/veerGameService.js'
 
 export const GAME_MODES = {
@@ -599,6 +600,28 @@ export async function placeBet(req, res) {
         console.warn('[Supabase] Bet insert notice:', betInsErr.message)
       }
 
+      try {
+        const selectionType = /^\d$/.test(sel)
+          ? 'DIGIT'
+          : ['big', 'small'].includes(sel)
+            ? 'SIZE'
+            : 'COLOR'
+        await persistWingoBet({
+          userId,
+          mode: cfg.id,
+          roundNumber: targetRound,
+          selection: sel,
+          selectionType,
+          amount,
+          multiplier,
+          legacyBetId: betRecord.id,
+        })
+      } catch (persistenceError) {
+        await supabase.from('wallets').update({ balance: Number(wallet.balance) }).eq('user_id', userId)
+        await supabase.from('bets').delete().eq('id', betRecord.id)
+        return res.status(503).json({ error: persistenceError.message })
+      }
+
       // 4. Ledger entry
       try {
         await supabase.from('wallet_transactions').insert({
@@ -708,4 +731,3 @@ export async function getVeerHistory(req, res) {
     return res.status(500).json({ error: 'Failed to fetch VeerGame history' })
   }
 }
-

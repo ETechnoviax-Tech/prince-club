@@ -92,13 +92,14 @@ async function ensureRoundRecord() {
   state.roundEnsurePromise = (async () => {
     const now = new Date()
     const { data, error } = await supabase
-      .from('game_rounds')
+      .from('aviator_rounds')
       .insert({
         round_number: state.roundId,
-        start_time: now.toISOString(),
-        lock_time: new Date(now.getTime() + WAITING_DURATION_MS).toISOString(),
-        end_time: new Date(now.getTime() + WAITING_DURATION_MS + 900000).toISOString(),
-        status: 'ACTIVE',
+        phase: 'WAITING',
+        waiting_started_at: now.toISOString(),
+        waiting_duration_ms: WAITING_DURATION_MS,
+        cooldown_duration_ms: COOLDOWN_DURATION_MS,
+        server_seed_commitment: state.seedCommitment,
       })
       .select('id')
       .single()
@@ -128,10 +129,13 @@ function prepareRound() {
 async function finalizeRoundRecord() {
   if (!isSupabaseConfigured || !state.roundDbId) return
   const { error } = await supabase
-    .from('game_rounds')
+    .from('aviator_rounds')
     .update({
-      status: 'SETTLED',
-      end_time: new Date().toISOString(),
+      phase: 'SETTLED',
+      settled_at: new Date().toISOString(),
+      server_seed_reveal: state.serverSeed,
+      crash_point: state.crashPoint,
+      flight_duration_ms: state.flightDurationMs,
     })
     .eq('id', state.roundDbId)
   if (error) console.error('[Aviator round settlement error]:', error.message)
@@ -204,7 +208,7 @@ function startAviatorLoop() {
             b.payout = 0
             if (isSupabaseConfigured) {
               const { error } = await supabase
-                .from('bets')
+                .from('aviator_bets')
                 .update({ status: 'LOST', payout: 0 })
                 .eq('id', b.id)
               if (error) console.error('[Aviator loss settlement error]:', error.message)
@@ -281,8 +285,13 @@ async function settleCashout(bet, multiplier) {
         if (walletError) throw walletError
         walletUpdated = true
         const { error: betError } = await supabase
-          .from('bets')
-          .update({ status: 'WON', payout })
+          .from('aviator_bets')
+          .update({
+            status: 'CASHED_OUT',
+            payout,
+            cashout_multiplier: mult,
+            cashed_out_at: new Date().toISOString(),
+          })
           .eq('id', bet.id)
         if (betError) throw betError
         betMarkedWon = true
@@ -298,7 +307,7 @@ async function settleCashout(bet, multiplier) {
       } catch (err) {
         console.error('[settleCashout Supabase error]:', err)
         if (betMarkedWon) {
-          await supabase.from('bets').update({ status: 'PENDING', payout: 0 }).eq('id', bet.id)
+          await supabase.from('aviator_bets').update({ status: 'ACTIVE', payout: 0 }).eq('id', bet.id)
         }
         if (walletUpdated) {
           const { data: currentWallet } = await supabase
@@ -459,15 +468,13 @@ export async function placeAviatorBet(req, res) {
         if (!state.roundDbId) {
           await ensureRoundRecord()
         }
-        const { error: betInsertError } = await supabase.from('bets').insert({
+        const { error: betInsertError } = await supabase.from('aviator_bets').insert({
           id: betId,
           round_id: state.roundDbId,
           user_id: authUserId,
-          round_number: String(state.roundId),
-          selection: 'aviator',
           amount: numAmount,
-          status: 'PENDING',
-          game_mode: 'AVIATOR',
+          auto_cashout: cleanAuto,
+          status: 'ACTIVE',
         })
         if (betInsertError) {
           await supabase.from('wallets').update({ balance: Number(wal.balance) }).eq('user_id', authUserId)
@@ -483,7 +490,7 @@ export async function placeAviatorBet(req, res) {
           description: `Aviator Bet Round #${state.roundId}`,
         })
         if (transactionError) {
-          await supabase.from('bets').delete().eq('id', betId)
+          await supabase.from('aviator_bets').delete().eq('id', betId)
           await supabase.from('wallets').update({ balance: Number(wal.balance) }).eq('user_id', authUserId)
           return res.status(503).json({ error: 'Aviator transaction could not be recorded. Please try again.' })
         }

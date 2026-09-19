@@ -5,6 +5,7 @@ import {
   FORTUNE_GEMS_SYMBOLS,
   SUPER_ACE_SYMBOLS,
 } from '../services/inHouseSlotEngine.js'
+import { persistSlotSpin } from '../db/gamePersistence.js'
 
 // In-memory wallet balance fallback for guests or local testing
 const localWallets = new Map()
@@ -58,6 +59,7 @@ export async function handleSlotSpin(req, res) {
 
     // 2. Authoritative RNG Spin Calculation
     const spinResult = executeInHouseSpin(gameId, betAmount)
+    await persistSlotSpin({ userId, gameCode: gameId, betAmount, spinResult })
 
     // 3. Credit winnings
     if (spinResult.finalWin > 0) {

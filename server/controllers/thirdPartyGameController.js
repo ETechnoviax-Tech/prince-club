@@ -4,6 +4,7 @@ import {
   getUnifiedCatalog,
   getLaunchUrl,
 } from '../services/thirdPartyGameService.js'
+import { persistThirdPartyPlay } from '../db/gamePersistence.js'
 
 export async function getProviders(req, res) {
   try {
@@ -61,6 +62,13 @@ export async function playGameRound(req, res) {
     }
 
     const result = await executeGameRound({ userId, gameId, provider, betAmount: Number(betAmount) })
+    await persistThirdPartyPlay({
+      userId,
+      provider: String(provider).toUpperCase(),
+      gameId,
+      betAmount: Number(betAmount),
+      result,
+    })
     return res.json(result)
   } catch (err) {
     console.error('[playGameRound Error]:', err.message)

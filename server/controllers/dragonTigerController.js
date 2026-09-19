@@ -3,6 +3,7 @@ import {
   getDragonTigerState,
   dealInstantRound,
 } from '../services/dragonTigerEngine.js'
+import { persistDragonTigerBet } from '../db/gamePersistence.js'
 
 const localWallets = new Map()
 
@@ -59,6 +60,7 @@ export async function placeDragonTigerBet(req, res) {
 
     // Deal card duel
     const roundResult = dealInstantRound(market, betAmount)
+    await persistDragonTigerBet({ userId, market, betAmount, roundResult })
 
     // Settle winnings
     if (roundResult.isWin && roundResult.payout > 0) {

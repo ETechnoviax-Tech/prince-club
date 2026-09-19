@@ -4,6 +4,7 @@ import {
   revealMinesTile,
   cashoutMinesSession,
 } from '../services/minesEngine.js'
+import { persistMinesSession } from '../db/gamePersistence.js'
 
 const localWallets = new Map()
 
@@ -50,6 +51,7 @@ export async function handleStartMines(req, res) {
     }
 
     const sessionData = startMinesSession(userId, betAmount, minesCount)
+    await persistMinesSession({ userId, betAmount, minesCount, sessionData })
 
     return res.json({
       success: true,
