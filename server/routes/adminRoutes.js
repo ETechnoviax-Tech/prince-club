@@ -11,8 +11,8 @@ import {
   deleteUser,
   promoteOrSeedAdmin,
 } from '../controllers/adminController.js'
-import { adminVerifyWithdrawal } from '../controllers/walletController.js'
-import { verifyDeposit } from '../controllers/paymentController.js'
+import { adminVerifyWithdrawal, listAdminWithdrawals } from '../controllers/walletController.js'
+import { listAdminDeposits, verifyDeposit } from '../controllers/paymentController.js'
 
 const router = express.Router()
 
@@ -46,6 +46,8 @@ router.patch('/users/:id/status', updateUserStatus)
 router.delete('/users/:id', deleteUser)
 
 // 5. Payment & Withdrawal Management
+router.get('/deposits', listAdminDeposits)
+router.get('/withdrawals', listAdminWithdrawals)
 router.post('/withdrawals/:id/verify', adminVerifyWithdrawal)
 router.post('/deposits/:id/verify', verifyDeposit)
 

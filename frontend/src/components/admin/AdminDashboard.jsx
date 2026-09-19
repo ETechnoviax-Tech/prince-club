@@ -7,6 +7,7 @@ import {
   TrendingUp,
   Users,
   CheckCircle,
+  WalletCards,
 } from 'lucide-react'
 import {
   verifyAdminAccess,
@@ -25,6 +26,7 @@ import AdminMatrixView from './AdminMatrixView.jsx'
 import AdminBetsView from './AdminBetsView.jsx'
 import AdminUsersView from './AdminUsersView.jsx'
 import AdminBalanceModal from './AdminBalanceModal.jsx'
+import AdminPaymentsView from './AdminPaymentsView.jsx'
 
 export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) {
   const [adminKey, setAdminKey] = useState(
@@ -33,7 +35,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
   const [isVerified, setIsVerified] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [verifyError, setVerifyError] = useState(null)
-  const [activeTab, setActiveTab] = useState('matrix') // 'matrix' | 'bets' | 'users'
+  const [activeTab, setActiveTab] = useState('matrix') // 'matrix' | 'bets' | 'users' | 'payments'
 
   // Data States
   const [matrixData, setMatrixData] = useState(null)
@@ -48,6 +50,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
   const [adjustAction, setAdjustAction] = useState('credit')
   const [adjustReason, setAdjustReason] = useState('Admin adjustment')
   const [adjustLoading, setAdjustLoading] = useState(false)
+  const [paymentsRefreshToken, setPaymentsRefreshToken] = useState(0)
 
   // 1. Handshake verification
   const handleVerifyAdmin = useCallback(async () => {
@@ -133,6 +136,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
     if (activeTab === 'matrix') loadMatrix()
     else if (activeTab === 'bets') loadBets()
     else if (activeTab === 'users') loadUsers()
+    else if (activeTab === 'payments') setPaymentsRefreshToken((value) => value + 1)
   }
 
   // Confirm balance adjustment
@@ -293,6 +297,14 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
                   <Users size={15} />
                   <span>Users (CRUD)</span>
                 </button>
+                <button
+                  type="button"
+                  className={`admin-tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('payments')}
+                >
+                  <WalletCards size={15} />
+                  <span>Payments</span>
+                </button>
               </div>
 
               {/* Modular Sub-Pages Render */}
@@ -328,6 +340,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
                   currentUser={currentUser}
                 />
               )}
+              {activeTab === 'payments' && <AdminPaymentsView adminKey={adminKey} refreshToken={paymentsRefreshToken} />}
             </>
           )}
         </div>

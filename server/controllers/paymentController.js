@@ -93,7 +93,11 @@ export async function submitUTR(req, res) {
   try {
     const { depositId } = req.body
     const utr = req.cleanUTR || String(req.body.utrNumber).trim()
-    const autoApprove = process.env.AUTO_APPROVE_UTR === 'true'
+    // Never trust a user-submitted UTR as proof of payment. Automatic approval
+    // is only available for an explicitly marked local/sandbox environment.
+    const autoApprove =
+      process.env.PAYMENT_ENV === 'sandbox' &&
+      process.env.AUTO_APPROVE_UTR === 'true'
 
     if (isSupabaseConfigured) {
       // 1. Fetch current deposit first to verify ownership
@@ -355,5 +359,23 @@ export async function listUserDeposits(req, res) {
   const deposits = Array.from(memoryDeposits.values())
     .filter((d) => d.user_id === userId)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  return res.json({ deposits })
+}
+
+export async function listAdminDeposits(req, res) {
+  const status = String(req.query.status || 'PENDING').toUpperCase()
+  const allowed = ['PENDING', 'APPROVED', 'REJECTED', 'ALL']
+  if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid deposit status filter' })
+  if (isSupabaseConfigured) {
+    let query = supabase.from('deposit_requests').select('*').order('created_at', { ascending: false }).limit(100)
+    if (status !== 'ALL') query = query.eq('status', status)
+    const { data, error } = await query
+    if (error) return res.status(500).json({ error: 'Failed to load deposit queue' })
+    return res.json({ deposits: data || [] })
+  }
+  const deposits = Array.from(memoryDeposits.values())
+    .filter((deposit) => status === 'ALL' || deposit.status === status)
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .slice(0, 100)
   return res.json({ deposits })
 }

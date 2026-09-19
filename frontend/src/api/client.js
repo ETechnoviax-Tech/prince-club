@@ -615,6 +615,46 @@ export async function fetchAdminBetsLedger(adminKey, params = {}) {
   return json
 }
 
+export async function fetchAdminDeposits(adminKey, status = 'PENDING') {
+  const res = await fetch(`${API_BASE}/admin/deposits?status=${encodeURIComponent(status)}`, {
+    headers: adminHeaders(adminKey),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch deposits')
+  return json.deposits || []
+}
+
+export async function fetchAdminWithdrawals(adminKey, status = 'PENDING') {
+  const res = await fetch(`${API_BASE}/admin/withdrawals?status=${encodeURIComponent(status)}`, {
+    headers: adminHeaders(adminKey),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch withdrawals')
+  return json.withdrawals || []
+}
+
+export async function adminVerifyDeposit(adminKey, depositId, action, notes = '') {
+  const res = await fetch(`${API_BASE}/admin/deposits/${depositId}/verify`, {
+    method: 'POST',
+    headers: adminHeaders(adminKey),
+    body: JSON.stringify({ depositId, action, notes }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to verify deposit')
+  return json
+}
+
+export async function adminVerifyWithdrawal(adminKey, withdrawalId, action, notes = '') {
+  const res = await fetch(`${API_BASE}/admin/withdrawals/${withdrawalId}/verify`, {
+    method: 'POST',
+    headers: adminHeaders(adminKey),
+    body: JSON.stringify({ withdrawalId, action, notes }),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to verify withdrawal')
+  return json
+}
+
 export async function fetchAdminUsers(adminKey, search = '') {
   const q = search ? `?search=${encodeURIComponent(search)}` : ''
   const res = await fetch(`${API_BASE}/admin/users${q}`, {
