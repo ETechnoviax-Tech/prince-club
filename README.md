@@ -20,6 +20,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **Game-Wise Exposure Detail**: Read-only per-game breakdown of every active market side and its pending stake.
   - **Bets & Winners Ledger**: Detailed tracking of all placed bets, targets, wager amounts, winning outcomes, and exact payouts.
   - **Users Management (CRUD)**: Search users, adjust balances (credit/debit with audit trail), switch roles (`user`/`admin`), freeze accounts, and safely delete accounts.
+  - **Payments & Settlements Queue**: Review and verify deposits and payout withdrawals with inline confirmation panels, custom admin notes, and automated balance reconciliation.
 - **Production-Grade Payment Gateway**:
   - **Idempotency Layer**: Duplicate request prevention via `Idempotency-Key` headers (fast-path in-memory LRU + persistent DB cache).
   - **Per-User Mutex**: Prevents race conditions and double-click deductions on concurrent withdrawals or deposits.

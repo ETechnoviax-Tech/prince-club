@@ -244,3 +244,29 @@
 - Key logic: Win Go now fails closed when its live provider is unavailable; Aviator excludes simulated community activity and uses server-generated cryptographic entropy; K3, 5D, and TRX show a failed request rather than deducting balance or claiming a local bet success.
 - Files: `server/services/veerGameService.js`, `server/controllers/aviatorController.js`, `frontend/src/App.jsx`, `frontend/src/components/AviatorGame.jsx`, `frontend/src/components/K3Game.jsx`, `frontend/src/components/FiveDGame.jsx`, `frontend/src/components/TrxGame.jsx`
 - Last change: 2026-09-18 — Removed user-facing generated Win Go fallback data and simulated Aviator player/pool activity.
+
+## Win Go Production Debug
+- Status: done
+- Purpose: Zero-to-production correctness fix — 11 bugs across backend and frontend.
+- Key logic:
+  - `calcPayout()` shared helper eliminates duplicated settlement code; `.toLowerCase()` normalization fixes Big/Small case mismatch
+  - `settledVeerIssues` / `settledLocalRounds` Sets guard against double-settlement race conditions
+  - `settleVeerRound(outcome, typeId)` now filters bets by `game_mode` (typeId→modeKey map) preventing cross-mode settlement
+  - `creditWallet()` helper for safe atomic payout crediting
+  - VeerGame poller now settles all 4 modes (30/1/2/3 typeIds)
+  - `veerGameService`: mode-aware `isLocked` (5/10/30/45s); `typeId` propagated in history items
+  - `gamePersistence`: 18-digit VeerGame issueNumbers kept as string (BigInt precision safety)
+  - Frontend: `gameMode` is now a derived constant from `selectedMode` (single source of truth); eliminated gameMode/selectedMode desync
+  - Frontend: inline withdraw modal (DOM getElementById hack, no API call) deleted; `WithdrawModal` component is sole handler
+  - Frontend: `syncWithBackend` uses `selectedModeRef` so polling interval survives mode switches without restart
+  - Frontend: Rules tab shows active-mode-specific duration/lock window
+- Files: `server/controllers/gameController.js`, `server/services/veerGameService.js`, `server/db/gamePersistence.js`, `frontend/src/App.jsx`
+- Last change: 2026-09-19 — Fixed all 11 production bugs; build verified clean (exit 0); pushed to main.
+
+## Deposit, Withdrawal & Admin Payment System
+- Status: done
+- Purpose: Production-grade UPI/IMPS deposit, withdrawal, and admin settlement pipeline.
+- Key logic: Route param/body fallback for verifyDeposit & adminVerifyWithdrawal; payoutDetails normalization; refund early-return guard; apiFetch abort/timeout; inline confirmation cards replacing window.prompt/confirm.
+- Files: `server/controllers/paymentController.js`, `server/controllers/walletController.js`, `frontend/src/api/client.js`, `frontend/src/components/admin/AdminPaymentsView.jsx`, `frontend/src/components/admin/admin.css`
+- Dependencies: Express, Supabase, React 18, Lucide React
+- Last change: 2026-09-19 — Fixed 10 critical bugs across payment and admin verification stack; inline approval UI.
