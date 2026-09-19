@@ -687,9 +687,24 @@ export async function getUserBets(req, res) {
           .order('created_at', { ascending: false })
           .limit(50)
 
-        if (!dbErr && Array.isArray(dbBets)) {
-          return res.json({ bets: dbBets })
-        }
+        if (dbErr) throw dbErr
+
+        const [aviator, slots, dragonTiger, provider] = await Promise.all([
+          supabase.from('aviator_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('slot_spins').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('dragon_tiger_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
+          supabase.from('third_party_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
+        ])
+        const dedicatedBets = [
+          ...(aviator.data || []).map((bet) => ({ ...bet, game_mode: 'AVIATOR', selection: bet.auto_cashout ? `Auto ${bet.auto_cashout}x` : 'Manual', payout: bet.payout || 0 })),
+          ...(slots.data || []).map((spin) => ({ ...spin, game_mode: spin.game_code || 'SLOT', selection: 'Spin', amount: spin.bet_amount, payout: spin.payout, status: spin.payout > 0 ? 'WON' : 'LOST' })),
+          ...(dragonTiger.data || []).map((bet) => ({ ...bet, game_mode: 'DRAGON_TIGER', selection: bet.market, amount: bet.amount })),
+          ...(provider.data || []).map((bet) => ({ ...bet, game_mode: bet.provider_code || 'PROVIDER', selection: bet.provider_game_id, amount: bet.amount })),
+        ]
+        const history = [...(dbBets || []), ...dedicatedBets]
+          .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+          .slice(0, 100)
+        return res.json({ bets: history })
       } catch (err) {
         console.warn('[getUserBets Supabase query fallback]:', err.message)
       }

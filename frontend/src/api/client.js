@@ -409,9 +409,9 @@ export async function resetWallet(userId) {
 }
 
 export async function fetchUserBets(userId) {
-  const res = await fetch(`${API_BASE}/game/bets/${userId}`, {
+  const res = await apiFetch(`${API_BASE}/game/bets/${userId}`, {
     headers: authHeaders(),
-  })
+  }, 'Loading game history...', false)
   if (!res.ok) throw new Error('Failed to fetch bets')
   return res.json()
 }

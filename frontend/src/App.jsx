@@ -64,6 +64,7 @@ import PromotionView from './components/PromotionView'
 import AccountView from './components/AccountView'
 import { AdminDashboard } from './components/admin/AdminDashboard'
 import GlobalLoadingSpinner from './components/GlobalLoadingSpinner'
+import GameHistoryPage from './components/GameHistoryPage'
 import { abortAllApiRequests } from './api/client.js'
 
 import WalletPage from './components/pages/WalletPage'
@@ -600,6 +601,7 @@ export function App() {
         if (betsData && Array.isArray(betsData.bets)) {
           const formatted = betsData.bets.map((b) => ({
             id: b.id,
+            gameMode: String(b.game_mode || 'WINGO').toUpperCase(),
             round: String(b.round_number),
             selection: String(b.selection),
             type: ['green', 'red', 'violet'].includes(String(b.selection).toLowerCase())
@@ -614,7 +616,7 @@ export function App() {
             status: String(b.status).toLowerCase(),
             outcome: b.outcome || null,
             createdAt: b.created_at
-              ? new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              ? new Date(b.created_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })
               : 'Recently',
           }))
 
@@ -1117,8 +1119,8 @@ export function App() {
               sound.playTick()
             }}
             onOpenBets={() => {
-              setCurrentGame('wingo')
-              setActiveTab('win')
+              setCurrentGame(null)
+              setActiveNav('game-history')
               sound.playTick()
             }}
             onOpenTransactions={() => {
@@ -1152,6 +1154,19 @@ export function App() {
               setAuthModalOpen(true)
             }}
             onLogout={handleLogout}
+          />
+        )}
+
+        {currentGame === null && activeNav === 'game-history' && (
+          <GameHistoryPage
+            currentUser={currentUser}
+            bets={bets}
+            onRefresh={syncWithBackend}
+            onBack={() => setActiveNav('account')}
+            onLogin={() => {
+              setAuthMode('login')
+              setAuthModalOpen(true)
+            }}
           />
         )}
 
@@ -1795,7 +1810,7 @@ export function App() {
                           <div key={b.id} className={`bet-card-item status-${b.status}`}>
                             <div className="bet-card-header">
                               <div>
-                                <span className="bet-period">{formatPeriod(b.round)}</span>
+                                <span className="bet-period">{b.gameMode || 'WINGO'} · {b.round && b.round !== 'undefined' ? formatPeriod(b.round) : 'Round record'}</span>
                                 <span className="bet-target" style={{ color: targetColor }}>
                                   {targetLabel}
                                 </span>
@@ -1811,6 +1826,7 @@ export function App() {
                             <div className="bet-card-details">
                               <span>Amount: ₹{formatCredits(b.amount)}</span>
                               <span>Multiplier: {b.multiplier}x</span>
+                              <span>{b.createdAt}</span>
                               <span>
                                 {b.status === 'won'
                                   ? `Won: ₹${formatCredits(b.payout)}`
