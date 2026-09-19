@@ -1,3 +1,5 @@
+import { secureRandomInt } from '../utils/secureRandom.js'
+
 /**
  * Dragon vs Tiger Authoritative Game Engine
  * 8-Deck standard shoe, 10s betting loop, High-Card comparison, and Roadmaps
@@ -37,7 +39,7 @@ function createShoe() {
   }
   // Fisher-Yates shuffle
   for (let i = shoe.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
+    const j = secureRandomInt(0, i + 1)
     ;[shoe[i], shoe[j]] = [shoe[j], shoe[i]]
   }
   return shoe

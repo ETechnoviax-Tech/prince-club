@@ -1,3 +1,5 @@
+import { secureRandomFloat } from '../utils/secureRandom.js'
+
 /**
  * In-House Slot Game Engine
  * Authoritative RNG math models, reel strips, paylines, and payout logic
@@ -81,7 +83,7 @@ export const SUPER_ACE_SYMBOLS = {
 // Utility weighted random selection
 function pickWeighted(items, weightKey = 'weight') {
   const total = items.reduce((acc, it) => acc + (it[weightKey] || 1), 0)
-  let rand = Math.random() * total
+  let rand = secureRandomFloat() * total
   for (const item of items) {
     rand -= (item[weightKey] || 1)
     if (rand <= 0) return item

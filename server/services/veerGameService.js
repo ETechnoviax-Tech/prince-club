@@ -25,11 +25,7 @@ const circuit = {
 }
 
 function generateRandomHex() {
-  return 'xxxxxxxxxxxx4xxxyxxxxxxxxxxxxxxx'.replace(/[xy]/g, function (e) {
-    const t = (Math.random() * 16) | 0
-    const n = e === 'x' ? t : (t & 3) | 8
-    return n.toString(16)
-  })
+  return crypto.randomBytes(16).toString('hex')
 }
 
 function signPayload(data = {}) {

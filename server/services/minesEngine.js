@@ -1,3 +1,5 @@
+import { secureRandomInt } from '../utils/secureRandom.js'
+
 /**
  * Mines Game Authoritative Math Engine
  * 5x5 Grid (25 tiles), configurable 1-24 mines, 97.0% RTP multiplier formula
@@ -45,7 +47,7 @@ export function startMinesSession(userId, betAmount = 10, minesCount = 3) {
   // Seed designated number of unique random mine positions between 0 and 24
   const mineIndices = new Set()
   while (mineIndices.size < mCount) {
-    mineIndices.add(Math.floor(Math.random() * 25))
+    mineIndices.add(secureRandomInt(0, 25))
   }
 
   const sessionId = `mines_${userId}_${Date.now()}`

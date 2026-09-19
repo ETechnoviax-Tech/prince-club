@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { secureRandomFloat, secureRandomInt } from '../utils/secureRandom.js'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { call55ClubAPI } from './veerGameService.js'
 
@@ -256,14 +257,14 @@ export async function executeGameRound({ userId, gameId, provider, betAmount = 1
   }
 
   // 2. High-Fidelity RNG Game Calculation (96.5% RTP certified)
-  const isWin = Math.random() < 0.42 // 42% hit frequency
+  const isWin = secureRandomFloat() < 0.42 // 42% hit frequency
   let multiplier = 0
   if (isWin) {
-    const roll = Math.random()
-    if (roll < 0.60) multiplier = +(1.2 + Math.random() * 1.5).toFixed(2)      // 1.2x - 2.7x
-    else if (roll < 0.88) multiplier = +(3.0 + Math.random() * 4.0).toFixed(2)  // 3.0x - 7.0x
-    else if (roll < 0.97) multiplier = +(8.0 + Math.random() * 15.0).toFixed(2) // 8.0x - 23x
-    else multiplier = +(25.0 + Math.random() * 100.0).toFixed(2)                 // Big win 25x - 125x
+    const roll = secureRandomFloat()
+    if (roll < 0.60) multiplier = +(1.2 + secureRandomFloat() * 1.5).toFixed(2)      // 1.2x - 2.7x
+    else if (roll < 0.88) multiplier = +(3.0 + secureRandomFloat() * 4.0).toFixed(2)  // 3.0x - 7.0x
+    else if (roll < 0.97) multiplier = +(8.0 + secureRandomFloat() * 15.0).toFixed(2) // 8.0x - 23x
+    else multiplier = +(25.0 + secureRandomFloat() * 100.0).toFixed(2)                 // Big win 25x - 125x
   }
 
   const payout = isWin ? Math.round(amount * multiplier) : 0
@@ -289,9 +290,9 @@ export async function executeGameRound({ userId, gameId, provider, betAmount = 1
   // 4. Generate visual reel / table outcome
   const symbols = ['💎', '👑', '7️⃣', '🔔', '🍒', '⭐', '🍇', '⚡']
   const reelOutcome = [
-    [symbols[Math.floor(Math.random() * symbols.length)], symbols[Math.floor(Math.random() * symbols.length)], symbols[Math.floor(Math.random() * symbols.length)]],
-    [symbols[Math.floor(Math.random() * symbols.length)], symbols[Math.floor(Math.random() * symbols.length)], symbols[Math.floor(Math.random() * symbols.length)]],
-    [symbols[Math.floor(Math.random() * symbols.length)], symbols[Math.floor(Math.random() * symbols.length)], symbols[Math.floor(Math.random() * symbols.length)]],
+    [symbols[secureRandomInt(0, symbols.length)], symbols[secureRandomInt(0, symbols.length)], symbols[secureRandomInt(0, symbols.length)]],
+    [symbols[secureRandomInt(0, symbols.length)], symbols[secureRandomInt(0, symbols.length)], symbols[secureRandomInt(0, symbols.length)]],
+    [symbols[secureRandomInt(0, symbols.length)], symbols[secureRandomInt(0, symbols.length)], symbols[secureRandomInt(0, symbols.length)]],
   ]
 
   return {
