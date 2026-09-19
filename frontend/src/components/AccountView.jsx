@@ -43,6 +43,8 @@ export function AccountView({
   onOpenAdmin,
   onOpenNotification,
   unreadNotificationCount = 0,
+  onOpenDepositHistory,
+  onOpenWithdrawHistory,
   onOpenGifts,
   onOpenCoupons,
   onOpenSecurity,
@@ -214,7 +216,7 @@ export function AccountView({
         </div>
 
 
-        <div className="history-card-tile" onClick={onOpenDeposit}>
+        <div className="history-card-tile" onClick={onOpenDepositHistory || onOpenDeposit}>
           <div className="history-icon-box bg-coral-deposit">
             <Bookmark size={18} />
           </div>
@@ -224,7 +226,7 @@ export function AccountView({
           </div>
         </div>
 
-        <div className="history-card-tile" onClick={onOpenWithdraw}>
+        <div className="history-card-tile" onClick={onOpenWithdrawHistory || onOpenWithdraw}>
           <div className="history-icon-box bg-orange-withdraw">
             <ArrowDownCircle size={18} />
           </div>

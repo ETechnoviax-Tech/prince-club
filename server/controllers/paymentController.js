@@ -53,26 +53,27 @@ export async function createDeposit(req, res) {
     logPaymentEvent(userId, 'DEPOSIT_CREATED', depositRecord.id, { order_ref: orderRef, amount, upi_vpa: merchantVPA })
 
 
-    if (isSupabaseConfigured) {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
+
+    if (isSupabaseConfigured && isUuid) {
       const { data, error } = await supabase
         .from('deposit_requests')
         .insert(depositRecord)
         .select()
         .single()
 
-      if (error) {
-        console.error('[Supabase Error] createDeposit:', error)
-        return res.status(500).json({ error: 'Failed to create deposit record' })
+      if (!error && data) {
+        return res.status(201).json({
+          deposit: data,
+          upiUri,
+          qrCodeDataUrl,
+          qrCode: qrCodeDataUrl,
+          merchantVPA,
+          merchantName,
+        })
       }
-      return res.status(201).json({
-        deposit: data,
-        upiUri,
-        qrCodeDataUrl,
-        merchantVPA,
-        merchantName,
-      })
+      console.warn('[Supabase Warning] createDeposit insert fallback to memory:', error?.message)
     }
-
 
     // Fallback store
     memoryDeposits.set(depositRecord.id, depositRecord)
@@ -80,6 +81,7 @@ export async function createDeposit(req, res) {
       deposit: depositRecord,
       upiUri,
       qrCodeDataUrl,
+      qrCode: qrCodeDataUrl,
       merchantVPA,
       merchantName,
     })
@@ -348,15 +350,18 @@ export async function listUserDeposits(req, res) {
     return res.status(403).json({ error: 'Access denied' })
   }
 
-  if (isSupabaseConfigured) {
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
+
+  if (isSupabaseConfigured && isUuid) {
     const { data, error } = await supabase
       .from('deposit_requests')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .limit(50)
-    if (error) return res.status(500).json({ error: 'Failed to fetch deposits' })
-    return res.json({ deposits: data || [] })
+    if (!error && Array.isArray(data)) {
+      return res.json({ deposits: data })
+    }
   }
   const deposits = Array.from(memoryDeposits.values())
     .filter((d) => d.user_id === userId)

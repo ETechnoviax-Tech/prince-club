@@ -161,7 +161,7 @@ export function DepositModal({ isOpen, onClose, userId, onBalanceUpdated }) {
           <div className="modal-step-body">
             <div className="qr-container">
               <img
-                src={depositData.qrCodeDataUrl}
+                src={depositData.qrCodeDataUrl || depositData.qrCode}
                 alt="UPI Payment QR Code"
                 className="upi-qr-image"
               />

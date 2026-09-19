@@ -13,6 +13,7 @@ import {
   Zap,
 } from 'lucide-react'
 import { requestDeposit, submitDepositUTR } from '../../api/client'
+import QRCode from 'qrcode'
 
 const PRESET_AMOUNTS = [100, 300, 500, 1000, 2000, 5000, 10000, 50000]
 
@@ -33,8 +34,24 @@ export default function DepositPage({
 
   // Deposit API Response
   const [depositData, setDepositData] = useState(null)
+  const [clientQr, setClientQr] = useState('')
   const [utr, setUtr] = useState('')
   const [utrResult, setUtrResult] = useState(null)
+
+  React.useEffect(() => {
+    const qr = depositData?.qrCodeDataUrl || depositData?.qrCode
+    if (qr) {
+      setClientQr(qr)
+    } else if (depositData?.upiUri) {
+      QRCode.toDataURL(depositData.upiUri, {
+        width: 320,
+        margin: 1,
+        color: { dark: '#000000', light: '#ffffff' },
+      })
+        .then(setClientQr)
+        .catch(() => {})
+    }
+  }, [depositData])
 
   const handleSelectPreset = (val) => {
     setAmount(val)
@@ -203,8 +220,20 @@ export default function DepositPage({
         {step === 2 && depositData && (
           <div className="deposit-qr-screen">
             <div className="qr-preview-box">
-              <div className="qr-img-wrapper">
-                <img src={depositData.qrCode} alt="UPI Payment QR Code" className="qr-rendered-img" />
+              <div className="qr-img-wrapper" style={{ minHeight: 220, display: 'grid', placeItems: 'center' }}>
+                {(depositData.qrCodeDataUrl || depositData.qrCode || clientQr) ? (
+                  <img
+                    src={depositData.qrCodeDataUrl || depositData.qrCode || clientQr}
+                    alt="UPI Payment QR Code"
+                    className="qr-rendered-img"
+                    style={{ width: '100%', maxWidth: 240, height: 'auto', display: 'block', margin: '0 auto' }}
+                  />
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '30px 10px', color: '#64748b' }}>
+                    <QrCode size={48} style={{ margin: '0 auto 8px', opacity: 0.6 }} />
+                    <div style={{ fontSize: 13, fontWeight: 700 }}>Generating UPI QR...</div>
+                  </div>
+                )}
               </div>
 
               <div className="qr-pay-amount">

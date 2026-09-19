@@ -76,6 +76,8 @@ import GiftsPage from './components/pages/GiftsPage'
 import CouponsPage from './components/pages/CouponsPage'
 import SecurityPage from './components/pages/SecurityPage'
 import CustomerServicePage from './components/pages/CustomerServicePage'
+import DepositHistoryPage from './components/pages/DepositHistoryPage'
+import WithdrawalHistoryPage from './components/pages/WithdrawalHistoryPage'
 import { initAntiInspect } from './utils/antiInspect'
 import {
   clearAuthToken,
@@ -1121,6 +1123,14 @@ export function App() {
               setActiveNav('notification')
               sound.playTick()
             }}
+            onOpenDepositHistory={() => {
+              setActiveNav('deposit-history')
+              sound.playTick()
+            }}
+            onOpenWithdrawHistory={() => {
+              setActiveNav('withdraw-history')
+              sound.playTick()
+            }}
             onOpenGifts={() => {
               setActiveNav('gifts')
               sound.playTick()
@@ -1193,7 +1203,10 @@ export function App() {
               setBalance(newBal)
               syncWithBackend()
             }}
-            onOpenHistory={() => setTransactionModalOpen(true)}
+            onOpenHistory={() => {
+              setActiveNav('deposit-history')
+              sound.playTick()
+            }}
           />
         )}
 
@@ -1210,7 +1223,10 @@ export function App() {
               setBalance(newBal)
               syncWithBackend()
             }}
-            onOpenHistory={() => setTransactionModalOpen(true)}
+            onOpenHistory={() => {
+              setActiveNav('withdraw-history')
+              sound.playTick()
+            }}
           />
         )}
 
@@ -1288,6 +1304,28 @@ export function App() {
         {/* 2m. Standalone Dedicated Customer Service Page */}
         {currentGame === null && activeNav === 'customerservice' && (
           <CustomerServicePage
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {/* 2n. Standalone Dedicated Deposit History Page */}
+        {currentGame === null && activeNav === 'deposit-history' && (
+          <DepositHistoryPage
+            currentUser={currentUser}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {/* 2o. Standalone Dedicated Withdrawal Status Page */}
+        {currentGame === null && activeNav === 'withdraw-history' && (
+          <WithdrawalHistoryPage
+            currentUser={currentUser}
             onBack={() => {
               setActiveNav('account')
               sound.playTick()

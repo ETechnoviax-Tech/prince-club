@@ -265,8 +265,8 @@
 
 ## Deposit, Withdrawal & Admin Payment System
 - Status: done
-- Purpose: Production-grade UPI/IMPS deposit, withdrawal, and admin settlement pipeline.
-- Key logic: Route param/body fallback for verifyDeposit & adminVerifyWithdrawal; payoutDetails normalization; refund early-return guard; apiFetch abort/timeout; inline confirmation cards replacing window.prompt/confirm.
-- Files: `server/controllers/paymentController.js`, `server/controllers/walletController.js`, `frontend/src/api/client.js`, `frontend/src/components/admin/AdminPaymentsView.jsx`, `frontend/src/components/admin/admin.css`
-- Dependencies: Express, Supabase, React 18, Lucide React
-- Last change: 2026-09-19 — Fixed 10 critical bugs across payment and admin verification stack; inline approval UI.
+- Purpose: Production-grade UPI/IMPS deposit, withdrawal, and admin settlement pipeline with dedicated history tracking.
+- Key logic: Dual property QR response (`qrCode` + `qrCodeDataUrl`) with frontend fallback; dedicated `DepositHistoryPage` and `WithdrawalHistoryPage` with status badges; UUID resilience.
+- Files: `server/controllers/paymentController.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/DepositHistoryPage.jsx`, `frontend/src/components/pages/WithdrawalHistoryPage.jsx`, `frontend/src/components/AccountView.jsx`, `frontend/src/App.jsx`
+- Dependencies: Express, Supabase, React 18, QRCode, Lucide React
+- Last change: 2026-09-20 — Fixed broken QR image rendering in DepositPage and built separate dedicated Deposit & Withdrawal History status pages.
