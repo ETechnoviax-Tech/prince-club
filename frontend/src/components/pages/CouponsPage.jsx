@@ -35,16 +35,6 @@ export default function CouponsPage({ onBack, onApplyCouponToDeposit }) {
       status: 'usable',
       tag: 'VIP ONLY',
     },
-    {
-      id: 'CPN-USED-1',
-      title: 'First Deposit Welcome Bonus',
-      discount: '₹50 Extra',
-      minDeposit: '₹100',
-      expiry: 'Used on 12 Sep 2026',
-      code: 'WELCOME50',
-      status: 'used',
-      tag: 'CLAIMED',
-    },
   ]
 
   const filtered = coupons.filter((c) => c.status === activeTab)

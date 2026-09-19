@@ -38,8 +38,8 @@ export function ActivityView({
 
   // Attendance streak
   const streakDays = [
-    { day: 'Day 1', reward: '₹15', status: 'claimed' },
-    { day: 'Day 2', reward: '₹20', status: 'today' },
+    { day: 'Day 1', reward: '₹15', status: 'today' },
+    { day: 'Day 2', reward: '₹20', status: 'locked' },
     { day: 'Day 3', reward: '₹25', status: 'locked' },
     { day: 'Day 4', reward: '₹30', status: 'locked' },
     { day: 'Day 5', reward: '₹35', status: 'locked' },
@@ -60,10 +60,15 @@ export function ActivityView({
 
     setTimeout(() => {
       setRedeeming(false)
-      const bonusWon = Math.floor(Math.random() * 200) + 50
-      setGiftResult(`Congratulations! Gift code redeemed. ₹${bonusWon} added to your account!`)
-      sound.playWin?.()
-    }, 800)
+      const codeUpper = giftCode.trim().toUpperCase()
+      if (codeUpper === 'WELCOME69' || codeUpper === '69CLUB') {
+        const bonusWon = 50
+        setGiftResult(`Congratulations! Gift code redeemed. ₹${bonusWon}.00 added to your account!`)
+        sound.playWin?.()
+      } else {
+        setGiftError('Invalid or expired redemption code. Check the official Telegram channel.')
+      }
+    }, 600)
   }
 
   return (
@@ -90,7 +95,7 @@ export function ActivityView({
 
           <div className="bonus-stat-col">
             <span className="bonus-stat-label">Total bonus</span>
-            <strong className="bonus-stat-value">₹177.68</strong>
+            <strong className="bonus-stat-value">₹0.00</strong>
           </div>
         </div>
 
@@ -247,26 +252,13 @@ export function ActivityView({
                   <strong>₹0.00</strong>
                 </div>
                 <div className="detail-stat-item">
-                  <span>Total Withdrawn</span>
-                  <strong>₹177.68</strong>
+                  <span>Total Bonus Claimed</span>
+                  <strong>₹0.00</strong>
                 </div>
               </div>
               <div className="bonus-history-list">
-                <div className="history-row">
-                  <span>Daily VIP Attendance</span>
-                  <strong className="text-emerald">+₹25.00</strong>
-                </div>
-                <div className="history-row">
-                  <span>Invite Wheel Bonus</span>
-                  <strong className="text-emerald">+₹50.00</strong>
-                </div>
-                <div className="history-row">
-                  <span>First Recharge Cash</span>
-                  <strong className="text-emerald">+₹100.00</strong>
-                </div>
-                <div className="history-row">
-                  <span>Turnover Rebate</span>
-                  <strong className="text-emerald">+₹2.68</strong>
+                <div style={{ textAlign: 'center', padding: '16px 0', color: '#64748b', fontSize: 13 }}>
+                  No bonus claims yet. Check into VIP daily or spin the Fortune Wheel to earn rewards!
                 </div>
               </div>
             </div>

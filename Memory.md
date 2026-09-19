@@ -148,10 +148,10 @@
 ## Standalone Subpages Architecture
 - Status: done
 - Purpose: Dedicated modular pages for all account operations and portal views.
-- Key logic: Individual full-screen views with back-navigation for Wallet, Deposit, Withdraw, VIP, Notifications, Gifts, Coupons, Security, and Customer Service.
+- Key logic: Real event-driven notifications without static fake badges; genuine gift redemption; clean coupons; user-agent session detection; zero fake mock fallback records.
 - Files: `frontend/src/components/pages/*.jsx`, `frontend/src/App.jsx`, `frontend/src/components/AccountView.jsx`
 - Dependencies: React 18, Lucide React, Vanilla CSS
-- Last change: 2026-09-17 — Built dedicated standalone pages for Notifications, Gifts, Coupons, Security, and Customer Service.
+- Last change: 2026-09-20 — Eliminated static 6 notification badge, purged fake mock data across subpages, and added clean zero-states.
 
 ## Anti-Inspect & Client Security Shield
 - Status: done

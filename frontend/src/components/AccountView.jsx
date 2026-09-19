@@ -42,6 +42,7 @@ export function AccountView({
   onOpenAuth,
   onOpenAdmin,
   onOpenNotification,
+  unreadNotificationCount = 0,
   onOpenGifts,
   onOpenCoupons,
   onOpenSecurity,
@@ -54,14 +55,18 @@ export function AccountView({
 
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.is_admin === true)
 
-  // Generate or format consistent display data matching user screenshot
-  const username = currentUser?.username || 'MEMBERNNG5EZDK'
+  // Real user details without mock fallbacks
+  const username = currentUser?.username || currentUser?.phone || (currentUser ? 'Player' : 'Guest')
   const displayUid = currentUser?.id
-    ? String(currentUser.id).replace(/\D/g, '').slice(-7) || '1015140'
-    : '1015140'
-  const lastLogin = currentUser?.last_login || '2026-09-13 17:41:23'
+    ? (currentUser.uid || String(currentUser.id).replace(/\D/g, '').slice(-7) || String(currentUser.id).slice(0, 8))
+    : '--'
+  const lastLogin = currentUser?.last_login
+    ? new Date(currentUser.last_login).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })
+    : 'Active'
+  const vipLevel = currentUser?.vip_level ?? 0
 
   const handleCopyUid = () => {
+    if (displayUid === '--') return
     try {
       navigator.clipboard.writeText(displayUid)
       setCopied(true)
@@ -108,7 +113,7 @@ export function AccountView({
               <h2 className="profile-username">{username}</h2>
               <div className="profile-vip-medal">
                 <span className="vip-medal-star">⭐</span>
-                <span className="vip-medal-text">VIP0</span>
+                <span className="vip-medal-text">VIP{vipLevel}</span>
               </div>
             </div>
 
@@ -277,7 +282,9 @@ export function AccountView({
             <span className="menu-row-title">Notification</span>
           </div>
           <div className="menu-row-right">
-            <span className="menu-count-badge">6</span>
+            {unreadNotificationCount > 0 && (
+              <span className="menu-count-badge">{unreadNotificationCount}</span>
+            )}
             <ChevronRight size={16} className="text-slate-500" />
           </div>
         </div>

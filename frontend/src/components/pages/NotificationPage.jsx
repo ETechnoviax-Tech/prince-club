@@ -1,67 +1,28 @@
 import React, { useState } from 'react'
 import { ArrowLeft, Bell, Trash2, CheckCircle2, ShieldAlert, Sparkles, Gift, Clock, ChevronRight } from 'lucide-react'
 
-export default function NotificationPage({ onBack }) {
+export default function NotificationPage({
+  onBack,
+  notifications = [],
+  onMarkAllRead,
+  onClearAll,
+}) {
   const [activeTab, setActiveTab] = useState('all')
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      type: 'system',
-      title: '69 Club Platform Upgrade',
-      desc: 'System performance enhanced with 100% instant UPI deposits and fast withdrawals.',
-      time: '10 mins ago',
-      unread: true,
-    },
-    {
-      id: 2,
-      type: 'prize',
-      title: 'Daily VIP Bonus Unlocked',
-      desc: 'Your daily VIP check-in credit is available. Claim up to ₹50 in your VIP Center.',
-      time: '1 hour ago',
-      unread: true,
-    },
-    {
-      id: 3,
-      type: 'activity',
-      title: 'Mega Spin Wheel Active',
-      desc: 'Spin the Fortune Wheel now to win exclusive cash prizes up to ₹500 directly to your balance.',
-      time: '3 hours ago',
-      unread: true,
-    },
-    {
-      id: 4,
-      type: 'system',
-      title: 'Security Alert: Login Verified',
-      desc: 'Your account was successfully authenticated. 2FA dual-verification security is active.',
-      time: 'Yesterday',
-      unread: false,
-    },
-    {
-      id: 5,
-      type: 'prize',
-      title: 'Withdrawal Payout Processed',
-      desc: 'Your instant withdrawal request was approved by the system gateway.',
-      time: '2 days ago',
-      unread: false,
-    },
-    {
-      id: 6,
-      type: 'activity',
-      title: 'Win Go 30s High Payout Event',
-      desc: 'Experience lightning-fast color trading rounds with guaranteed 2.0x and 9.0x multipliers.',
-      time: '3 days ago',
-      unread: false,
-    },
-  ])
 
-  const filtered = activeTab === 'all' ? notifications : notifications.filter((n) => n.type === activeTab)
+  const filtered = activeTab === 'all'
+    ? notifications
+    : notifications.filter((n) => n.type === activeTab)
 
-  const handleMarkAllRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
+  const handleMarkAll = () => {
+    if (onMarkAllRead) {
+      onMarkAllRead()
+    }
   }
 
-  const handleClearAll = () => {
-    setNotifications([])
+  const handleClear = () => {
+    if (onClearAll) {
+      onClearAll()
+    }
   }
 
   return (
@@ -75,7 +36,7 @@ export default function NotificationPage({ onBack }) {
         <div className="header-action-group" style={{ display: 'flex', gap: 6 }}>
           <button
             className="standalone-back-btn"
-            onClick={handleMarkAllRead}
+            onClick={handleMarkAll}
             title="Mark All Read"
             style={{ fontSize: 12, width: 'auto', padding: '0 10px', borderRadius: 16 }}
           >
@@ -83,7 +44,7 @@ export default function NotificationPage({ onBack }) {
           </button>
           <button
             className="standalone-back-btn"
-            onClick={handleClearAll}
+            onClick={handleClear}
             title="Clear All"
             style={{ fontSize: 12, width: 'auto', padding: '0 10px', borderRadius: 16 }}
           >

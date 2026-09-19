@@ -6,10 +6,20 @@ export default function GiftsPage({ onBack, onRedeemGift, balance = 0 }) {
   const [redeemStatus, setRedeemStatus] = useState(null)
   const [isRedeeming, setIsRedeeming] = useState(false)
 
-  const [history, setHistory] = useState([
-    { code: 'WELCOME69', amount: 50, date: 'Today, 10:24 AM', status: 'Claimed' },
-    { code: 'VIPDAILY2026', amount: 30, date: 'Yesterday, 04:15 PM', status: 'Claimed' },
-  ])
+  const [history, setHistory] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gift_redeem_history')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('gift_redeem_history', JSON.stringify(history))
+    } catch {}
+  }, [history])
 
   const handleClaim = () => {
     if (!giftCode.trim()) {
@@ -202,28 +212,44 @@ export default function GiftsPage({ onBack, onRedeemGift, balance = 0 }) {
           Redemption History
         </h4>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {history.map((h, i) => (
+          {history.length === 0 ? (
             <div
-              key={i}
               style={{
                 background: '#ffffff',
-                border: '1px solid #e2e8f0',
+                border: '1px dashed #cbd5e1',
                 borderRadius: 12,
-                padding: '12px 14px',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
+                padding: '24px 16px',
+                textAlign: 'center',
+                color: '#64748b',
+                fontSize: 12.5,
               }}
             >
-              <div>
-                <strong style={{ fontSize: 13, color: '#0f172a' }}>{h.code}</strong>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>{h.date}</div>
-              </div>
-              <span style={{ fontSize: 13, fontWeight: 800, color: '#16a34a' }}>
-                +₹{h.amount}.00
-              </span>
+              No redemption history yet. Enter an active gift code above.
             </div>
-          ))}
+          ) : (
+            history.map((h, i) => (
+              <div
+                key={i}
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 12,
+                  padding: '12px 14px',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                }}
+              >
+                <div>
+                  <strong style={{ fontSize: 13, color: '#0f172a' }}>{h.code}</strong>
+                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{h.date}</div>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 800, color: '#16a34a' }}>
+                  +₹{h.amount}.00
+                </span>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

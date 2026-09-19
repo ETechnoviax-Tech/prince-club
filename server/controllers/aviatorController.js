@@ -16,16 +16,29 @@ const state = {
   flightDurationMs: 0,
   flyingStartedAt: null,
   crashedAt: null,
-  history: [
-    { roundId: 99995, crashPoint: 1.24 },
-    { roundId: 99996, crashPoint: 3.85 },
-    { roundId: 99997, crashPoint: 1.08 },
-    { roundId: 99998, crashPoint: 14.52 },
-    { roundId: 99999, crashPoint: 2.15 },
-    { roundId: 100000, crashPoint: 1.62 },
-  ],
+  history: [],
   bets: new Map(), // key: betId -> betRecord
   recentCashouts: [], // cashouts from real bets in the current flight
+}
+
+// Populate genuine completed rounds on server launch if Supabase is connected
+if (isSupabaseConfigured) {
+  supabase
+    .from('aviator_rounds')
+    .select('round_number, crash_point')
+    .eq('phase', 'CRASHED')
+    .not('crash_point', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(20)
+    .then(({ data, error }) => {
+      if (!error && Array.isArray(data) && data.length > 0) {
+        state.history = data.map((r) => ({
+          roundId: Number(r.round_number),
+          crashPoint: Number(r.crash_point),
+        }))
+      }
+    })
+    .catch(() => {})
 }
 
 const WAITING_DURATION_MS = 6000

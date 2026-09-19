@@ -2,9 +2,28 @@ import React, { useState } from 'react'
 import { ArrowLeft, Shield, Lock, Smartphone, Mail, Key, CheckCircle2, ChevronRight, AlertTriangle } from 'lucide-react'
 
 export default function SecurityPage({ onBack, currentUser, onOpenChangePassword }) {
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const os = /android/i.test(userAgent)
+    ? 'Android Mobile'
+    : /iphone|ipad|ipod/i.test(userAgent)
+    ? 'iOS Mobile'
+    : /windows/i.test(userAgent)
+    ? 'Windows PC'
+    : /mac/i.test(userAgent)
+    ? 'macOS'
+    : 'Device'
+  const browser = /chrome/i.test(userAgent) && !/edg/i.test(userAgent)
+    ? 'Chrome'
+    : /safari/i.test(userAgent) && !/chrome/i.test(userAgent)
+    ? 'Safari'
+    : /edg/i.test(userAgent)
+    ? 'Edge'
+    : /firefox/i.test(userAgent)
+    ? 'Firefox'
+    : 'Browser'
+
   const [deviceList] = useState([
-    { id: 1, device: 'Chrome Mobile / Android 14', ip: '10.191.8.196', time: 'Active now', isCurrent: true },
-    { id: 2, device: 'Safari Mobile / iOS 17.5', ip: '103.21.244.12', time: 'Sep 15, 2026', isCurrent: false },
+    { id: 1, device: `${browser} / ${os}`, ip: 'Current Device', time: 'Active now', isCurrent: true },
   ])
 
   return (

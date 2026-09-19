@@ -197,38 +197,7 @@ function formatPeriod(round, mode = '30s') {
   return `${yyyy}${mm}${dd}${modeCode}${seq}`
 }
 
-function initialSeedBets() {
-  const r1 = outcomeFor(842180)
-  const r2 = outcomeFor(842178)
-  return [
-    {
-      id: 'bet-seed-1',
-      round: 842180,
-      selection: 'green',
-      type: 'color',
-      amount: 100,
-      multiplier: 2.0,
-      potentialReturn: 200,
-      payout: 200,
-      status: 'won',
-      outcome: r1,
-      createdAt: 'Just now',
-    },
-    {
-      id: 'bet-seed-2',
-      round: 842178,
-      selection: '7',
-      type: 'number',
-      amount: 50,
-      multiplier: 9.0,
-      potentialReturn: 450,
-      payout: 0,
-      status: 'lost',
-      outcome: r2,
-      createdAt: '5 min ago',
-    },
-  ]
-}
+
 
 export function App() {
   // Navigation & Core State
@@ -461,6 +430,32 @@ export function App() {
   // Toast & Notifications
   const [toast, setToast] = useState(null)
   const [tickerIndex, setTickerIndex] = useState(0)
+
+  // Real User Notifications (Stored in localStorage, clean empty list by default in production)
+  const [userNotifications, setUserNotifications] = useState(() => {
+    try {
+      const stored = localStorage.getItem(`notifications_${currentUser?.id || 'guest'}`)
+      if (stored) return JSON.parse(stored)
+    } catch {}
+    return []
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`notifications_${currentUser?.id || 'guest'}`, JSON.stringify(userNotifications))
+    } catch {}
+  }, [userNotifications, currentUser?.id])
+
+  const unreadNotificationCount = userNotifications.filter((n) => n.unread).length
+
+  const handleMarkAllNotificationsRead = () => {
+    setUserNotifications((prev) => prev.map((n) => ({ ...n, unread: false })))
+  }
+
+  const handleClearAllNotifications = () => {
+    setUserNotifications([])
+  }
+
   const betsRef = useRef(bets)
 
   const activeLevel = GAME_LEVELS.find((l) => l.id === selectedMode) || GAME_LEVELS[0]
@@ -1087,6 +1082,7 @@ export function App() {
             currentUser={currentUser}
             userId={currentUser?.id || userId}
             balance={balance}
+            unreadNotificationCount={unreadNotificationCount}
             onRefreshBalance={syncWithBackend}
             onOpenWallet={() => {
               setActiveNav('wallet')
@@ -1235,6 +1231,9 @@ export function App() {
         {/* 2i. Standalone Dedicated Notification Page */}
         {currentGame === null && activeNav === 'notification' && (
           <NotificationPage
+            notifications={userNotifications}
+            onMarkAllRead={handleMarkAllNotificationsRead}
+            onClearAll={handleClearAllNotifications}
             onBack={() => {
               setActiveNav('account')
               sound.playTick()
