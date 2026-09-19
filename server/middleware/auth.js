@@ -78,22 +78,16 @@ export function optionalAuth(req, res, next) {
 }
 
 export function requireAdmin(req, res, next) {
-  const adminSecret = process.env.ADMIN_SECRET_KEY || 'prince_admin_master_secret_2026'
-  const providedSecret = req.headers['x-admin-key'] || req.query.adminKey
-
-  if (providedSecret && providedSecret === adminSecret) {
-    return next()
-  }
-
   const authHeader = req.headers.authorization || req.headers.Authorization
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.slice(7).trim()
-    const user = verifyToken(token)
-    if (user && user.role === 'admin') {
-      req.user = user
-      return next()
-    }
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required. Missing token.' })
   }
 
-  return res.status(403).json({ error: 'Access denied: Admin credentials required' })
+  const user = verifyToken(authHeader.slice(7).trim())
+  if (!user || !(user.role === 'admin' || user.is_admin === true)) {
+    return res.status(403).json({ error: 'Access denied: Admin account required' })
+  }
+
+  req.user = user
+  next()
 }

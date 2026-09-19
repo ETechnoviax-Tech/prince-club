@@ -10,14 +10,14 @@ import {
 import { memoryWallets, memoryTransactions, memoryDeposits } from '../db/store.js'
 import { memoryBets } from './gameController.js'
 
-// 1. Dual-Verification Status Handshake
+// 1. Server-authoritative admin session handshake
 export async function verifyAdminSession(req, res) {
   try {
     return res.json({
       success: true,
-      message: 'Dual-verification passed: DB role is admin and Backend Secret Key is verified.',
+      message: 'Admin session verified against the live database profile.',
       dbVerified: true,
-      backendVerified: true,
+      sessionVerified: true,
       admin: {
         id: req.adminUser.id,
         username: req.adminUser.username,

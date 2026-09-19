@@ -8,7 +8,8 @@ import {
   requestWithdrawal,
   resetWallet,
 } from '../controllers/walletController.js'
-import { optionalAuth, requireAdmin, requireAuth } from '../middleware/auth.js'
+import { optionalAuth, requireAuth } from '../middleware/auth.js'
+import { requireDualAdminAuth } from '../middleware/adminGuard.js'
 import { withdrawalRateLimit } from '../middleware/rateLimit.js'
 import { validateWithdrawalRequest } from '../middleware/validate.js'
 import { idempotencyMiddleware } from '../middleware/idempotency.js'
@@ -32,7 +33,7 @@ router.post(
   requestWithdrawal
 )
 router.get('/withdrawals/:userId', requireAuth, getUserWithdrawals)
-router.post('/withdraw/verify', requireAdmin, adminVerifyWithdrawal)
+router.post('/withdraw/verify', requireDualAdminAuth, adminVerifyWithdrawal)
 
 // VIP Daily Bonus requires verified authentication
 router.post('/vip/claim', requireAuth, claimDailyVIPBonus)

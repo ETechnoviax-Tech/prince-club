@@ -8,7 +8,8 @@ import {
 } from '../controllers/paymentController.js'
 import { handlePaymentWebhook } from '../controllers/webhookController.js'
 import { initiateRefund, listRefunds, listPaymentEvents } from '../controllers/refundController.js'
-import { requireAdmin, requireAuth } from '../middleware/auth.js'
+import { requireAuth } from '../middleware/auth.js'
+import { requireDualAdminAuth } from '../middleware/adminGuard.js'
 import { paymentRateLimit, webhookRateLimit } from '../middleware/rateLimit.js'
 import { validateDepositRequest, validateUTRSubmission } from '../middleware/validate.js'
 import { idempotencyMiddleware } from '../middleware/idempotency.js'
@@ -60,14 +61,14 @@ router.post(
 )
 
 // 4. Admin Verification
-router.post('/verify', requireAdmin, verifyDeposit)
+router.post('/verify', requireDualAdminAuth, verifyDeposit)
 
 // 5. Refund Operations
-router.post('/refund', requireAdmin, idempotencyMiddleware, initiateRefund)
+router.post('/refund', requireDualAdminAuth, idempotencyMiddleware, initiateRefund)
 router.get('/refunds/:userId', requireAuth, listRefunds)
 
 // 6. Payment Events Audit Trail
-router.get('/events/:userId', requireAdmin, listPaymentEvents)
+router.get('/events/:userId', requireDualAdminAuth, listPaymentEvents)
 
 // 7. User deposit tracking
 router.get('/deposit/:id', requireAuth, getDeposit)

@@ -15,7 +15,7 @@ function date(value) {
   return value ? new Date(value).toLocaleString('en-IN') : '—'
 }
 
-export default function AdminPaymentsView({ adminKey, refreshToken }) {
+export default function AdminPaymentsView({ refreshToken }) {
   const [kind, setKind] = useState('deposits')
   const [status, setStatus] = useState('PENDING')
   const [items, setItems] = useState([])
@@ -28,14 +28,14 @@ export default function AdminPaymentsView({ adminKey, refreshToken }) {
     setError('')
     try {
       setItems(kind === 'deposits'
-        ? await fetchAdminDeposits(adminKey, status)
-        : await fetchAdminWithdrawals(adminKey, status))
+        ? await fetchAdminDeposits(status)
+        : await fetchAdminWithdrawals(status))
     } catch (err) {
       setError(err.message || 'Failed to load payment queue')
     } finally {
       setLoading(false)
     }
-  }, [adminKey, kind, status, refreshToken])
+  }, [kind, status, refreshToken])
 
   useEffect(() => { load() }, [load])
 
@@ -45,8 +45,8 @@ export default function AdminPaymentsView({ adminKey, refreshToken }) {
     if (!window.confirm(`Confirm ${label} of ${money(item.amount)}?`)) return
     setBusyId(item.id)
     try {
-      if (kind === 'deposits') await adminVerifyDeposit(adminKey, item.id, action, notes)
-      else await adminVerifyWithdrawal(adminKey, item.id, action, notes)
+      if (kind === 'deposits') await adminVerifyDeposit(item.id, action, notes)
+      else await adminVerifyWithdrawal(item.id, action, notes)
       await load()
     } catch (err) {
       setError(err.message || `Failed to ${label} payment`)

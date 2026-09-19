@@ -28,10 +28,7 @@ import AdminUsersView from './AdminUsersView.jsx'
 import AdminBalanceModal from './AdminBalanceModal.jsx'
 import AdminPaymentsView from './AdminPaymentsView.jsx'
 
-export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) {
-  const [adminKey, setAdminKey] = useState(
-    () => localStorage.getItem('club69_admin_key') || ''
-  )
+export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated, onAccessDenied }) {
   const [isVerified, setIsVerified] = useState(false)
   const [verifying, setVerifying] = useState(false)
   const [verifyError, setVerifyError] = useState(null)
@@ -58,74 +55,70 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
 
   // 1. Handshake verification
   const handleVerifyAdmin = useCallback(async () => {
-    if (!adminKey.trim()) {
-      setVerifyError('Please enter the Admin Master Secret Key')
-      return
-    }
     setVerifying(true)
     setVerifyError(null)
     try {
-      const res = await verifyAdminAccess(adminKey.trim())
+      const res = await verifyAdminAccess()
       if (res.success) {
         setIsVerified(true)
-        localStorage.setItem('club69_admin_key', adminKey.trim())
       }
     } catch (err) {
       setVerifyError(err.message || 'Dual verification failed')
       setIsVerified(false)
+      onAccessDenied?.()
     } finally {
       setVerifying(false)
     }
-  }, [adminKey])
+  }, [onAccessDenied])
 
   // 2. Load Platform & Risk Matrix
   const loadMatrix = useCallback(async () => {
-    if (!isVerified || !adminKey) return
+    if (!isVerified) return
     setLoading(true)
     try {
-      const matrix = await fetchAdminMatrix(adminKey)
+      const matrix = await fetchAdminMatrix()
       setMatrixData(matrix)
     } catch (err) {
       console.error('[Admin Matrix Error]:', err)
     } finally {
       setLoading(false)
     }
-  }, [isVerified, adminKey])
+  }, [isVerified])
 
   // 3. Load Bets Ledger
   const loadBets = useCallback(async () => {
-    if (!isVerified || !adminKey) return
+    if (!isVerified) return
     setLoading(true)
     try {
-      const res = await fetchAdminBetsLedger(adminKey, { limit: 100 })
+      const res = await fetchAdminBetsLedger({ limit: 100 })
       setBetsList(res.bets || [])
     } catch (err) {
       console.error('[Admin Bets Error]:', err)
     } finally {
       setLoading(false)
     }
-  }, [isVerified, adminKey])
+  }, [isVerified])
 
   // 4. Load Users
   const loadUsers = useCallback(async () => {
-    if (!isVerified || !adminKey) return
+    if (!isVerified) return
     setLoading(true)
     try {
-      const users = await fetchAdminUsers(adminKey, searchUser)
+      const users = await fetchAdminUsers(searchUser)
       setUsersList(users || [])
     } catch (err) {
       console.error('[Admin Users Error]:', err)
     } finally {
       setLoading(false)
     }
-  }, [isVerified, adminKey, searchUser])
+  }, [isVerified, searchUser])
 
-  // Auto-verify on open if cached key exists
+  // Verify the current bearer session against the live admin profile.
   useEffect(() => {
-    if (isOpen && adminKey.trim() && !isVerified) {
+    if (isOpen && !isVerified && !verifying) {
       handleVerifyAdmin()
     }
-  }, [isOpen, adminKey, isVerified, handleVerifyAdmin])
+  }, [isOpen, isVerified, verifying, handleVerifyAdmin])
 
   // Load data according to active tab
   useEffect(() => {
@@ -149,7 +142,6 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
     setAdjustLoading(true)
     try {
       await adminUpdateUserBalance(
-        adminKey,
         selectedUserForBalance.id,
         adjustAmount,
         adjustAction,
@@ -173,7 +165,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
     if (!window.confirm(confirmMsg)) return
 
     try {
-      await adminUpdateUserRole(adminKey, user.id, nextRole)
+      await adminUpdateUserRole(user.id, nextRole)
       loadUsers()
       if (onUserUpdated) onUserUpdated()
     } catch (err) {
@@ -185,7 +177,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
   const handleToggleStatus = async (user) => {
     const nextStatus = user.status === 'suspended' ? 'active' : 'suspended'
     try {
-      await adminUpdateUserStatus(adminKey, user.id, nextStatus)
+      await adminUpdateUserStatus(user.id, nextStatus)
       loadUsers()
     } catch (err) {
       alert(`Failed to update user status: ${err.message}`)
@@ -198,7 +190,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
       return
     }
     try {
-      await adminDeleteUser(adminKey, user.id)
+      await adminDeleteUser(user.id)
       loadUsers()
       if (onUserUpdated) onUserUpdated()
     } catch (err) {
@@ -219,7 +211,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
             </div>
             <div>
               <h3>Admin Management Console</h3>
-              <p>Dual-Verified Security • Live Risk & Users</p>
+              <p>Server-Verified Session • Live Risk & Users</p>
             </div>
           </div>
 
@@ -250,8 +242,6 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
           {!isVerified ? (
             /* Security Gate View */
             <AdminGate
-              adminKey={adminKey}
-              setAdminKey={setAdminKey}
               onVerify={handleVerifyAdmin}
               verifying={verifying}
               verifyError={verifyError}
@@ -268,7 +258,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
                 </span>
                 <span className="status-chip success">
                   <CheckCircle size={13} />
-                  <span>Backend Key: <strong>VERIFIED</strong></span>
+                  <span>Session: <strong>VERIFIED</strong></span>
                 </span>
                 <span className="status-chip" style={{ marginLeft: 'auto' }}>
                   Operator: <strong>{currentUser?.username || 'Admin'}</strong>
@@ -344,7 +334,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
                   currentUser={currentUser}
                 />
               )}
-              {activeTab === 'payments' && <AdminPaymentsView adminKey={adminKey} refreshToken={paymentsRefreshToken} />}
+              {activeTab === 'payments' && <AdminPaymentsView refreshToken={paymentsRefreshToken} />}
             </>
           )}
         </div>

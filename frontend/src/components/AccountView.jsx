@@ -52,19 +52,7 @@ export function AccountView({
   const [refreshing, setRefreshing] = useState(false)
   const [avatarError, setAvatarError] = useState(false)
 
-  const [adminTapCount, setAdminTapCount] = useState(0)
   const isAdmin = Boolean(currentUser?.role === 'admin' || currentUser?.is_admin === true)
-
-  const handleSecretAdminTap = () => {
-    setAdminTapCount((prev) => {
-      const next = prev + 1
-      if (next >= 5) {
-        if (onOpenAdmin) onOpenAdmin()
-        return 0
-      }
-      return next
-    })
-  }
 
   // Generate or format consistent display data matching user screenshot
   const username = currentUser?.username || 'MEMBERNNG5EZDK'
@@ -378,16 +366,14 @@ export function AccountView({
         )}
       </div>
 
-      {/* Discrete Version / Secret Admin Tap Footer */}
+      {/* Version footer */}
       <div
         className="account-version-tag"
-        onClick={handleSecretAdminTap}
         style={{
           textAlign: 'center',
           fontSize: '11px',
           color: '#94a3b8',
           padding: '16px 0 24px 0',
-          cursor: 'default',
           userSelect: 'none',
         }}
       >

@@ -594,64 +594,61 @@ export async function fetchWalletTransactions(userId) {
 // DUAL-VERIFIED ADMIN API CLIENT
 // ============================================================================
 
-function adminHeaders(adminKey) {
-  return {
-    ...authHeaders(),
-    'x-admin-key': adminKey,
-  }
+function adminHeaders() {
+  return authHeaders()
 }
 
-export async function verifyAdminAccess(adminKey) {
+export async function verifyAdminAccess() {
   const res = await fetch(`${API_BASE}/admin/verify`, {
     method: 'POST',
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Admin verification failed')
   return json
 }
 
-export async function fetchAdminMatrix(adminKey) {
+export async function fetchAdminMatrix() {
   const res = await fetch(`${API_BASE}/admin/matrix`, {
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Failed to fetch admin matrix')
   return json.matrix
 }
 
-export async function fetchAdminBetsLedger(adminKey, params = {}) {
+export async function fetchAdminBetsLedger(params = {}) {
   const q = new URLSearchParams(params).toString()
   const res = await fetch(`${API_BASE}/admin/bets${q ? `?${q}` : ''}`, {
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Failed to fetch bets ledger')
   return json
 }
 
-export async function fetchAdminDeposits(adminKey, status = 'PENDING') {
+export async function fetchAdminDeposits(status = 'PENDING') {
   const res = await fetch(`${API_BASE}/admin/deposits?status=${encodeURIComponent(status)}`, {
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Failed to fetch deposits')
   return json.deposits || []
 }
 
-export async function fetchAdminWithdrawals(adminKey, status = 'PENDING') {
+export async function fetchAdminWithdrawals(status = 'PENDING') {
   const res = await fetch(`${API_BASE}/admin/withdrawals?status=${encodeURIComponent(status)}`, {
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Failed to fetch withdrawals')
   return json.withdrawals || []
 }
 
-export async function adminVerifyDeposit(adminKey, depositId, action, notes = '') {
+export async function adminVerifyDeposit(depositId, action, notes = '') {
   const res = await fetch(`${API_BASE}/admin/deposits/${depositId}/verify`, {
     method: 'POST',
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
     body: JSON.stringify({ depositId, action, notes }),
   })
   const json = await res.json().catch(() => ({}))
@@ -659,10 +656,10 @@ export async function adminVerifyDeposit(adminKey, depositId, action, notes = ''
   return json
 }
 
-export async function adminVerifyWithdrawal(adminKey, withdrawalId, action, notes = '') {
+export async function adminVerifyWithdrawal(withdrawalId, action, notes = '') {
   const res = await fetch(`${API_BASE}/admin/withdrawals/${withdrawalId}/verify`, {
     method: 'POST',
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
     body: JSON.stringify({ withdrawalId, action, notes }),
   })
   const json = await res.json().catch(() => ({}))
@@ -670,20 +667,20 @@ export async function adminVerifyWithdrawal(adminKey, withdrawalId, action, note
   return json
 }
 
-export async function fetchAdminUsers(adminKey, search = '') {
+export async function fetchAdminUsers(search = '') {
   const q = search ? `?search=${encodeURIComponent(search)}` : ''
   const res = await fetch(`${API_BASE}/admin/users${q}`, {
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Failed to list users')
   return json.users || []
 }
 
-export async function adminUpdateUserBalance(adminKey, userId, amount, action = 'credit', reason = '') {
+export async function adminUpdateUserBalance(userId, amount, action = 'credit', reason = '') {
   const res = await fetch(`${API_BASE}/admin/users/${userId}/balance`, {
     method: 'POST',
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
     body: JSON.stringify({ amount, action, reason }),
   })
   const json = await res.json().catch(() => ({}))
@@ -691,10 +688,10 @@ export async function adminUpdateUserBalance(adminKey, userId, amount, action = 
   return json
 }
 
-export async function adminUpdateUserRole(adminKey, userId, role) {
+export async function adminUpdateUserRole(userId, role) {
   const res = await fetch(`${API_BASE}/admin/users/${userId}/role`, {
     method: 'PATCH',
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
     body: JSON.stringify({ role }),
   })
   const json = await res.json().catch(() => ({}))
@@ -702,10 +699,10 @@ export async function adminUpdateUserRole(adminKey, userId, role) {
   return json
 }
 
-export async function adminUpdateUserStatus(adminKey, userId, status) {
+export async function adminUpdateUserStatus(userId, status) {
   const res = await fetch(`${API_BASE}/admin/users/${userId}/status`, {
     method: 'PATCH',
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
     body: JSON.stringify({ status }),
   })
   const json = await res.json().catch(() => ({}))
@@ -713,23 +710,12 @@ export async function adminUpdateUserStatus(adminKey, userId, status) {
   return json
 }
 
-export async function adminDeleteUser(adminKey, userId) {
+export async function adminDeleteUser(userId) {
   const res = await fetch(`${API_BASE}/admin/users/${userId}`, {
     method: 'DELETE',
-    headers: adminHeaders(adminKey),
+    headers: adminHeaders(),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Failed to delete user')
-  return json
-}
-
-export async function adminPromoteUser(adminKey, identity) {
-  const res = await fetch(`${API_BASE}/admin/promote`, {
-    method: 'POST',
-    headers: adminHeaders(adminKey),
-    body: JSON.stringify({ identity }),
-  })
-  const json = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(json.error || 'Failed to promote user')
   return json
 }

@@ -13,8 +13,8 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
 - **Lottery Games**: Live period rounds across Win Go (30s, 1m, 3m, 5m) synchronized with official live draw streams, K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
   - **Simplified Win Go Betting**: Clear stake → market → confirmation flow with visible payout and number-range labels.
 - **Real-Time Aviator Crash Game**: Authoritative Spribe-style multiplayer crash game with per-user concurrency mutex locks, 60 FPS interpolated flight curves, animated preparation loading bar, community player roster, and live cashouts ticker.
-- **Dual-Verification Admin Management & Risk Matrix**:
-  - **Dual Security Layer**: Mandatory 2-step verification requiring Database Role validation (`admin`) AND Backend Master Secret (`ADMIN_SECRET_KEY`).
+- **Private Admin Management & Risk Matrix**:
+  - **Server-Authoritative Admin Security**: The dedicated `/admin` route requires an authenticated bearer session and a live database `admin` role on every request. No admin secret is accepted from the browser.
   - **Live Bet Distribution Matrix**: Real-time aggregation of bet volumes across Color markets (Red, Green, Violet), Size markets (Big, Small), and individual Digits (0 to 9).
   - **Live-Data Integrity**: Game screens fail closed when a verified live provider is unavailable; no fabricated results, player activity, or local bet-success notices are shown.
   - **Game-Wise Exposure Detail**: Read-only per-game breakdown of every active market side and its pending stake.
@@ -119,7 +119,6 @@ SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_ANON_KEY=your-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 JWT_SECRET=your-jwt-secret-key
-ADMIN_SECRET_KEY=your-admin-secret-key
 ADMIN_IDENTIFIER=your-admin-phone-or-email
 PAYMENT_WEBHOOK_SECRET=your-webhook-hmac-secret
 MERCHANT_UPI_VPA=merchant@upi
@@ -186,7 +185,6 @@ Both the Express backend and React Vite frontend can be deployed together in a s
    - `SUPABASE_URL`: `https://your-project.supabase.co`
    - `SUPABASE_ANON_KEY`: `your-anon-key`
    - `SUPABASE_SERVICE_ROLE_KEY`: `your-service-role-key`
-   - `ADMIN_SECRET_KEY`: `your-admin-secret-key`
    - `ADMIN_IDENTIFIER`: `your-admin-phone`
 5. Click **Deploy**. Both the client and API will be live on your `*.vercel.app` URL immediately.
 
@@ -213,7 +211,6 @@ You can deploy the backend to Render either using the native Node environment or
    - `SUPABASE_URL`: `https://your-project.supabase.co`
    - `SUPABASE_ANON_KEY`: `your-anon-key`
    - `SUPABASE_SERVICE_ROLE_KEY`: `your-service-role-key`
-   - `ADMIN_SECRET_KEY`: `your-admin-secret-key`
    - `ADMIN_IDENTIFIER`: `your-admin-phone`
 5. In Render **Settings** -> **Custom Domains**, add `api.69club1.site`. Add the CNAME record indicated by Render to your DNS provider.
 

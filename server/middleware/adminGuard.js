@@ -3,30 +3,13 @@ import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { memoryProfiles } from '../controllers/authController.js'
 
 /**
- * Triple-Verification Admin Guard
- * Check 1: Backend Master Key Verification (valid secret key in env)
- * Check 2: Database Role Check (account role must be 'admin' in DB)
- * Check 3: ADMIN_IDENTIFIER match (phone/email must match env whitelist if configured)
+ * Database-backed admin guard.
+ * The bearer session identifies the operator; the current database profile
+ * is checked on every request so stale client-side role data is never trusted.
  */
 export async function requireDualAdminAuth(req, res, next) {
   try {
-    // -------------------------------------------------------------
-    // Check 1: Backend Master Secret Verification
-    // -------------------------------------------------------------
-    const configuredSecret = process.env.ADMIN_SECRET_KEY || 'club69_admin_master_secret_2026'
-    const providedKey = req.headers['x-admin-key'] || req.query.adminKey || req.body?.adminKey
-
-    if (!providedKey || String(providedKey).trim() !== configuredSecret) {
-      return res.status(403).json({
-        error: 'Backend Verification Failed: Invalid or missing Admin Master Secret Key',
-        stage: 'backend_verification',
-        verified: false,
-      })
-    }
-
-    // -------------------------------------------------------------
-    // Check 2: Database Role Check
-    // -------------------------------------------------------------
+    // Session verification
     const authHeader = req.headers.authorization || req.headers.Authorization
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return res.status(401).json({
@@ -92,8 +75,7 @@ export async function requireDualAdminAuth(req, res, next) {
       })
     }
 
-    // -------------------------------------------------------------
-    // Check 3: ADMIN_IDENTIFIER Whitelist (optional but enforced if set)
+    // Optional deployment-level identity restriction.
     // Set ADMIN_IDENTIFIER=phone_or_email in .env to restrict admin access
     // to a single pre-authorized account identity.
     // -------------------------------------------------------------
@@ -121,4 +103,3 @@ export async function requireDualAdminAuth(req, res, next) {
     return res.status(500).json({ error: 'Internal server error during admin dual-verification' })
   }
 }
-

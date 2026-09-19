@@ -256,8 +256,8 @@ export function App() {
   const [selectedMode, setSelectedMode] = useState(() => localStorage.getItem('club69_selected_mode') || 'PARITY') // 'PARITY' | 'SAPRE' | 'BCONE' | 'EMERD'
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false)
   const [transactionModalOpen, setTransactionModalOpen] = useState(false)
-  const [adminModalOpen, setAdminModalOpen] = useState(() => localStorage.getItem('club69_admin_open') === 'true')
   const [vipBonusLoading, setVipBonusLoading] = useState(false)
+  const isAdminRoute = window.location.pathname === '/admin'
   const navigationReadyRef = useRef(false)
   const restoringHistoryRef = useRef(false)
 
@@ -268,7 +268,6 @@ export function App() {
     setFortuneWheelOpen(false)
     setActiveThirdPartyGame(null)
     setAuthModalOpen(false)
-    setAdminModalOpen(false)
   }, [])
 
   useEffect(() => {
@@ -321,32 +320,7 @@ export function App() {
     localStorage.setItem('club69_active_nav', activeNav)
     if (currentGame) localStorage.setItem('club69_current_game', currentGame)
     else localStorage.removeItem('club69_current_game')
-    localStorage.setItem('club69_admin_open', String(adminModalOpen))
-  }, [activeTab, activeSubTab, selectedMode, activeNav, currentGame, adminModalOpen])
-
-  // Secure Admin Access Listener (URL hash '#admin', '?admin=1', or Ctrl+Shift+A)
-  useEffect(() => {
-    const handleAdminRoute = () => {
-      if (window.location.hash === '#admin' || window.location.search.includes('admin=1')) {
-        setAdminModalOpen(true)
-      }
-    }
-    handleAdminRoute()
-    window.addEventListener('hashchange', handleAdminRoute)
-
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
-        e.preventDefault()
-        setAdminModalOpen((prev) => !prev)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-
-    return () => {
-      window.removeEventListener('hashchange', handleAdminRoute)
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [])
+  }, [activeTab, activeSubTab, selectedMode, activeNav, currentGame])
 
   // Global audio guard: strictly mute Web Audio synth whenever user is unauthenticated,
   // on auth screens, or outside an active game viewport
@@ -525,18 +499,6 @@ export function App() {
     const timer = setTimeout(() => setToast(null), 3800)
     return () => clearTimeout(timer)
   }, [toast])
-
-  // Admin shortcut: Ctrl+Shift+A or Alt+A opens Admin Dashboard
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if ((e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) || (e.altKey && (e.key === 'A' || e.key === 'a'))) {
-        e.preventDefault()
-        setAdminModalOpen(true)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
 
   // Backend Sync Initial & Periodic with VeerGame
   const syncWithBackend = useCallback(async () => {
@@ -897,6 +859,22 @@ export function App() {
     }
   }, [history])
 
+  const leaveAdminRoute = useCallback(() => {
+    window.location.replace('/')
+  }, [])
+
+  if (isAdminRoute) {
+    return (
+      <AdminDashboard
+        isOpen
+        onClose={leaveAdminRoute}
+        currentUser={currentUser}
+        onUserUpdated={syncWithBackend}
+        onAccessDenied={leaveAdminRoute}
+      />
+    )
+  }
+
   // MANDATORY AUTHENTICATION GATE
   // Without logging in, users CANNOT enter Home Lobby, Games, or sensitive features.
   if (!currentUser) {
@@ -1128,7 +1106,7 @@ export function App() {
               sound.playTick()
             }}
             onOpenSupport={() => setHowToPlayOpen(true)}
-            onOpenAdmin={() => setAdminModalOpen(true)}
+            onOpenAdmin={() => window.location.assign('/admin')}
             onOpenNotification={() => {
               setActiveNav('notification')
               sound.playTick()
@@ -2516,14 +2494,6 @@ export function App() {
             </div>
           </div>
         )}
-
-        {/* AUTHORITATIVE DUAL-VERIFIED ADMIN MANAGEMENT DASHBOARD */}
-        <AdminDashboard
-          isOpen={adminModalOpen}
-          onClose={() => setAdminModalOpen(false)}
-          currentUser={currentUser}
-          onUserUpdated={syncWithBackend}
-        />
 
         {/* TOAST NOTIFICATION POPUP */}
         {toast && (

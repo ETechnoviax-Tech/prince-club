@@ -9,24 +9,13 @@ import {
   updateUserRole,
   updateUserStatus,
   deleteUser,
-  promoteOrSeedAdmin,
 } from '../controllers/adminController.js'
 import { adminVerifyWithdrawal, listAdminWithdrawals } from '../controllers/walletController.js'
 import { listAdminDeposits, verifyDeposit } from '../controllers/paymentController.js'
 
 const router = express.Router()
 
-// Bootstrap / Promotion route: requires Backend Master Secret Key
-router.post('/promote', (req, res, next) => {
-  const adminSecret = process.env.ADMIN_SECRET_KEY || 'club69_admin_master_secret_2026'
-  const key = req.headers['x-admin-key'] || req.query.adminKey || req.body?.adminKey
-  if (!key || String(key).trim() !== adminSecret) {
-    return res.status(403).json({ error: 'Backend Master Secret Key required for admin promotion' })
-  }
-  next()
-}, promoteOrSeedAdmin)
-
-// Dual-Verified Routes (DB Role === 'admin' AND Backend Secret Key verified)
+// Authenticated, database-backed admin routes.
 router.use(requireDualAdminAuth)
 
 // 1. Session Verification Check

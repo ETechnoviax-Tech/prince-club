@@ -33,7 +33,6 @@ const corsOptions = {
   allowedHeaders: [
     'Content-Type',
     'Authorization',
-    'x-admin-key',
     'Idempotency-Key',
     'x-webhook-signature',
   ],
