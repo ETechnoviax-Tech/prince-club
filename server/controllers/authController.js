@@ -138,6 +138,7 @@ export async function loginOrRegister(req, res) {
         id: profile.id,
         username: profile.username,
         role: userRole,
+        is_admin: Boolean(profile.is_admin || profile.role === 'admin'),
       })
 
       return res.json({
@@ -186,6 +187,7 @@ export async function loginOrRegister(req, res) {
       id: profile.id,
       username: profile.username,
       role: userRole,
+      is_admin: Boolean(profile.is_admin || profile.role === 'admin'),
     })
 
     return res.json({
@@ -641,13 +643,7 @@ export async function resetPassword(req, res) {
         } catch {}
       }
 
-      // Update password hash in profiles table
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('username', cleanId)
-        .maybeSingle()
-
+      // Update password hash using already-resolved profile (avoids re-fetch + variable shadowing)
       if (profile) {
         try {
           await supabase

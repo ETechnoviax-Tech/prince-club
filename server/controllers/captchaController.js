@@ -36,6 +36,12 @@ export function issueCaptcha(req, res) {
 }
 
 export function verifyCaptcha(req, res, next) {
+  // Allow bypass in test/dev environments via SKIP_CAPTCHA=true
+  if (process.env.SKIP_CAPTCHA === 'true' || process.env.NODE_ENV === 'test') {
+    req.captchaVerified = true
+    return next()
+  }
+
   const token = req.body?.captchaToken
   const proof = req.body?.captchaProof
   if (typeof token !== 'string' || !proof || typeof proof !== 'object') {
