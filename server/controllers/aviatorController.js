@@ -2,11 +2,16 @@ import crypto from 'crypto'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { memoryTransactions, memoryWallets } from '../db/store.js'
 
-// In-memory Aviator state
+// Authoritative runtime state. Wallets and bet records are persisted when
+// Supabase is configured; the memory maps are used only for local fallback.
 const state = {
-  roundId: 100001,
+  roundId: Number(`${Date.now()}${crypto.randomInt(10, 99)}`),
+  roundDbId: null,
+  roundEnsurePromise: null,
   phase: 'WAITING', // 'WAITING' | 'FLYING' | 'CRASHED'
-  crashPoint: 2.15,
+  crashPoint: null,
+  serverSeed: null,
+  seedCommitment: null,
   startTime: Date.now(),
   flightDurationMs: 0,
   history: [
@@ -50,22 +55,86 @@ async function withUserLock(userId, fn) {
 // Cashout Mutex per betId to prevent double-spending on simultaneous cashout triggers
 const activeCashouts = new Set()
 
-// Generate the server-authoritative crash point with cryptographically secure entropy.
-function generateCrashPoint() {
-  const rand = crypto.randomInt(0, 1_000_000) / 1_000_000
+function createServerSeed() {
+  return crypto.randomBytes(32).toString('hex')
+}
+
+function commitmentForSeed(serverSeed) {
+  return crypto.createHash('sha256').update(serverSeed).digest('hex')
+}
+
+// Derive the crash point from a committed server seed. The seed is revealed
+// after the crash so clients can independently verify the completed round.
+function generateCrashPoint(serverSeed) {
+  const digest = crypto.createHmac('sha256', serverSeed).update('aviator-crash-v1').digest()
+  const rand = digest.readUInt32BE(0) / 0xffffffff
+  const pick = (min, max) => min + (digest.readUInt32BE(4) % (max - min + 1))
   if (rand < 0.08) {
     // 8% instant/low crash: 1.01x - 1.15x
-    return +(1.01 + crypto.randomInt(0, 15) / 100).toFixed(2)
+    return +(1.01 + pick(0, 14) / 100).toFixed(2)
   } else if (rand < 0.60) {
     // 52% standard flight: 1.16x - 3.20x
-    return +(1.16 + crypto.randomInt(0, 205) / 100).toFixed(2)
+    return +(1.16 + pick(0, 204) / 100).toFixed(2)
   } else if (rand < 0.90) {
     // 30% high flight: 3.21x - 10.00x
-    return +(3.21 + crypto.randomInt(0, 680) / 100).toFixed(2)
+    return +(3.21 + pick(0, 679) / 100).toFixed(2)
   } else {
     // 10% mega flight: 10.01x - 88.00x
-    return +(10.01 + crypto.randomInt(0, 7800) / 100).toFixed(2)
+    return +(10.01 + pick(0, 7799) / 100).toFixed(2)
   }
+}
+
+async function ensureRoundRecord() {
+  if (!isSupabaseConfigured) return null
+  if (state.roundDbId) return state.roundDbId
+  if (state.roundEnsurePromise) return state.roundEnsurePromise
+
+  state.roundEnsurePromise = (async () => {
+    const now = new Date()
+    const { data, error } = await supabase
+      .from('game_rounds')
+      .insert({
+        round_number: state.roundId,
+        start_time: now.toISOString(),
+        lock_time: new Date(now.getTime() + WAITING_DURATION_MS).toISOString(),
+        end_time: new Date(now.getTime() + WAITING_DURATION_MS + 900000).toISOString(),
+        status: 'ACTIVE',
+      })
+      .select('id')
+      .single()
+
+    if (error || !data?.id) {
+      throw new Error(`Failed to persist Aviator round: ${error?.message || 'missing round id'}`)
+    }
+    state.roundDbId = data.id
+    return data.id
+    })()
+
+    try {
+      return await state.roundEnsurePromise
+    } finally {
+      state.roundEnsurePromise = null
+    }
+  }
+
+function prepareRound() {
+    state.serverSeed = createServerSeed()
+    state.seedCommitment = commitmentForSeed(state.serverSeed)
+    state.crashPoint = null
+    state.roundDbId = null
+    state.roundEnsurePromise = null
+}
+
+async function finalizeRoundRecord() {
+  if (!isSupabaseConfigured || !state.roundDbId) return
+  const { error } = await supabase
+    .from('game_rounds')
+    .update({
+      status: 'SETTLED',
+      end_time: new Date().toISOString(),
+    })
+    .eq('id', state.roundDbId)
+  if (error) console.error('[Aviator round settlement error]:', error.message)
 }
 
 // Compute current multiplier from flight elapsed ms
@@ -89,6 +158,7 @@ function startAviatorLoop() {
   state.phase = 'WAITING'
   state.startTime = Date.now()
   state.recentCashouts = []
+  prepareRound()
   let tickInFlight = false
 
   const tick = async () => {
@@ -100,9 +170,12 @@ function startAviatorLoop() {
     if (state.phase === 'WAITING') {
       const elapsed = now - state.startTime
       if (elapsed >= WAITING_DURATION_MS) {
+        if (isSupabaseConfigured && !state.roundDbId) {
+          await ensureRoundRecord()
+        }
         // Transition to FLYING
         state.phase = 'FLYING'
-        state.crashPoint = generateCrashPoint()
+        state.crashPoint = generateCrashPoint(state.serverSeed)
         state.flightDurationMs = durationForCrashPoint(state.crashPoint)
         state.startTime = Date.now()
         state.recentCashouts = []
@@ -130,7 +203,11 @@ function startAviatorLoop() {
             b.status = 'LOST'
             b.payout = 0
             if (isSupabaseConfigured) {
-              supabase.from('bets').update({ status: 'LOST', payout: 0 }).eq('id', b.id).catch(() => {})
+              const { error } = await supabase
+                .from('bets')
+                .update({ status: 'LOST', payout: 0 })
+                .eq('id', b.id)
+              if (error) console.error('[Aviator loss settlement error]:', error.message)
             }
           }
         }
@@ -138,6 +215,7 @@ function startAviatorLoop() {
         // Record flight in history
         state.history.unshift({ roundId: state.roundId, crashPoint: state.crashPoint })
         if (state.history.length > 30) state.history.pop()
+        await finalizeRoundRecord()
       }
     } else if (state.phase === 'CRASHED') {
       const elapsed = now - state.startTime
@@ -146,6 +224,7 @@ function startAviatorLoop() {
         state.roundId++
         state.phase = 'WAITING'
         state.startTime = Date.now()
+        prepareRound()
         state.bets.clear()
         state.recentCashouts = []
       }
@@ -189,13 +268,25 @@ async function settleCashout(bet, multiplier) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(bet.userId)
 
     if (isSupabaseConfigured && isUuid) {
+      let walletUpdated = false
+      let betMarkedWon = false
       try {
-        await supabase.from('bets').update({ status: 'WON', payout }).eq('id', bet.id)
         const { data: wal } = await supabase.from('wallets').select('balance').eq('user_id', bet.userId).single()
-        if (wal) {
-          const newBal = Number(wal.balance) + payout
-          await supabase.from('wallets').update({ balance: newBal }).eq('user_id', bet.userId)
-          await supabase.from('wallet_transactions').insert({
+        if (!wal) throw new Error('Wallet not found while settling Aviator cashout')
+        const newBal = Number(wal.balance) + payout
+        const { error: walletError } = await supabase
+          .from('wallets')
+          .update({ balance: newBal })
+          .eq('user_id', bet.userId)
+        if (walletError) throw walletError
+        walletUpdated = true
+        const { error: betError } = await supabase
+          .from('bets')
+          .update({ status: 'WON', payout })
+          .eq('id', bet.id)
+        if (betError) throw betError
+        betMarkedWon = true
+        const { error: transactionError } = await supabase.from('wallet_transactions').insert({
             user_id: bet.userId,
             type: 'BET_PAYOUT',
             amount: payout,
@@ -203,9 +294,29 @@ async function settleCashout(bet, multiplier) {
             reference_id: bet.id,
             description: `Aviator Cash Out at ${mult}x (+₹${payout})`,
           })
-        }
+        if (transactionError) throw transactionError
       } catch (err) {
         console.error('[settleCashout Supabase error]:', err)
+        if (betMarkedWon) {
+          await supabase.from('bets').update({ status: 'PENDING', payout: 0 }).eq('id', bet.id)
+        }
+        if (walletUpdated) {
+          const { data: currentWallet } = await supabase
+            .from('wallets')
+            .select('balance')
+            .eq('user_id', bet.userId)
+            .single()
+          if (currentWallet) {
+            await supabase
+              .from('wallets')
+              .update({ balance: Math.max(0, Number(currentWallet.balance) - payout) })
+              .eq('user_id', bet.userId)
+          }
+        }
+        bet.status = 'ACTIVE'
+        bet.cashoutMultiplier = null
+        bet.payout = 0
+        return false
       }
     } else {
       // In-memory fallback
@@ -264,6 +375,8 @@ export function getAviatorState(req, res) {
     phase: state.phase,
     multiplier: currentMultiplier,
     crashPoint: state.phase === 'CRASHED' ? state.crashPoint : null,
+    seedCommitment: state.seedCommitment,
+    serverSeed: state.phase === 'CRASHED' ? state.serverSeed : null,
     remainingMs,
     elapsedMs,
     waitingDurationMs: WAITING_DURATION_MS,
@@ -343,8 +456,12 @@ export async function placeAviatorBet(req, res) {
 
         if (updateErr) return res.status(400).json({ error: 'Transaction failed: insufficient balance' })
 
-        await supabase.from('bets').insert({
+        if (!state.roundDbId) {
+          await ensureRoundRecord()
+        }
+        const { error: betInsertError } = await supabase.from('bets').insert({
           id: betId,
+          round_id: state.roundDbId,
           user_id: authUserId,
           round_number: String(state.roundId),
           selection: 'aviator',
@@ -352,8 +469,12 @@ export async function placeAviatorBet(req, res) {
           status: 'PENDING',
           game_mode: 'AVIATOR',
         })
+        if (betInsertError) {
+          await supabase.from('wallets').update({ balance: Number(wal.balance) }).eq('user_id', authUserId)
+          return res.status(503).json({ error: 'Aviator round is temporarily unavailable. Please try again.' })
+        }
 
-        await supabase.from('wallet_transactions').insert({
+        const { error: transactionError } = await supabase.from('wallet_transactions').insert({
           user_id: authUserId,
           type: 'BET_PLACED',
           amount: -numAmount,
@@ -361,6 +482,11 @@ export async function placeAviatorBet(req, res) {
           reference_id: betId,
           description: `Aviator Bet Round #${state.roundId}`,
         })
+        if (transactionError) {
+          await supabase.from('bets').delete().eq('id', betId)
+          await supabase.from('wallets').update({ balance: Number(wal.balance) }).eq('user_id', authUserId)
+          return res.status(503).json({ error: 'Aviator transaction could not be recorded. Please try again.' })
+        }
       } else {
         // In-memory atomic fallback
         if (!memoryWallets.has(authUserId)) {
@@ -456,6 +582,9 @@ export async function cashoutAviator(req, res) {
       }
 
       const result = await settleCashout(bet, currentMult)
+      if (!result) {
+        return res.status(503).json({ error: 'Cashout could not be recorded. Please retry.' })
+      }
 
       let finalBalance = 1000
       const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(authUserId)
