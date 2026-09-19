@@ -2,20 +2,38 @@ import React, { useState, useEffect } from 'react'
 
 // Global Loading Event Bus for zero-dependency universal site-wide loading control
 const loadingListeners = new Set()
-let activeRequestCount = 0
+const activeRequests = new Set()
 let currentLoadingText = 'Loading...'
 let showOverlayGlobal = false
+let safetyTimer = null
+const MAX_LOADING_DURATION_MS = 60000
 
 export function triggerLoadingStart(text = 'Loading...', withOverlay = false) {
-  activeRequestCount++
+  const requestToken = Symbol('global-loading-request')
+  activeRequests.add(requestToken)
   if (text) currentLoadingText = text
   if (withOverlay) showOverlayGlobal = true
+  if (!safetyTimer) {
+    safetyTimer = setTimeout(() => {
+      safetyTimer = null
+      forceHideLoading()
+    }, MAX_LOADING_DURATION_MS)
+  }
   notifyListeners()
+  return requestToken
 }
 
-export function triggerLoadingEnd() {
-  activeRequestCount = Math.max(0, activeRequestCount - 1)
-  if (activeRequestCount === 0) {
+export function triggerLoadingEnd(requestToken) {
+  if (requestToken) activeRequests.delete(requestToken)
+  else {
+    const firstToken = activeRequests.values().next().value
+    if (firstToken) activeRequests.delete(firstToken)
+  }
+  if (activeRequests.size === 0) {
+    if (safetyTimer) {
+      clearTimeout(safetyTimer)
+      safetyTimer = null
+    }
     showOverlayGlobal = false
     currentLoadingText = 'Loading...'
   }
@@ -23,8 +41,13 @@ export function triggerLoadingEnd() {
 }
 
 export function forceHideLoading() {
-  activeRequestCount = 0
+  activeRequests.clear()
+  if (safetyTimer) {
+    clearTimeout(safetyTimer)
+    safetyTimer = null
+  }
   showOverlayGlobal = false
+  currentLoadingText = 'Loading...'
   notifyListeners()
 }
 
@@ -32,8 +55,8 @@ function notifyListeners() {
   loadingListeners.forEach((listener) => {
     try {
       listener({
-        isLoading: activeRequestCount > 0,
-        count: activeRequestCount,
+        isLoading: activeRequests.size > 0,
+        count: activeRequests.size,
         text: currentLoadingText,
         showOverlay: showOverlayGlobal,
       })

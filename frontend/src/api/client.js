@@ -57,19 +57,55 @@ export function resolveApiBase() {
 export const API_BASE = resolveApiBase()
 
 // Global loading bus hooks
-import { triggerLoadingStart, triggerLoadingEnd } from '../components/GlobalLoadingSpinner.jsx'
+import {
+  triggerLoadingStart,
+  triggerLoadingEnd,
+} from '../components/GlobalLoadingSpinner.jsx'
 
-export async function apiFetch(url, options = {}, loadingText = 'Loading...', withOverlay = false) {
+const DEFAULT_REQUEST_TIMEOUT_MS = 30000
+
+export async function apiFetch(
+  url,
+  options = {},
+  loadingText = 'Loading...',
+  withOverlay = false,
+) {
   const isSilent = Boolean(options?.silent)
-  if (!isSilent) {
-    triggerLoadingStart(loadingText, withOverlay)
+  const timeoutMs = Number.isFinite(Number(options?.timeoutMs))
+    ? Math.max(1000, Number(options.timeoutMs))
+    : DEFAULT_REQUEST_TIMEOUT_MS
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+  const callerSignal = options?.signal
+  const abortFromCaller = () => controller.abort()
+  const requestOptions = { ...options, signal: controller.signal }
+  delete requestOptions.silent
+  delete requestOptions.timeoutMs
+
+  if (callerSignal) {
+    if (callerSignal.aborted) controller.abort()
+    else callerSignal.addEventListener('abort', abortFromCaller, { once: true })
   }
+
+  const loadingToken = isSilent ? null : triggerLoadingStart(loadingText, withOverlay)
   try {
-    const res = await fetch(url, options)
+    const res = await fetch(url, requestOptions)
     return res
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      const timedOut = !callerSignal?.aborted
+      throw new Error(
+        timedOut
+          ? `Request timed out after ${Math.round(timeoutMs / 1000)} seconds. Please try again.`
+          : 'Request was cancelled.',
+      )
+    }
+    throw error
   } finally {
+    clearTimeout(timeoutId)
+    callerSignal?.removeEventListener('abort', abortFromCaller)
     if (!isSilent) {
-      triggerLoadingEnd()
+      triggerLoadingEnd(loadingToken)
     }
   }
 }
@@ -642,4 +678,3 @@ export async function adminPromoteUser(adminKey, identity) {
   if (!res.ok) throw new Error(json.error || 'Failed to promote user')
   return json
 }
-
