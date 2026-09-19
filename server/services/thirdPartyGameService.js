@@ -178,8 +178,6 @@ export async function getLaunchUrl({ gameId, provider, userId = 'guest', lang = 
     'LightningHindi01': { url: 'https://www.evolution.com/games/lightning-roulette/', name: 'Lightning Roulette' },
     // PG Soft
     'vs20olympgate':    { url: 'https://pgsoft.com/games/olympus-gatotkaca/', name: 'Olympus Gatotkaca' },
-    // Spribe
-    'aviator':          { url: 'https://spribe.co/games/aviator', name: 'Aviator' },
   }
 
   if (GAME_LINKS[String(gameId)]) {

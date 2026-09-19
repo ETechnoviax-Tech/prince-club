@@ -33,17 +33,15 @@ async function withUserLock(userId, fn) {
   const nextLock = new Promise((resolve) => {
     release = resolve
   })
-  userLocks.set(
-    userId,
-    currentLock.then(() => nextLock)
-  )
+  const queuedLock = currentLock.then(() => nextLock)
+  userLocks.set(userId, queuedLock)
 
   try {
     await currentLock
     return await fn()
   } finally {
     release()
-    if (userLocks.get(userId) === nextLock) {
+    if (userLocks.get(userId) === queuedLock) {
       userLocks.delete(userId)
     }
   }
@@ -260,6 +258,8 @@ export function getAviatorState(req, res) {
   for (const b of state.bets.values()) totalPool += b.amount
 
   return res.json({
+    game: 'AVIATOR',
+    engine: 'in-house',
     roundId: state.roundId,
     phase: state.phase,
     multiplier: currentMultiplier,
@@ -286,8 +286,8 @@ export async function placeAviatorBet(req, res) {
   }
 
   const numAmount = Number(amount)
-  if (!Number.isFinite(numAmount) || numAmount < 10) {
-    return res.status(400).json({ error: 'Minimum bet amount is ₹10' })
+  if (!Number.isInteger(numAmount) || numAmount < 10) {
+    return res.status(400).json({ error: 'Bet amount must be a whole number of at least ₹10' })
   }
 
   if (numAmount > 50000) {
@@ -298,8 +298,10 @@ export async function placeAviatorBet(req, res) {
     return res.status(400).json({ error: 'Bets are only accepted during the waiting countdown before takeoff' })
   }
 
-  const cleanAuto = autoCashout ? Number(autoCashout) : null
-  if (cleanAuto && (cleanAuto < 1.05 || cleanAuto > 100)) {
+  const cleanAuto = autoCashout === null || autoCashout === undefined || autoCashout === ''
+    ? null
+    : Number(autoCashout)
+  if (cleanAuto !== null && (!Number.isFinite(cleanAuto) || cleanAuto < 1.05 || cleanAuto > 100)) {
     return res.status(400).json({ error: 'Auto cashout multiplier must be between 1.05x and 100x' })
   }
 
