@@ -15588,6 +15588,27 @@ input, textarea {
   transition: all 0.15s;
 }
 
+@media (max-width: 360px) {
+  .slider-captcha-overlay { padding: 8px; }
+  .slider-captcha-card { max-width: calc(100vw - 16px); padding: 12px; }
+  .slider-captcha-canvas-wrap,
+  .slider-bg-canvas,
+  .slider-piece-canvas {
+    max-width: 100%;
+  }
+  .slider-captcha-canvas-wrap {
+    width: min(280px, calc(100vw - 40px)) !important;
+    height: auto !important;
+    aspect-ratio: 280 / 160;
+  }
+  .slider-bg-canvas,
+  .slider-piece-canvas {
+    width: 100%;
+    height: 100%;
+  }
+  .slider-track-container { width: min(280px, calc(100vw - 40px)) !important; }
+}
+
 .slider-reload-btn:hover {
   background: #f8fafc;
   color: #0f172a;

@@ -38,6 +38,56 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
   const HANDLE_WIDTH = 44
   const MAX_DRAG = TRACK_WIDTH - HANDLE_WIDTH
 
+  const renderPuzzle = useCallback((img, randX, randY) => {
+    const bgCanvas = bgCanvasRef.current
+    const pieceCanvas = pieceCanvasRef.current
+    if (!bgCanvas || !pieceCanvas) return
+
+    const bgCtx = bgCanvas.getContext('2d')
+    const pCtx = pieceCanvas.getContext('2d')
+    bgCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+    pCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+
+    if (img) {
+      bgCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+    } else {
+      const gradient = bgCtx.createLinearGradient(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+      gradient.addColorStop(0, '#2563eb')
+      gradient.addColorStop(1, '#14b8a6')
+      bgCtx.fillStyle = gradient
+      bgCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+      bgCtx.fillStyle = 'rgba(255,255,255,0.18)'
+      for (let i = 0; i < 8; i += 1) {
+        bgCtx.beginPath()
+        bgCtx.arc(24 + i * 42, 30 + ((i * 37) % 100), 14 + (i % 3) * 8, 0, Math.PI * 2)
+        bgCtx.fill()
+      }
+    }
+
+    bgCtx.save()
+    drawJigsawPath(bgCtx, randX, randY)
+    bgCtx.fillStyle = 'rgba(0, 0, 0, 0.55)'
+    bgCtx.fill()
+    bgCtx.lineWidth = 2
+    bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+    bgCtx.stroke()
+    bgCtx.restore()
+
+    pCtx.save()
+    drawJigsawPath(pCtx, randX, randY)
+    pCtx.clip()
+    if (img) {
+      pCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+    } else {
+      pCtx.fillStyle = '#fbbf24'
+      pCtx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
+    }
+    pCtx.lineWidth = 2.5
+    pCtx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
+    pCtx.stroke()
+    pCtx.restore()
+  }, [])
+
   // Draw Jigsaw Path helper
   const drawJigsawPath = useCallback((ctx, x, y, size = PIECE_SIZE, tab = TAB_SIZE) => {
     ctx.beginPath()
@@ -62,19 +112,30 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
   // Initialize random target slot and render canvases
   const initPuzzle = useCallback(async (newImgIdx = null) => {
     setChallengeError('')
-    const serverChallenge = await fetchCaptchaChallenge()
-    setChallenge(serverChallenge)
     const nextIdx = newImgIdx !== null ? newImgIdx : Math.floor(Math.random() * SCENIC_IMAGES.length)
+    const fallbackX = Math.floor(110 + Math.random() * 110)
+    const fallbackY = Math.floor(25 + Math.random() * 70)
     setImageIndex(nextIdx)
-
-    // Target between 110px and 220px
-    const randX = serverChallenge.targetX
-    const randY = serverChallenge.targetY
-    setTargetX(randX)
-    setTargetY(randY)
+    setTargetX(fallbackX)
+    setTargetY(fallbackY)
     setSliderPos(0)
     setStatus('idle')
     setStatusText('Hold and slide')
+    renderPuzzle(null, fallbackX, fallbackY)
+
+    let serverChallenge = null
+    try {
+      serverChallenge = await fetchCaptchaChallenge()
+      setChallenge(serverChallenge)
+    } catch (error) {
+      setChallenge(null)
+      setChallengeError(error.message || 'Security verification is temporarily unavailable')
+    }
+    // Target between 110px and 220px
+    const randX = serverChallenge?.targetX ?? fallbackX
+    const randY = serverChallenge?.targetY ?? fallbackY
+    setTargetX(randX)
+    setTargetY(randY)
 
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -82,42 +143,18 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
     imageObjRef.current = img
 
     img.onload = () => {
-      // 1. Draw Background & Target Slot Silhouette
-      const bgCanvas = bgCanvasRef.current
-      if (!bgCanvas) return
-      const bgCtx = bgCanvas.getContext('2d')
-      bgCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-      bgCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-
-      // Draw cutout slot outline
-      bgCtx.save()
-      drawJigsawPath(bgCtx, randX, randY)
-      bgCtx.fillStyle = 'rgba(0, 0, 0, 0.55)'
-      bgCtx.fill()
-      bgCtx.lineWidth = 2
-      bgCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
-      bgCtx.stroke()
-      bgCtx.restore()
-
-      // 2. Draw Moving Jigsaw Piece
-      const pieceCanvas = pieceCanvasRef.current
-      if (!pieceCanvas) return
-      const pCtx = pieceCanvas.getContext('2d')
-      pCtx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-
-      pCtx.save()
-      drawJigsawPath(pCtx, randX, randY)
-      pCtx.clip()
-      pCtx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT)
-
-      pCtx.lineWidth = 2.5
-      pCtx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
-      pCtx.shadowColor = 'rgba(0, 0, 0, 0.7)'
-      pCtx.shadowBlur = 8
-      pCtx.stroke()
-      pCtx.restore()
+      renderPuzzle(img, randX, randY)
     }
-  }, [drawJigsawPath])
+    img.onerror = () => {
+      // Keep CAPTCHA usable when mobile networks block third-party images.
+      renderPuzzle(null, randX, randY)
+    }
+    window.setTimeout(() => {
+      if (!img.complete || img.naturalWidth === 0) {
+        renderPuzzle(null, randX, randY)
+      }
+    }, 2500)
+  }, [drawJigsawPath, renderPuzzle])
 
   useEffect(() => {
     if (isOpen) {
@@ -158,6 +195,11 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
       setStatus('success')
       setStatusText('Verification Passed!')
       setTimeout(() => {
+        if (!challenge?.challenge) {
+          setStatus('fail')
+          setStatusText('Reload verification')
+          return
+        }
         onSuccess?.({
           captchaToken: challenge?.challenge,
           captchaProof: {
@@ -251,6 +293,12 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
             <div className="slider-canvas-toast toast-fail">
               <AlertCircle size={16} />
               <span>Mismatch! Try again</span>
+            </div>
+          )}
+          {challengeError && (
+            <div className="slider-canvas-toast toast-fail">
+              <AlertCircle size={16} />
+              <span>{challengeError}</span>
             </div>
           )}
         </div>
