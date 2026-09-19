@@ -1146,3 +1146,120 @@
   color: #0f172a;
   text-transform: capitalize;
 }
+
+/* Standalone admin workspace */
+.admin-page-shell {
+  position: fixed;
+  z-index: 99999;
+  padding: 0;
+  background: #f8fafc;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.admin-page-window {
+  width: 100%;
+  max-width: 1180px;
+  height: 100dvh;
+  max-height: none;
+  min-height: 0;
+  margin: 0 auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.admin-page-body {
+  padding: 22px clamp(16px, 3vw, 36px) 40px;
+}
+
+.admin-page-body > * {
+  width: 100%;
+  max-width: 1100px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.admin-page-shell .admin-modal-header {
+  min-height: 68px;
+  padding: 14px clamp(16px, 3vw, 36px);
+}
+
+.admin-page-shell .admin-nav-tabs-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+@media (max-width: 640px) {
+  .admin-page-body {
+    padding: 14px 12px 28px;
+  }
+
+  .admin-page-shell .admin-status-bar {
+    align-items: stretch;
+  }
+
+  .admin-page-shell .admin-status-bar .status-chip:last-child {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .admin-page-shell .admin-nav-tabs-bar {
+    margin-bottom: 12px;
+  }
+
+  .admin-page-shell .admin-tab-btn {
+    min-width: 96px;
+    height: 36px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .admin-page-shell .admin-toolbar-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-page-shell .admin-search-box {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-page-shell .admin-modal-header {
+    min-height: 62px;
+    padding: 10px 12px;
+  }
+
+  .admin-page-shell .admin-header-title-box {
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .admin-page-shell .admin-shield-badge {
+    width: 32px;
+    height: 32px;
+  }
+
+  .admin-page-shell .admin-header-title-box h3 {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .admin-page-shell .admin-header-title-box p {
+    font-size: 9px;
+    white-space: nowrap;
+  }
+
+  .admin-page-shell .admin-page-body {
+    padding: 12px 10px 24px;
+  }
+
+  .admin-page-shell .admin-nav-tabs-bar {
+    padding: 4px;
+  }
+}

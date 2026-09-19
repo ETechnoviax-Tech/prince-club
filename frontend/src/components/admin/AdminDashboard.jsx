@@ -201,8 +201,8 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
   if (!isOpen) return null
 
   return (
-    <div className="admin-modal-overlay" onClick={onClose}>
-      <div className="admin-dialog-window" onClick={(e) => e.stopPropagation()}>
+    <div className="admin-modal-overlay admin-page-shell">
+      <div className="admin-dialog-window admin-page-window">
         {/* Header */}
         <div className="admin-modal-header">
           <div className="admin-header-title-box">
@@ -238,7 +238,7 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated }) 
         </div>
 
         {/* Body Container */}
-        <div className="admin-modal-body-scroll">
+        <div className="admin-modal-body-scroll admin-page-body">
           {!isVerified ? (
             /* Security Gate View */
             <AdminGate
