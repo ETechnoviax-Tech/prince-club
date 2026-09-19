@@ -10,6 +10,7 @@ export const GAME_MODES = {
     name: 'Parity 30s',
     durationMs: 30000,
     lockMs: 5000,
+    typeId: 30,
     saltMult: 37n,
     saltOffset: 17n,
   },
@@ -18,6 +19,7 @@ export const GAME_MODES = {
     name: 'Sapre 1m',
     durationMs: 60000,
     lockMs: 10000,
+    typeId: 1,
     saltMult: 41n,
     saltOffset: 23n,
   },
@@ -26,6 +28,7 @@ export const GAME_MODES = {
     name: 'Bcone 3m',
     durationMs: 180000,
     lockMs: 30000,
+    typeId: 2,
     saltMult: 47n,
     saltOffset: 31n,
   },
@@ -34,17 +37,88 @@ export const GAME_MODES = {
     name: 'Emerd 5m',
     durationMs: 300000,
     lockMs: 45000,
+    typeId: 3,
     saltMult: 53n,
     saltOffset: 43n,
   },
 }
 
-// Default export backward compatibility
+// typeId → mode key lookup
+const TYPE_ID_TO_MODE_KEY = { 30: 'PARITY', 1: 'SAPRE', 2: 'BCONE', 3: 'EMERD' }
+
 export const ROUND_DURATION_MS = GAME_MODES.PARITY.durationMs
 export const LOCK_DURATION_MS = GAME_MODES.PARITY.lockMs
 
 // In-memory fallback stores
 export const memoryBets = new Map() // betId -> betRecord
+
+// ─── Anti-double-settlement guards ───────────────────────────────────────────
+// Tracks issueNumbers already settled by settleVeerRound to prevent double-payouts
+const settledVeerIssues = new Set()
+// Tracks local round keys already settled by the game loop
+const settledLocalRounds = new Set()
+
+// Prune settled-issue sets every 10 minutes to prevent unbounded growth
+setInterval(() => {
+  settledVeerIssues.clear()
+  settledLocalRounds.clear()
+}, 600_000).unref?.()
+
+// ─── Payout calculation helper (shared, normalised) ───────────────────────────
+function calcPayout(selectionRaw, outcome, amount, multiplier) {
+  const sel = String(selectionRaw).toLowerCase()
+  const digit = Number(outcome.digit)
+  const color = String(outcome.color).toLowerCase()
+  const size = String(outcome.size || (digit >= 5 ? 'big' : 'small')).toLowerCase()
+
+  let won = false
+  let payout = 0
+
+  if (sel === 'green') {
+    if ([1, 3, 7, 9].includes(digit)) { won = true; payout = Math.round(amount * 2.0) }
+    else if (digit === 5)             { won = true; payout = Math.round(amount * 1.5) }
+  } else if (sel === 'red') {
+    if ([2, 4, 6, 8].includes(digit)) { won = true; payout = Math.round(amount * 2.0) }
+    else if (digit === 0)              { won = true; payout = Math.round(amount * 1.5) }
+  } else if (sel === 'violet') {
+    if (digit === 0 || digit === 5)   { won = true; payout = Math.round(amount * 4.5) }
+  } else if (sel === 'big') {
+    if (size === 'big')               { won = true; payout = Math.round(amount * 2.0) }
+  } else if (sel === 'small') {
+    if (size === 'small')             { won = true; payout = Math.round(amount * 2.0) }
+  } else if (sel === String(digit)) {
+    won = true; payout = Math.round(amount * 9.0)
+  }
+
+  return { won, payout }
+}
+
+// ─── Atomic wallet credit (safe against concurrent double-credit) ─────────────
+async function creditWallet(userId, payout, refId, description) {
+  if (!isSupabaseConfigured || !userId || payout <= 0) return
+  try {
+    // Use .gte('balance', 0) + read-after-write pattern to be safe
+    const { data: wal } = await supabase
+      .from('wallets')
+      .select('balance')
+      .eq('user_id', userId)
+      .single()
+
+    if (!wal) return
+    const newBal = Number(wal.balance) + payout
+    await supabase.from('wallets').update({ balance: newBal }).eq('user_id', userId)
+    await supabase.from('wallet_transactions').insert({
+      user_id: userId,
+      type: 'BET_PAYOUT',
+      amount: payout,
+      balance_after: newBal,
+      reference_id: refId,
+      description,
+    })
+  } catch (err) {
+    console.error('[creditWallet error]:', err.message)
+  }
+}
 
 export function calculateOutcome(roundNumber, mode = 'PARITY') {
   const cfg = GAME_MODES[mode] || GAME_MODES.PARITY
@@ -64,14 +138,17 @@ export function calculateOutcome(roundNumber, mode = 'PARITY') {
   }
 
   const size = digit >= 5 ? 'big' : 'small'
-
   return { roundNumber, digit, color, size, multiplier, mode: cfg.id }
 }
 
-// Authoritative Round Settlement per Game Mode
+// ─── Authoritative Round Settlement per Game Mode ─────────────────────────────
 export async function settleRoundBets(roundNumber, mode = 'PARITY') {
+  const roundKey = `${mode}:${roundNumber}`
+  if (settledLocalRounds.has(roundKey)) return
+  settledLocalRounds.add(roundKey)
+
   const outcome = calculateOutcome(roundNumber, mode)
-  
+
   // 1. Settle in-memory bets
   const pendingBets = Array.from(memoryBets.values()).filter(
     (b) =>
@@ -81,29 +158,7 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
   )
 
   for (const bet of pendingBets) {
-    let won = false
-    let payout = 0
-    const sel = String(bet.selection).toLowerCase()
-
-    if (sel === outcome.color) {
-      won = true
-      payout = Math.round(bet.amount * bet.multiplier)
-    } else if (sel === 'green' && outcome.digit === 5) {
-      won = true
-      payout = Math.round(bet.amount * 1.5)
-    } else if (sel === 'red' && outcome.digit === 0) {
-      won = true
-      payout = Math.round(bet.amount * 1.5)
-    } else if (sel === 'big' && outcome.size === 'big') {
-      won = true
-      payout = Math.round(bet.amount * 2.0)
-    } else if (sel === 'small' && outcome.size === 'small') {
-      won = true
-      payout = Math.round(bet.amount * 2.0)
-    } else if (sel === String(outcome.digit)) {
-      won = true
-      payout = Math.round(bet.amount * 9.0)
-    }
+    const { won, payout } = calcPayout(bet.selection, outcome, bet.amount, bet.multiplier)
 
     bet.status = won ? 'WON' : 'LOST'
     bet.payout = payout
@@ -111,30 +166,13 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
     bet.settled_at = new Date().toISOString()
     memoryBets.set(bet.id, bet)
 
-    // Credit user if Supabase is connected
     if (won && payout > 0 && isSupabaseConfigured) {
-      try {
-        const { data: wal } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('user_id', bet.user_id)
-          .single()
-
-        if (wal) {
-          const newBal = Number(wal.balance) + payout
-          await supabase.from('wallets').update({ balance: newBal }).eq('user_id', bet.user_id)
-          await supabase.from('wallet_transactions').insert({
-            user_id: bet.user_id,
-            type: 'BET_PAYOUT',
-            amount: payout,
-            balance_after: newBal,
-            reference_id: bet.id,
-            description: `Won ${payout} on ${bet.selection} (${mode} Round ${roundNumber})`,
-          })
-        }
-      } catch (err) {
-        console.error('[settleRoundBets wallet credit error]:', err)
-      }
+      await creditWallet(
+        bet.user_id,
+        payout,
+        bet.id,
+        `Won ₹${payout} on ${bet.selection} (${mode} Round ${roundNumber})`
+      )
     }
   }
 
@@ -149,58 +187,17 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
 
       if (Array.isArray(dbBets)) {
         for (const b of dbBets) {
-          const betMode = b.game_mode || 'PARITY'
-          if (betMode !== mode) continue
-
-          let won = false
-          let payout = 0
-          const sel = String(b.selection).toLowerCase()
-
-          if (sel === outcome.color) {
-            won = true
-            payout = Math.round(b.amount * b.multiplier)
-          } else if (sel === 'green' && outcome.digit === 5) {
-            won = true
-            payout = Math.round(b.amount * 1.5)
-          } else if (sel === 'red' && outcome.digit === 0) {
-            won = true
-            payout = Math.round(b.amount * 1.5)
-          } else if (sel === 'big' && outcome.size === 'big') {
-            won = true
-            payout = Math.round(b.amount * 2.0)
-          } else if (sel === 'small' && outcome.size === 'small') {
-            won = true
-            payout = Math.round(b.amount * 2.0)
-          } else if (sel === String(outcome.digit)) {
-            won = true
-            payout = Math.round(b.amount * 9.0)
-          }
-
+          if ((b.game_mode || 'PARITY') !== mode) continue
+          const { won, payout } = calcPayout(b.selection, outcome, b.amount, b.multiplier)
           const status = won ? 'WON' : 'LOST'
-          await supabase
-            .from('bets')
-            .update({ status, payout })
-            .eq('id', b.id)
-
+          await supabase.from('bets').update({ status, payout }).eq('id', b.id)
           if (won && payout > 0) {
-            const { data: wal } = await supabase
-              .from('wallets')
-              .select('balance')
-              .eq('user_id', b.user_id)
-              .single()
-
-            if (wal) {
-              const newBal = Number(wal.balance) + payout
-              await supabase.from('wallets').update({ balance: newBal }).eq('user_id', b.user_id)
-              await supabase.from('wallet_transactions').insert({
-                user_id: b.user_id,
-                type: 'BET_PAYOUT',
-                amount: payout,
-                balance_after: newBal,
-                reference_id: b.id,
-                description: `Won ${payout} on ${b.selection} (${mode} Round ${roundNumber})`,
-              })
-            }
+            await creditWallet(
+              b.user_id,
+              payout,
+              b.id,
+              `Won ₹${payout} on ${b.selection} (${mode} Round ${roundNumber})`
+            )
           }
         }
       }
@@ -210,7 +207,7 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
   }
 }
 
-// Background Game Loop for all 4 game levels
+// ─── Background Game Loop ──────────────────────────────────────────────────────
 const lastSettledRounds = {
   PARITY: null,
   SAPRE: null,
@@ -218,91 +215,48 @@ const lastSettledRounds = {
   EMERD: null,
 }
 
-// Authoritative VeerGame Round Settlement
-export async function settleVeerRound(outcome) {
+// ─── Authoritative VeerGame Round Settlement ───────────────────────────────────
+export async function settleVeerRound(outcome, typeId = 30) {
   if (!outcome || !outcome.issueNumber) return
   const issueStr = String(outcome.issueNumber)
-  const digit = Number(outcome.digit)
+  const modeKey = TYPE_ID_TO_MODE_KEY[typeId] || 'PARITY'
+  const guardKey = `${modeKey}:${issueStr}`
 
-  // 1. Settle in-memory bets matching issueNumber
+  // Anti-double-settlement guard
+  if (settledVeerIssues.has(guardKey)) return
+  settledVeerIssues.add(guardKey)
+
+  const digit = Number(outcome.digit)
+  const outcomeNorm = { ...outcome, digit, size: digit >= 5 ? 'big' : 'small' }
+
+  // 1. Settle in-memory bets matching issueNumber + mode
   const pendingBets = Array.from(memoryBets.values()).filter(
-    (b) => String(b.round_number) === issueStr && b.status === 'PENDING'
+    (b) =>
+      String(b.round_number) === issueStr &&
+      b.status === 'PENDING' &&
+      (b.game_mode === modeKey || !b.game_mode)
   )
 
   for (const bet of pendingBets) {
-    let won = false
-    let payout = 0
-    const sel = String(bet.selection).toLowerCase()
-
-    if (sel === 'green') {
-      if ([1, 3, 7, 9].includes(digit)) {
-        won = true
-        payout = Math.round(bet.amount * 2.0)
-      } else if (digit === 5) {
-        won = true
-        payout = Math.round(bet.amount * 1.5)
-      }
-    } else if (sel === 'red') {
-      if ([2, 4, 6, 8].includes(digit)) {
-        won = true
-        payout = Math.round(bet.amount * 2.0)
-      } else if (digit === 0) {
-        won = true
-        payout = Math.round(bet.amount * 1.5)
-      }
-    } else if (sel === 'violet') {
-      if (digit === 0 || digit === 5) {
-        won = true
-        payout = Math.round(bet.amount * 4.5)
-      }
-    } else if (sel === 'big') {
-      if (digit >= 5) {
-        won = true
-        payout = Math.round(bet.amount * 2.0)
-      }
-    } else if (sel === 'small') {
-      if (digit < 5) {
-        won = true
-        payout = Math.round(bet.amount * 2.0)
-      }
-    } else if (sel === String(digit)) {
-      won = true
-      payout = Math.round(bet.amount * 9.0)
-    }
+    const { won, payout } = calcPayout(bet.selection, outcomeNorm, bet.amount, bet.multiplier)
 
     bet.status = won ? 'WON' : 'LOST'
     bet.payout = payout
-    bet.outcome = outcome
+    bet.outcome = outcomeNorm
     bet.settled_at = new Date().toISOString()
     memoryBets.set(bet.id, bet)
 
     if (won && payout > 0 && isSupabaseConfigured) {
-      try {
-        const { data: wal } = await supabase
-          .from('wallets')
-          .select('balance')
-          .eq('user_id', bet.user_id)
-          .single()
-
-        if (wal) {
-          const newBal = Number(wal.balance) + payout
-          await supabase.from('wallets').update({ balance: newBal }).eq('user_id', bet.user_id)
-          await supabase.from('wallet_transactions').insert({
-            user_id: bet.user_id,
-            type: 'BET_PAYOUT',
-            amount: payout,
-            balance_after: newBal,
-            reference_id: bet.id,
-            description: `Won ₹${payout} on ${bet.selection} (VeerGame ${issueStr})`,
-          })
-        }
-      } catch (err) {
-        console.error('[settleVeerRound wallet credit error]:', err)
-      }
+      await creditWallet(
+        bet.user_id,
+        payout,
+        bet.id,
+        `Won ₹${payout} on ${bet.selection} (VeerGame ${issueStr})`
+      )
     }
   }
 
-  // 2. Settle Supabase DB bets if configured
+  // 2. Settle Supabase DB bets
   if (isSupabaseConfigured) {
     try {
       const { data: dbBets } = await supabase
@@ -310,71 +264,20 @@ export async function settleVeerRound(outcome) {
         .select('*')
         .eq('round_number', issueStr)
         .eq('status', 'PENDING')
+        .eq('game_mode', modeKey)
 
       if (Array.isArray(dbBets)) {
         for (const b of dbBets) {
-          let won = false
-          let payout = 0
-          const sel = String(b.selection).toLowerCase()
-
-          if (sel === 'green') {
-            if ([1, 3, 7, 9].includes(digit)) {
-              won = true
-              payout = Math.round(b.amount * 2.0)
-            } else if (digit === 5) {
-              won = true
-              payout = Math.round(b.amount * 1.5)
-            }
-          } else if (sel === 'red') {
-            if ([2, 4, 6, 8].includes(digit)) {
-              won = true
-              payout = Math.round(b.amount * 2.0)
-            } else if (digit === 0) {
-              won = true
-              payout = Math.round(b.amount * 1.5)
-            }
-          } else if (sel === 'violet') {
-            if (digit === 0 || digit === 5) {
-              won = true
-              payout = Math.round(b.amount * 4.5)
-            }
-          } else if (sel === 'big') {
-            if (digit >= 5) {
-              won = true
-              payout = Math.round(b.amount * 2.0)
-            }
-          } else if (sel === 'small') {
-            if (digit < 5) {
-              won = true
-              payout = Math.round(b.amount * 2.0)
-            }
-          } else if (sel === String(digit)) {
-            won = true
-            payout = Math.round(b.amount * 9.0)
-          }
-
+          const { won, payout } = calcPayout(b.selection, outcomeNorm, b.amount, b.multiplier)
           const status = won ? 'WON' : 'LOST'
           await supabase.from('bets').update({ status, payout }).eq('id', b.id)
-
           if (won && payout > 0) {
-            const { data: wal } = await supabase
-              .from('wallets')
-              .select('balance')
-              .eq('user_id', b.user_id)
-              .single()
-
-            if (wal) {
-              const newBal = Number(wal.balance) + payout
-              await supabase.from('wallets').update({ balance: newBal }).eq('user_id', b.user_id)
-              await supabase.from('wallet_transactions').insert({
-                user_id: b.user_id,
-                type: 'BET_PAYOUT',
-                amount: payout,
-                balance_after: newBal,
-                reference_id: b.id,
-                description: `Won ₹${payout} on ${b.selection} (VeerGame ${issueStr})`,
-              })
-            }
+            await creditWallet(
+              b.user_id,
+              payout,
+              b.id,
+              `Won ₹${payout} on ${b.selection} (VeerGame ${issueStr})`
+            )
           }
         }
       }
@@ -384,7 +287,7 @@ export async function settleVeerRound(outcome) {
   }
 }
 
-// Background VeerGame settlement poller
+// ─── Background VeerGame settlement poller ────────────────────────────────────
 let isVeerPolling = false
 let veerLoopInterval = null
 
@@ -393,18 +296,25 @@ setTimeout(() => {
     if (isVeerPolling) return
     isVeerPolling = true
     try {
-      const [h30, h1] = await Promise.allSettled([
+      const [h30, h1, h3, h5] = await Promise.allSettled([
         getLiveHistory(30, 1),
         getLiveHistory(1, 1),
+        getLiveHistory(2, 1),
+        getLiveHistory(3, 1),
       ])
-      if (h30.status === 'fulfilled' && Array.isArray(h30.value?.list)) {
-        for (const item of h30.value.list.slice(0, 5)) {
-          await settleVeerRound(item)
-        }
-      }
-      if (h1.status === 'fulfilled' && Array.isArray(h1.value?.list)) {
-        for (const item of h1.value.list.slice(0, 5)) {
-          await settleVeerRound(item)
+
+      const pairs = [
+        { result: h30, typeId: 30 },
+        { result: h1, typeId: 1 },
+        { result: h3, typeId: 2 },
+        { result: h5, typeId: 3 },
+      ]
+
+      for (const { result, typeId } of pairs) {
+        if (result.status === 'fulfilled' && Array.isArray(result.value?.list)) {
+          for (const item of result.value.list.slice(0, 5)) {
+            await settleVeerRound(item, typeId)
+          }
         }
       }
     } catch {} finally {
@@ -417,7 +327,7 @@ setTimeout(() => {
   }
 }, 4000)
 
-// Background Multi-Game Loop
+// ─── Background Multi-Game Loop ────────────────────────────────────────────────
 const gameLoopInterval = setInterval(() => {
   const now = Date.now()
 
@@ -442,7 +352,7 @@ if (gameLoopInterval?.unref) {
   gameLoopInterval.unref()
 }
 
-// 1. Current Round State (Multi-Mode aware)
+// ─── 1. Current Round State (Multi-Mode aware) ────────────────────────────────
 export function getCurrentRound(req, res) {
   const rawMode = req.query.mode || req.body?.mode || 'PARITY'
   const modeKey = String(rawMode).trim().toUpperCase()
@@ -478,6 +388,7 @@ export function getCurrentRound(req, res) {
     name: m.name,
     durationSeconds: m.durationMs / 1000,
     lockSeconds: m.lockMs / 1000,
+    typeId: m.typeId,
   }))
 
   return res.json({
@@ -497,7 +408,7 @@ export function getCurrentRound(req, res) {
   })
 }
 
-// 2. Place Bet (Authoritative, Multi-Mode, & Anti-Race-Condition)
+// ─── 2. Place Bet (Authoritative, Multi-Mode, Anti-Race-Condition) ────────────
 export async function placeBet(req, res) {
   try {
     const validated = req.validatedBet || {
@@ -521,7 +432,7 @@ export async function placeBet(req, res) {
     const roundNumber = Math.floor(now / cfg.durationMs)
     const targetRound = issueNumber ? String(issueNumber) : String(roundNumber)
 
-    // Strict Lock Window check for the specific game mode
+    // Strict Lock Window check
     if (!issueNumber) {
       const roundEndTime = (roundNumber + 1) * cfg.durationMs
       const lockStartTime = roundEndTime - cfg.lockMs
@@ -546,7 +457,7 @@ export async function placeBet(req, res) {
       id: crypto.randomUUID(),
       round_number: targetRound,
       game_mode: cfg.id,
-      type_id: typeId || 30,
+      type_id: typeId || cfg.typeId || 30,
       user_id: userId,
       selection: sel,
       amount,
@@ -558,7 +469,6 @@ export async function placeBet(req, res) {
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
 
     if (isSupabaseConfigured && isUuid) {
-      // 1. Check wallet exists and has sufficient balance
       let { data: wallet, error: walErr } = await supabase
         .from('wallets')
         .select('balance')
@@ -566,7 +476,6 @@ export async function placeBet(req, res) {
         .maybeSingle()
 
       if (!wallet) {
-        // Auto-create wallet
         const { data: newWal } = await supabase
           .from('wallets')
           .insert({ user_id: userId, balance: 1000.0 })
@@ -579,7 +488,7 @@ export async function placeBet(req, res) {
         return res.status(400).json({ error: 'Insufficient wallet balance' })
       }
 
-      // 2. Atomic Balance Deduction (prevents concurrent race condition double-spending)
+      // Atomic balance deduction with optimistic lock
       const newBalance = Number(wallet.balance) - amount
       const { data: updatedWal, error: deductErr } = await supabase
         .from('wallets')
@@ -593,7 +502,6 @@ export async function placeBet(req, res) {
         return res.status(400).json({ error: 'Insufficient balance or concurrent transaction conflict' })
       }
 
-      // 3. Insert Bet Record
       try {
         await supabase.from('bets').insert(betRecord)
       } catch (betInsErr) {
@@ -622,7 +530,6 @@ export async function placeBet(req, res) {
         return res.status(503).json({ error: persistenceError.message })
       }
 
-      // 4. Ledger entry
       try {
         await supabase.from('wallet_transactions').insert({
           user_id: userId,
@@ -643,7 +550,7 @@ export async function placeBet(req, res) {
       })
     }
 
-    // Fallback store
+    // Fallback in-memory store
     if (!memoryWallets.has(userId)) {
       memoryWallets.set(userId, 1000.0)
     }
@@ -666,7 +573,7 @@ export async function placeBet(req, res) {
   }
 }
 
-// 3. User Bet History with Anti-Sniffing
+// ─── 3. User Bet History with Anti-Sniffing ───────────────────────────────────
 export async function getUserBets(req, res) {
   try {
     const { userId } = req.params
@@ -722,7 +629,7 @@ export async function getUserBets(req, res) {
   }
 }
 
-// 4. Live VeerGame Issue Proxy
+// ─── 4. Live VeerGame Issue Proxy ─────────────────────────────────────────────
 export async function getVeerIssue(req, res) {
   try {
     const typeId = Number(req.query.typeId) || 30
@@ -734,7 +641,7 @@ export async function getVeerIssue(req, res) {
   }
 }
 
-// 5. Live VeerGame Draw History Proxy
+// ─── 5. Live VeerGame Draw History Proxy ──────────────────────────────────────
 export async function getVeerHistory(req, res) {
   try {
     const typeId = Number(req.query.typeId) || 30

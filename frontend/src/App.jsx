@@ -450,8 +450,13 @@ export function App() {
   const [betQuantity, setBetQuantity] = useState(1)
   const [isPlacingBet, setIsPlacingBet] = useState(false)
   const [agreeTerms, setAgreeTerms] = useState(true)
-  const [gameMode, setGameMode] = useState('30s')
   const [howToPlayOpen, setHowToPlayOpen] = useState(false)
+
+  // Map selectedMode (PARITY/SAPRE/BCONE/EMERD) ↔ gameMode display string (30s/1m/3m/5m)
+  // Single source of truth: selectedMode drives everything; gameMode is derived display alias
+  const SELECTED_TO_GAME_MODE = { PARITY: '30s', SAPRE: '1m', BCONE: '3m', EMERD: '5m' }
+  const GAME_MODE_TO_SELECTED = { '30s': 'PARITY', '1m': 'SAPRE', '3m': 'BCONE', '5m': 'EMERD' }
+  const gameMode = SELECTED_TO_GAME_MODE[selectedMode] || '30s'
 
   // Toast & Notifications
   const [toast, setToast] = useState(null)
@@ -501,8 +506,14 @@ export function App() {
   }, [toast])
 
   // Backend Sync Initial & Periodic with VeerGame
+  // selectedModeRef is used inside the callback without being in deps, preventing
+  // polling interval restarts on every mode switch.
+  const selectedModeRef = useRef(selectedMode)
+  useEffect(() => { selectedModeRef.current = selectedMode }, [selectedMode])
+
   const syncWithBackend = useCallback(async () => {
-    const typeId = gameMode === '30s' ? 30 : gameMode === '1m' ? 1 : gameMode === '3m' ? 2 : 3
+    const currentMode = selectedModeRef.current || selectedMode
+    const typeId = currentMode === 'PARITY' ? 30 : currentMode === 'SAPRE' ? 1 : currentMode === 'BCONE' ? 2 : 3
     let synced = false
 
     // 1. Fetch live round issue from VeerGame proxy
@@ -518,6 +529,7 @@ export function App() {
           }
           return currSec
         })
+        // Use server-provided lock state — already accounts for mode-specific lock window
         setPhase(issueData.isLocked ? 'locked' : 'open')
       }
     } catch {}
@@ -606,7 +618,8 @@ export function App() {
         }
       } catch {}
     }
-  }, [userId, currentUser, gameMode, phase, selectedMode])
+  }, [userId, currentUser])
+
 
   // Verify existing session on boot
   useEffect(() => {
@@ -1460,7 +1473,7 @@ export function App() {
                       key={m.id}
                       className={`raja-mode-tab ${isActive ? 'active' : ''}`}
                       onClick={() => {
-                        setGameMode(m.id)
+                        setSelectedMode(GAME_MODE_TO_SELECTED[m.id] || 'PARITY')
                         sound.playTick()
                       }}
                     >
@@ -2056,8 +2069,10 @@ export function App() {
               <div className="rules-section-card">
                 <h3>1. Period Cycle</h3>
                 <p>
-                  Every round lasts <strong>45 seconds</strong>. Selections are open for the first 37 seconds.
-                  The last <strong>8 seconds</strong> are locked for order matching and outcome draw.
+                  {gameMode === '30s' && <>Every <strong>Win Go 30s</strong> round lasts <strong>30 seconds</strong>. Selections open for 25s, locked for the last <strong>5 seconds</strong>.</>}
+                  {gameMode === '1m' && <>Every <strong>Win Go 1Min</strong> round lasts <strong>60 seconds</strong>. Selections open for 50s, locked for the last <strong>10 seconds</strong>.</>}
+                  {gameMode === '3m' && <>Every <strong>Win Go 3Min</strong> round lasts <strong>3 minutes</strong>. Selections open for 150s, locked for the last <strong>30 seconds</strong>.</>}
+                  {gameMode === '5m' && <>Every <strong>Win Go 5Min</strong> round lasts <strong>5 minutes</strong>. Selections open for 255s, locked for the last <strong>45 seconds</strong>.</>}
                 </p>
 
                 <h3>2. Color Outcomes & Payouts</h3>
@@ -2410,92 +2425,7 @@ export function App() {
           </div>
         )}
 
-        {/* WITHDRAW MODAL */}
-        {withdrawModalOpen && (
-          <div className="modal-overlay" onClick={() => setWithdrawModalOpen(false)}>
-            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-              <div className="modal-header">
-                <div className="modal-title-group">
-                  <div className="modal-icon-badge" style={{ background: '#f59e0b' }}>
-                    <Wallet size={20} />
-                  </div>
-                  <div>
-                    <h3>Withdraw Balance</h3>
-                    <p>Instant payout to UPI or Bank Account</p>
-                  </div>
-                </div>
-                <button className="icon-close-button" onClick={() => setWithdrawModalOpen(false)}>
-                  <X size={20} />
-                </button>
-              </div>
 
-              <div className="modal-step-body">
-                <div className="payment-details-card">
-                  <div className="detail-row">
-                    <span className="detail-label">Available Balance:</span>
-                    <strong className="detail-val-highlight">₹{balance.toFixed(2)}</strong>
-                  </div>
-                </div>
-
-                <label className="input-label">Enter Withdrawal Amount (₹)</label>
-                <div className="custom-input-group">
-                  <span className="currency-prefix">₹</span>
-                  <input
-                    type="number"
-                    min="100"
-                    max="50000"
-                    placeholder="Enter amount (Min ₹100)"
-                    className="custom-amount-input"
-                    id="withdraw-amount-input"
-                  />
-                </div>
-
-                <label className="input-label">Your UPI ID / VPA</label>
-                <input
-                  type="text"
-                  placeholder="e.g. mobile@paytm or name@oksbi"
-                  className="custom-amount-input"
-                  style={{ paddingLeft: '14px' }}
-                  id="withdraw-upi-input"
-                />
-
-                <button
-                  className="primary-action-btn"
-                  style={{ background: 'linear-gradient(135deg, #f5a623, #e67e22)', color: '#1a0e2e', fontWeight: '800' }}
-                  onClick={() => {
-                    const amtInput = document.getElementById('withdraw-amount-input')
-                    const upiInput = document.getElementById('withdraw-upi-input')
-                    const amt = Number(amtInput?.value)
-                    const upi = upiInput?.value?.trim()
-                    if (!amt || amt < 100) {
-                      setToast({ type: 'loss', title: 'Invalid Amount', detail: 'Minimum withdrawal amount is ₹100.' })
-                      return
-                    }
-                    if (amt > balance) {
-                      setToast({ type: 'loss', title: 'Insufficient Funds', detail: 'Withdrawal exceeds available balance.' })
-                      return
-                    }
-                    if (!upi || !upi.includes('@')) {
-                      setToast({ type: 'loss', title: 'Invalid UPI ID', detail: 'Please enter a valid UPI VPA (e.g. name@oksbi).' })
-                      return
-                    }
-                    setBalance((b) => b - amt)
-                    setWithdrawModalOpen(false)
-                    setToast({
-                      type: 'success',
-                      title: 'Withdrawal Submitted',
-                      detail: `₹${amt} transfer initiated to ${upi}. Arrives within 10-30 mins.`,
-                    })
-                  }}
-                >
-                  Confirm Withdrawal
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* TOAST NOTIFICATION POPUP */}
         {toast && (
           <div className={`mobile-toast toast-${toast.type}`}>
             <div className="toast-icon">

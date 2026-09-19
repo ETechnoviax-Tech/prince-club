@@ -150,6 +150,14 @@ export const TYPE_ID_TO_MODE = {
   3: '5m',
 }
 
+// Lock window seconds per typeId (mirrors GAME_MODES.lockMs on server)
+const TYPE_ID_LOCK_SECONDS = {
+  30: 5,   // Win Go 30s
+  1: 10,   // Win Go 1Min
+  2: 30,   // Win Go 3Min
+  3: 45,   // Win Go 5Min
+}
+
 const issueCache = new Map()
 const historyCache = new Map()
 const inFlightRequests = new Map()
@@ -177,6 +185,7 @@ export async function getLiveIssue(typeId = 30) {
           : Date.now()
         const msRemaining = Math.max(0, endTimestamp - currentTimestamp)
         const secondsRemaining = Math.ceil(msRemaining / 1000)
+        const lockSec = TYPE_ID_LOCK_SECONDS[typeId] || 5
 
         const result = {
           success: true,
@@ -186,7 +195,8 @@ export async function getLiveIssue(typeId = 30) {
           startTime,
           endTime,
           secondsRemaining,
-          isLocked: secondsRemaining <= 5,
+          lockSeconds: lockSec,
+          isLocked: secondsRemaining <= lockSec,
         }
         issueCache.set(typeId, { data: result, timestamp: Date.now() })
         return result
@@ -234,6 +244,7 @@ export async function getLiveHistory(typeId = 30, page = 1) {
 
           return {
             issueNumber: item.issueNumber,
+            typeId,          // propagate so settlement can route to correct mode
             digit,
             color,
             rawColour: item.colour,

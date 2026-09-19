@@ -16,11 +16,19 @@ export async function persistWingoBet({
   if (!isSupabaseConfigured) return null
 
   const now = Date.now()
+  // Keep roundNumber as a string — VeerGame issueNumbers are 18-digit strings
+  // that exceed JS Number safe integer range. Pass as-is; Supabase JS driver
+  // will forward the string value and PostgreSQL BIGINT will accept it.
+  const roundNumberStr = String(roundNumber)
+  const roundNumberBigInt = roundNumberStr.length <= 15
+    ? Number(roundNumberStr)   // safe for local epoch-based round numbers
+    : roundNumberStr           // keep as string for 18-digit VeerGame issueNumbers
+
   let { data: round, error: roundError } = await supabase
     .from('wingo_rounds')
     .select('id')
     .eq('mode', mode)
-    .eq('round_number', Number(roundNumber))
+    .eq('round_number', roundNumberBigInt)
     .maybeSingle()
 
   if (!round && !roundError) {
@@ -28,7 +36,7 @@ export async function persistWingoBet({
       .from('wingo_rounds')
       .insert({
         mode,
-        round_number: Number(roundNumber),
+        round_number: roundNumberBigInt,
         start_time: new Date(now - 30000).toISOString(),
         lock_time: new Date(now + 5000).toISOString(),
         end_time: new Date(now + 30000).toISOString(),
