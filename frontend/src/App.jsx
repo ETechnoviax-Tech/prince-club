@@ -618,8 +618,11 @@ export function App() {
 
   // Results and settlements are supplied by the live provider only.
   const settleCurrentRound = useCallback(() => {
+    if (betsRef.current.length === 0) {
+      console.log('[Win Go Debug] Period settled without user bets:', roundNumber)
+    }
     return undefined
-  }, [])
+  }, [roundNumber])
 
   // Timer Tick Engine
   useEffect(() => {
