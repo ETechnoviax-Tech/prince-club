@@ -66,7 +66,7 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
     setCaptchaOpen(true)
   }
 
-  async function executeRegister() {
+  async function executeRegister(captcha = {}) {
     setCaptchaOpen(false)
     const identifier = loginTab === 'phone' ? phone.trim() : email.trim()
     setLoading(true)
@@ -81,7 +81,9 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
         usernameParam,
         loginTab === 'email' ? identifier : undefined,
         password,
-        referralCode.trim() || undefined
+        referralCode.trim() || undefined,
+        captcha.captchaToken,
+        captcha.captchaProof
       )
 
       setSuccessMsg('Account registered successfully! Logging you in...')

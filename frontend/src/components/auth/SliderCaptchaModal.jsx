@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { ChevronsRight, RotateCw, CheckCircle2, AlertCircle, X } from 'lucide-react'
+import { fetchCaptchaChallenge } from '../../api/client.js'
 
 // Scenic background image options (high-res coastal cove / landscape matching official 55club)
 const SCENIC_IMAGES = [
@@ -16,12 +17,16 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
   const [targetY, setTargetY] = useState(50) // Target slot Y
   const [status, setStatus] = useState('idle') // 'idle' | 'success' | 'fail'
   const [statusText, setStatusText] = useState('Hold and slide')
+  const [challenge, setChallenge] = useState(null)
+  const [challengeError, setChallengeError] = useState('')
 
   const containerRef = useRef(null)
   const trackRef = useRef(null)
   const bgCanvasRef = useRef(null)
   const pieceCanvasRef = useRef(null)
   const startDragXRef = useRef(0)
+  const dragStartedAtRef = useRef(0)
+  const dragPathRef = useRef([])
   const startSliderPosRef = useRef(0)
   const imageObjRef = useRef(null)
 
@@ -55,13 +60,16 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
   }, [])
 
   // Initialize random target slot and render canvases
-  const initPuzzle = useCallback((newImgIdx = null) => {
+  const initPuzzle = useCallback(async (newImgIdx = null) => {
+    setChallengeError('')
+    const serverChallenge = await fetchCaptchaChallenge()
+    setChallenge(serverChallenge)
     const nextIdx = newImgIdx !== null ? newImgIdx : Math.floor(Math.random() * SCENIC_IMAGES.length)
     setImageIndex(nextIdx)
 
     // Target between 110px and 220px
-    const randX = Math.floor(110 + Math.random() * 110)
-    const randY = Math.floor(25 + Math.random() * 70)
+    const randX = serverChallenge.targetX
+    const randY = serverChallenge.targetY
     setTargetX(randX)
     setTargetY(randY)
     setSliderPos(0)
@@ -113,7 +121,7 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
 
   useEffect(() => {
     if (isOpen) {
-      initPuzzle()
+      initPuzzle().catch((error) => setChallengeError(error.message || 'Unable to load CAPTCHA'))
     }
   }, [isOpen, initPuzzle])
 
@@ -123,6 +131,8 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
     setIsDragging(true)
     startDragXRef.current = clientX
     startSliderPosRef.current = sliderPos
+    dragStartedAtRef.current = Date.now()
+    dragPathRef.current = [{ x: clientX, t: Date.now() }]
   }
 
   const handleMoveDrag = useCallback((clientX) => {
@@ -130,6 +140,7 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
     const deltaX = clientX - startDragXRef.current
     const newPos = Math.max(0, Math.min(MAX_DRAG, startSliderPosRef.current + deltaX))
     setSliderPos(newPos)
+    dragPathRef.current.push({ x: clientX, t: Date.now() })
   }, [isDragging, MAX_DRAG])
 
   const handleEndDrag = useCallback(() => {
@@ -147,7 +158,16 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
       setStatus('success')
       setStatusText('Verification Passed!')
       setTimeout(() => {
-        onSuccess?.()
+        onSuccess?.({
+          captchaToken: challenge?.challenge,
+          captchaProof: {
+            targetX,
+            targetY,
+            startedAt: dragStartedAtRef.current,
+            completedAt: Date.now(),
+            path: dragPathRef.current.slice(-300),
+          },
+        })
       }, 600)
     } else {
       // FAIL
@@ -159,7 +179,7 @@ export function SliderCaptchaModal({ isOpen, onSuccess, onClose }) {
         setStatusText('Hold and slide')
       }, 800)
     }
-  }, [isDragging, sliderPos, targetX, MAX_DRAG, onSuccess])
+  }, [isDragging, sliderPos, targetX, targetY, MAX_DRAG, onSuccess, challenge])
 
   // Global mouse / touch listeners
   useEffect(() => {

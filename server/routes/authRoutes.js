@@ -8,6 +8,8 @@ import {
   verifyOTP,
 } from '../controllers/authController.js'
 import { authRateLimit } from '../middleware/rateLimit.js'
+import { captchaRateLimit } from '../middleware/captchaRateLimit.js'
+import { issueCaptcha, verifyCaptcha } from '../controllers/captchaController.js'
 import {
   validateForgotPassword,
   validateLogin,
@@ -17,10 +19,12 @@ import {
 
 const router = Router()
 
+router.get('/captcha', captchaRateLimit, issueCaptcha)
+
 // All auth endpoints have rate limiting and strict validation applied
-router.post('/login', authRateLimit, validateLogin, loginOrRegister)
-router.post('/signup', authRateLimit, validateSignup, register)
-router.post('/register', authRateLimit, validateSignup, register)
+router.post('/login', authRateLimit, verifyCaptcha, validateLogin, loginOrRegister)
+router.post('/signup', authRateLimit, verifyCaptcha, validateSignup, register)
+router.post('/register', authRateLimit, verifyCaptcha, validateSignup, register)
 router.post('/forgot-password', authRateLimit, validateForgotPassword, forgotPassword)
 router.post('/reset-password', authRateLimit, validateResetPassword, resetPassword)
 

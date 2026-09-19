@@ -54,14 +54,14 @@ export function LoginPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
     setCaptchaOpen(true)
   }
 
-  async function executeLogin() {
+  async function executeLogin(captcha = {}) {
     setCaptchaOpen(false)
     const identifier = loginTab === 'phone' ? phone.trim() : email.trim()
     setLoading(true)
     sound.playBet?.()
 
     try {
-      const res = await loginUser(identifier, password.trim())
+      const res = await loginUser(identifier, password.trim(), captcha.captchaToken, captcha.captchaProof)
       setSuccessMsg('Welcome back! Logging in...')
       sound.playWin?.()
       setTimeout(() => {

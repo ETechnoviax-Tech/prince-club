@@ -156,11 +156,18 @@ function authHeaders() {
   }
 }
 
-export async function loginUser(username, password) {
+export async function fetchCaptchaChallenge() {
+  const res = await fetch(`${API_BASE}/auth/captcha`)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Unable to load CAPTCHA')
+  return json
+}
+
+export async function loginUser(username, password, captchaToken, captchaProof) {
   const res = await apiFetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, captchaToken, captchaProof }),
   }, 'Logging in...', true)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -172,11 +179,11 @@ export async function loginUser(username, password) {
   return json
 }
 
-export async function signupUser(username, email, password, referralCode) {
+export async function signupUser(username, email, password, referralCode, captchaToken, captchaProof) {
   const res = await apiFetch(`${API_BASE}/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, email, password, referralCode }),
+    body: JSON.stringify({ username, email, password, referralCode, captchaToken, captchaProof }),
   }, 'Creating account...', true)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
