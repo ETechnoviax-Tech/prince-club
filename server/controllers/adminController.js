@@ -474,8 +474,14 @@ export async function promoteOrSeedAdmin(req, res) {
       if (error || !data) {
         return res.status(404).json({ error: `Account '${identity}' not found in database` })
       }
-      await supabase.from('profiles').update({ role: 'admin' }).eq('id', data.id)
-      found = { ...data, role: 'admin' }
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ role: 'admin', is_admin: true })
+        .eq('id', data.id)
+      if (updateError) {
+        return res.status(500).json({ error: 'Failed to persist admin privileges' })
+      }
+      found = { ...data, role: 'admin', is_admin: true }
     } else {
       for (const prof of memoryProfiles.values()) {
         if (
@@ -484,6 +490,7 @@ export async function promoteOrSeedAdmin(req, res) {
           prof.id === clean
         ) {
           prof.role = 'admin'
+          prof.is_admin = true
           saveProfilesToDisk()
           found = prof
           break
