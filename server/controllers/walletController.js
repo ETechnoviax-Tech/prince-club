@@ -131,7 +131,20 @@ export async function resetWallet(req, res) {
 // 4. Request Payout Withdrawal (UPI / Bank Account)
 export async function requestWithdrawal(req, res) {
   try {
-    const { userId, amount, payoutMethod, payoutDetails } = req.validatedWithdrawal || req.body
+    const body = req.validatedWithdrawal || req.body
+    const userId = body.userId
+    const amount = Number(body.amount)
+    const payoutMethod = body.payoutMethod || 'UPI'
+
+    // Normalize payoutDetails from any shape the client sends:
+    // - explicit payoutDetails object (preferred)
+    // - flat upiId field (from WithdrawModal UPI path)
+    // - flat bankDetails object (from WithdrawModal bank path)
+    const payoutDetails =
+      body.payoutDetails ||
+      (body.upiId ? { upiId: body.upiId } : null) ||
+      (body.bankDetails ? body.bankDetails : null) ||
+      {}
 
     if (!userId || !amount || amount < 100) {
       return res.status(400).json({ error: 'Valid userId and minimum amount ₹100 required' })
@@ -321,7 +334,9 @@ export async function getUserWithdrawals(req, res) {
 // 6. Admin Verify Withdrawal (Approve or Reject with Refund)
 export async function adminVerifyWithdrawal(req, res) {
   try {
-    const { withdrawalId, action, notes } = req.body
+    // Accept withdrawalId from URL param (admin client) OR request body (legacy)
+    const withdrawalId = req.params.id || req.body.withdrawalId
+    const { action, notes } = req.body
     if (!withdrawalId || !['APPROVE', 'REJECT'].includes(action)) {
       return res.status(400).json({ error: 'withdrawalId and action (APPROVE/REJECT) are required' })
     }
@@ -366,6 +381,13 @@ export async function adminVerifyWithdrawal(req, res) {
           })
 
           if (!rpcErr && rpcRes?.success) {
+            // Update status in DB and memory, then return immediately — do NOT fall through
+            await supabase
+              .from('withdrawal_requests')
+              .update({ status: 'REJECTED', admin_notes: notes || null, processed_at: nowIso })
+              .eq('id', withdrawalId)
+              .catch(() => {})
+
             wRecord.status = 'REJECTED'
             wRecord.admin_notes = notes || null
             wRecord.processed_at = nowIso

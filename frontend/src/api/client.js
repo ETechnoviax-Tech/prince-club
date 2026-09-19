@@ -264,11 +264,11 @@ export async function fetchWallet(userId) {
 }
 
 export async function requestDeposit(userId, amount) {
-  const res = await fetch(`${API_BASE}/payments/deposit`, {
+  const res = await apiFetch(`${API_BASE}/payments/deposit`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ userId, amount }),
-  })
+  }, 'Generating UPI QR...', true)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(json.error || 'Failed to initiate deposit')
@@ -277,11 +277,12 @@ export async function requestDeposit(userId, amount) {
 }
 
 export async function submitDepositUTR(depositId, utrNumber) {
-  const res = await fetch(`${API_BASE}/payments/deposit/utr`, {
+  const res = await apiFetch(`${API_BASE}/payments/deposit/utr`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({ depositId, utrNumber }),
-  })
+    timeoutMs: 15000,
+  }, 'Submitting UTR...', false)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(json.error || 'Failed to submit UTR')
@@ -351,17 +352,27 @@ export async function placeBet(userId, selection, amount, arg4 = null, arg5 = nu
 }
 
 export async function requestWithdrawal(userId, { amount, payoutMethod = 'UPI', upiId, bankDetails }) {
-  const res = await fetch(`${API_BASE}/wallet/withdraw`, {
+  // Always send payoutDetails as a proper nested object so server can store it correctly
+  const payoutDetails = upiId
+    ? { upiId }
+    : bankDetails
+    ? bankDetails
+    : {}
+
+  const res = await apiFetch(`${API_BASE}/wallet/withdraw`, {
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({
       userId,
       amount,
       payoutMethod,
-      upiId,
-      bankDetails,
+      payoutDetails,
+      // Also send flat fields for backward-compat with any legacy server path
+      upiId: upiId || undefined,
+      bankDetails: bankDetails || undefined,
     }),
-  })
+    timeoutMs: 20000,
+  }, 'Submitting withdrawal...', false)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
     throw new Error(json.error || 'Failed to submit withdrawal request')
@@ -370,9 +381,10 @@ export async function requestWithdrawal(userId, { amount, payoutMethod = 'UPI', 
 }
 
 export async function fetchUserWithdrawals(userId) {
-  const res = await fetch(`${API_BASE}/wallet/withdrawals/${userId}`, {
+  const res = await apiFetch(`${API_BASE}/wallet/withdrawals/${userId}`, {
     headers: authHeaders(),
-  })
+    silent: true,
+  }, 'Loading history...')
   if (!res.ok) throw new Error('Failed to fetch withdrawal history')
   return res.json()
 }

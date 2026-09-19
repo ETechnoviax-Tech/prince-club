@@ -233,7 +233,9 @@ export async function submitUTR(req, res) {
 // Strictly protected admin verification endpoint
 export async function verifyDeposit(req, res) {
   try {
-    const { depositId, action, notes, adminId } = req.body
+    // Accept depositId from URL param (admin client) OR request body (legacy)
+    const depositId = req.params.id || req.body.depositId
+    const { action, notes, adminId } = req.body
 
     if (!depositId || !['APPROVE', 'REJECT'].includes(action)) {
       return res.status(400).json({ error: 'depositId and valid action (APPROVE/REJECT) required' })
