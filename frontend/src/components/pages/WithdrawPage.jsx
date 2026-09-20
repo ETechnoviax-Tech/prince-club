@@ -57,6 +57,12 @@ export default function WithdrawPage({
       return
     }
 
+    const pendingItem = historyList.find((w) => w.status === 'PENDING')
+    if (pendingItem) {
+      setError(`You already have a pending withdrawal of ₹${pendingItem.amount} via ${pendingItem.payout_method}. Please wait until it is processed.`)
+      return
+    }
+
     if (numAmount > balance) {
       setError('Insufficient wallet balance')
       return
@@ -257,9 +263,43 @@ export default function WithdrawPage({
           {error && <div className="deposit-alert error">{error}</div>}
           {successMsg && <div className="deposit-alert success">{successMsg}</div>}
 
-          <button type="submit" className="btn-primary-gradient" disabled={loading}>
-            {loading ? 'Processing Withdrawal...' : `Submit Withdrawal Request (₹${amount || 0})`}
-          </button>
+          {(() => {
+            const pending = historyList.find((w) => w.status === 'PENDING')
+            if (pending) {
+              return (
+                <div
+                  className="deposit-alert warning"
+                  style={{
+                    background: 'rgba(245, 158, 11, 0.12)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    color: '#d97706',
+                    padding: '12px 14px',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    marginBottom: '14px',
+                  }}
+                >
+                  ⚠️ Active Pending Request: ₹{pending.amount} via {pending.payout_method}. Double submission is blocked until this payout is processed.
+                </div>
+              )
+            }
+            return null
+          })()}
+
+          {(() => {
+            const pending = historyList.find((w) => w.status === 'PENDING')
+            return (
+              <button
+                type="submit"
+                className="btn-primary-gradient"
+                disabled={loading || !!pending}
+                style={pending ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+              >
+                {loading ? 'Processing Withdrawal...' : pending ? 'Pending Request in Progress (Locked)' : `Submit Withdrawal Request (₹${amount || 0})`}
+              </button>
+            )
+          })()}
         </form>
 
         {/* Withdrawal History Drawer / Table */}

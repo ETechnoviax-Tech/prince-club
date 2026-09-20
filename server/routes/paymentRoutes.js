@@ -25,8 +25,8 @@ router.post(
   '/create-deposit',
   requireAuth,
   paymentRateLimit,
-  paymentLockMiddleware,
   idempotencyMiddleware,
+  paymentLockMiddleware,
   validateDepositRequest,
   createDeposit
 )
@@ -34,8 +34,8 @@ router.post(
   '/deposit',
   requireAuth,
   paymentRateLimit,
-  paymentLockMiddleware,
   idempotencyMiddleware,
+  paymentLockMiddleware,
   validateDepositRequest,
   createDeposit
 )
@@ -45,8 +45,8 @@ router.post(
   '/submit-utr',
   requireAuth,
   paymentRateLimit,
-  paymentLockMiddleware,
   idempotencyMiddleware,
+  paymentLockMiddleware,
   validateUTRSubmission,
   submitUTR
 )
@@ -54,8 +54,8 @@ router.post(
   '/deposit/utr',
   requireAuth,
   paymentRateLimit,
-  paymentLockMiddleware,
   idempotencyMiddleware,
+  paymentLockMiddleware,
   validateUTRSubmission,
   submitUTR
 )

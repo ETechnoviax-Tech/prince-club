@@ -106,17 +106,19 @@ export async function sendWhatsAppOTP({ to, otpCode, username = 'Player' }) {
   }
 
   // 3. Development / Sandbox Simulator
-  console.log('\n======================================================')
-  console.log(`💬 [WHATSAPP OTP DISPATCHED] -> ${phone}`)
-  console.log(`🔑 Verification Code: [ ${otpCode} ] (Expires in 15 mins)`)
-  console.log(`📝 Message:\n${messageText}`)
-  console.log('======================================================\n')
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('\n======================================================')
+    console.log(`💬 [WHATSAPP OTP DISPATCHED] -> ${phone}`)
+    console.log(`🔑 Verification Code: [ ${otpCode} ] (Expires in 15 mins)`)
+    console.log(`📝 Message:\n${messageText}`)
+    console.log('======================================================\n')
+  }
 
   return {
     success: true,
     provider: 'sandbox-simulator',
     recipient: phone,
-    otpCode,
+    ...(process.env.NODE_ENV !== 'production' ? { otpCode } : {}),
   }
 }
 
@@ -173,17 +175,19 @@ export async function sendEmailOTP({ to, otpCode, username = 'Player' }) {
   }
 
   // 2. Development / Sandbox Simulator
-  console.log('\n======================================================')
-  console.log(`✉️  [EMAIL OTP DISPATCHED] -> ${email}`)
-  console.log(`🔑 Subject: ${subject}`)
-  console.log(`🔑 Verification Code: [ ${otpCode} ] (Expires in 15 mins)`)
-  console.log('======================================================\n')
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('\n======================================================')
+    console.log(`✉️  [EMAIL OTP DISPATCHED] -> ${email}`)
+    console.log(`🔑 Subject: ${subject}`)
+    console.log(`🔑 Verification Code: [ ${otpCode} ] (Expires in 15 mins)`)
+    console.log('======================================================\n')
+  }
 
   return {
     success: true,
     provider: 'sandbox-simulator',
     recipient: email,
-    otpCode,
+    ...(process.env.NODE_ENV !== 'production' ? { otpCode } : {}),
   }
 }
 

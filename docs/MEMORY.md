@@ -1,5 +1,63 @@
 # Memory
 
+## Authentication & Access Gate
+- Status: done
+- Purpose: Production-grade auth system with strict verification and non-blocking persistence.
+- Key logic: Phone/email registration, hash verification, JWT tokens, anti-bot captcha, async disk persistence.
+- Files: server/controllers/authController.js, server/routes/authRoutes.js, server/middleware/auth.js
+- Dependencies: Express, Supabase, crypto, JWT
+- Last change: 2026-09-20 — Converted disk persistence to async non-blocking I/O.
+
+## Win Go Game Engine
+- Status: done
+- Purpose: Multi-period color and digit prediction engine (Parity 30s, Sapre 1m, Bcone 3m, Emerd 5m).
+- Key logic: Authoritative round calculation, lock window enforcement, and dual-layer settlement.
+- Files: server/controllers/gameController.js, server/routes/gameRoutes.js
+- Dependencies: Supabase, veerGameService.js, gamePersistence.js
+- Last change: 2026-09-20 — Made round state querying async and non-blocking.
+
+## Aviator Crash Arena
+- Status: done
+- Purpose: Authentic Spribe-style mobile radar crash game with 69 Club branding and dual bet panels.
+- Key logic: 60 FPS propeller radar canvas, dual independent bet decks (panel 0 & 1), dynamic cashout, and SHA-256 fairness.
+- Files: frontend/src/components/AviatorGame.jsx, frontend/src/components/aviator.css, server/controllers/aviatorController.js
+- Dependencies: React 18, HTML5 Canvas, Express, Supabase
+- Last change: 2026-09-20 — Fixed custom bet stepper input background, flex overflow, and decimal format.
+
+## Payment & UPI Settlement
+- Status: done
+- Purpose: High-concurrency UPI dynamic QR deposit and withdrawal ledger.
+- Key logic: Dynamic intent URI, UTR deduplication, idempotency cache, and per-user payment mutex.
+- Files: server/controllers/paymentController.js, server/routes/paymentRoutes.js, server/middleware/paymentLock.js
+- Dependencies: Supabase, qrcode, crypto
+- Last change: 2026-09-20 — Verified async handling across deposit and UTR processing.
+
+## Wallet & Ledger Operations
+- Status: done
+- Purpose: Atomic balance deductions, withdrawal locks, duplicate prevention, and payout workflows.
+- Key logic: Strict lock preventing duplicate pending UPI/Bank requests, duplicate destination check, and optimistic RPC fallback.
+- Files: server/controllers/walletController.js, server/routes/walletRoutes.js, frontend/src/components/WithdrawModal.jsx, frontend/src/components/pages/WithdrawPage.jsx
+- Dependencies: Supabase, payment.sql, store.js
+- Last change: 2026-09-20 — Enforced double-withdrawal prevention for pending requests across UPI and Bank.
+
+## Native In-House Slots & Table Games
+- Status: done
+- Purpose: Self-hosted slot machines (Crazy 777, Fortune Gems, Super Ace), Mines, and Dragon Tiger.
+- Key logic: Authoritative RNG math, atomic deductions, and instant multiplier calculations.
+- Files: server/controllers/inHouseSlotController.js, server/controllers/minesController.js, server/controllers/dragonTigerController.js
+- Dependencies: inHouseSlotEngine.js, minesEngine.js, dragonTigerEngine.js
+- Last change: 2026-09-20 — Made config and status endpoints async.
+
+## Admin Management Matrix
+- Status: done
+- Purpose: Live risk matrix, bets ledger, and user CRUD for operational oversight.
+- Key logic: Aggregated betting exposure, role updates, and user balance adjustments.
+- Files: server/controllers/adminController.js, server/routes/adminRoutes.js, server/middleware/adminGuard.js
+- Dependencies: Supabase, authController.js
+- Last change: 2026-09-20 — Updated user modification actions to await async persistence.
+
+# Memory
+
 ## Project Overview
 - **Repository**: Prince Club (`ETechnoviax-Tech/prince-club`)
 - **Stack**: React 18, Vite, Express.js, Supabase (PostgreSQL), Lucide React, Vanilla CSS
@@ -161,6 +219,14 @@
 - Dependencies: Vanilla JS DOM events
 - Last change: 2026-09-17 — Deployed Anti-Inspect protection engine blocking contextmenu and inspection shortcuts.
 
+## Production Build & Zero-Leak Log Pipeline
+- Status: done
+- Purpose: Dropping and gating of console, debug logs, and test code for production builds.
+- Key logic: Vite 8 Rolldown/Oxc `dropConsole: true` in production; sandbox OTP logs gated behind `NODE_ENV !== 'production'`.
+- Files: `frontend/vite.config.js`, `frontend/src/utils/antiInspect.js`, `server/services/notificationService.js`, `frontend/src/App.jsx`
+- Dependencies: Vite 8, Rolldown, Oxc, Node.js
+- Last change: 2026-09-20 — Configured Oxc dropConsole and purged all debug logs from production builds.
+
 ## Win Go Color UI & Contrast Engine
 - Status: done
 - Purpose: High-contrast, crystal-clear typography and color rendering across all Win Go components.
@@ -278,3 +344,4 @@
 - Files: `server/controllers/gameController.js`, `server/controllers/aviatorController.js`, `frontend/src/components/GameHistoryPage.jsx`, `frontend/src/App.jsx`, `frontend/src/styles.css`
 - Dependencies: Supabase, Express, React 18, Lucide React
 - Last change: 2026-09-20 — Fixed Aviator cashout PENDING status desync, resolved round numbers, and upgraded GameHistoryPage to 55 CLUB layout.
+

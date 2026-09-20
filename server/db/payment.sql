@@ -139,6 +139,14 @@ BEGIN
         RETURN jsonb_build_object('success', false, 'error', 'Minimum withdrawal amount is ₹100');
     END IF;
 
+    -- Check if user already has a pending withdrawal request
+    IF EXISTS (
+        SELECT 1 FROM public.withdrawal_requests
+        WHERE user_id = p_user_id AND status = 'PENDING'
+    ) THEN
+        RETURN jsonb_build_object('success', false, 'error', 'You already have a pending withdrawal request. Please wait until it is processed.');
+    END IF;
+
     -- Select and lock wallet row for this user
     SELECT * INTO v_wallet
     FROM public.wallets

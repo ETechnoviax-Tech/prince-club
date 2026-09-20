@@ -92,21 +92,52 @@ export async function persistSlotSpin({ userId, gameCode, betAmount, spinResult 
 
 export async function persistDragonTigerBet({ userId, market, betAmount, roundResult }) {
   if (!isSupabaseConfigured) return null
-  const roundNumber = Number(roundResult.round || roundResult.roundNumber || Date.now())
-  const { data: round, error: roundError } = await supabase
+  const roundNumber = Number(roundResult.round || roundResult.roundNumber || Math.floor(Date.now() / 1000))
+
+  let round = null
+  const { data: existingRound } = await supabase
     .from('dragon_tiger_rounds')
-    .insert({
-      round_number: roundNumber,
-      status: 'SETTLED',
-      dragon_card: roundResult.dragonCard || null,
-      tiger_card: roundResult.tigerCard || null,
-      winner: roundResult.winner || null,
-      dealt_at: new Date().toISOString(),
-      settled_at: new Date().toISOString(),
-    })
     .select('id')
-    .single()
-  if (roundError) throw new Error(`Failed to persist Dragon Tiger round: ${roundError.message}`)
+    .eq('round_number', roundNumber)
+    .maybeSingle()
+
+  if (existingRound?.id) {
+    round = existingRound
+  } else {
+    const { data: newRound, error: roundError } = await supabase
+      .from('dragon_tiger_rounds')
+      .insert({
+        round_number: roundNumber,
+        status: 'SETTLED',
+        dragon_card: roundResult.dragonCard || null,
+        tiger_card: roundResult.tigerCard || null,
+        winner: roundResult.winner || null,
+        dealt_at: new Date().toISOString(),
+        settled_at: new Date().toISOString(),
+      })
+      .select('id')
+      .maybeSingle()
+
+    if (roundError) {
+      // If concurrent insert occurred, fetch it
+      const { data: retryRound } = await supabase
+        .from('dragon_tiger_rounds')
+        .select('id')
+        .eq('round_number', roundNumber)
+        .maybeSingle()
+      if (retryRound?.id) {
+        round = retryRound
+      } else {
+        throw new Error(`Failed to persist Dragon Tiger round: ${roundError.message}`)
+      }
+    } else {
+      round = newRound
+    }
+  }
+
+  if (!round?.id) {
+    throw new Error('Failed to resolve Dragon Tiger round record')
+  }
   const { data, error } = await supabase
     .from('dragon_tiger_bets')
     .insert({

@@ -59,6 +59,12 @@ export default function WithdrawModal({ isOpen, onClose, user, walletBalance, on
       return
     }
 
+    const pendingItem = historyList.find((w) => w.status === 'PENDING')
+    if (pendingItem) {
+      setError(`You already have a pending withdrawal of ₹${pendingItem.amount} via ${pendingItem.payout_method}. Please wait until it is processed.`)
+      return
+    }
+
     if (numAmount > walletBalance) {
       setError(`Insufficient balance. Available: ₹${walletBalance}`)
       return
@@ -181,6 +187,36 @@ export default function WithdrawModal({ isOpen, onClose, user, walletBalance, on
               </div>
             )}
 
+            {(() => {
+              const pending = historyList.find((w) => w.status === 'PENDING')
+              if (pending) {
+                return (
+                  <div
+                    className="alert-banner alert-warning"
+                    style={{
+                      background: 'rgba(245, 158, 11, 0.12)',
+                      border: '1px solid rgba(245, 158, 11, 0.35)',
+                      color: '#f59e0b',
+                      borderRadius: '10px',
+                      padding: '10px 14px',
+                      marginBottom: '12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    <Clock size={16} style={{ flexShrink: 0 }} />
+                    <span>
+                      Active Pending Request: ₹{Number(pending.amount).toLocaleString('en-IN')} via {pending.payout_method}. New requests are locked until this is processed.
+                    </span>
+                  </div>
+                )
+              }
+              return null
+            })()}
+
             {successMsg && (
               <div className="alert-banner alert-success">
                 <CheckCircle2 size={16} />
@@ -300,17 +336,25 @@ export default function WithdrawModal({ isOpen, onClose, user, walletBalance, on
             </div>
 
             {/* Submit Button */}
-            <button
-              type="submit"
-              className="submit-withdraw-btn"
-              disabled={loading || Number(amount) > walletBalance}
-            >
-              {loading ? (
-                <span>Submitting Request...</span>
-              ) : (
-                <span>Request Payout of ₹{Number(amount || 0).toLocaleString('en-IN')}</span>
-              )}
-            </button>
+            {(() => {
+              const pending = historyList.find((w) => w.status === 'PENDING')
+              return (
+                <button
+                  type="submit"
+                  className="submit-withdraw-btn"
+                  disabled={loading || !!pending || Number(amount) > walletBalance}
+                  style={pending ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
+                >
+                  {loading ? (
+                    <span>Submitting Request...</span>
+                  ) : pending ? (
+                    <span>Pending Request in Progress (Locked)</span>
+                  ) : (
+                    <span>Request Payout of ₹{Number(amount || 0).toLocaleString('en-IN')}</span>
+                  )}
+                </button>
+              )
+            })()}
           </form>
         )}
       </div>

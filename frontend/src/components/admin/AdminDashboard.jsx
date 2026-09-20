@@ -78,8 +78,8 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated, on
     try {
       const matrix = await fetchAdminMatrix()
       setMatrixData(matrix)
-    } catch (err) {
-      console.error('[Admin Matrix Error]:', err)
+    } catch {
+      // Handled silently
     } finally {
       setLoading(false)
     }
@@ -92,8 +92,8 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated, on
     try {
       const res = await fetchAdminBetsLedger({ limit: 100 })
       setBetsList(res.bets || [])
-    } catch (err) {
-      console.error('[Admin Bets Error]:', err)
+    } catch {
+      // Handled silently
     } finally {
       setLoading(false)
     }
@@ -106,8 +106,8 @@ export function AdminDashboard({ isOpen, onClose, currentUser, onUserUpdated, on
     try {
       const users = await fetchAdminUsers(searchUser)
       setUsersList(users || [])
-    } catch (err) {
-      console.error('[Admin Users Error]:', err)
+    } catch {
+      // Handled silently
     } finally {
       setLoading(false)
     }

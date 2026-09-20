@@ -206,8 +206,12 @@ export function validateBetPlacement(req, res, next) {
 }
 
 export function validateWithdrawalRequest(req, res, next) {
-  const { amount, payoutMethod, upiId, bankDetails } = req.body
-  const authUserId = req.user ? req.user.id : req.body.userId
+  const body = req.body || {}
+  const amount = body.amount
+  const payoutMethod = body.payoutMethod
+  const upiId = body.upiId || body.payoutDetails?.upiId
+  const bankDetails = body.bankDetails || (body.payoutDetails?.accountNumber ? body.payoutDetails : null)
+  const authUserId = req.user ? req.user.id : body.userId
 
   if (!authUserId || typeof authUserId !== 'string') {
     return res.status(401).json({ error: 'Authenticated user session is required' })

@@ -35,8 +35,8 @@ export function TransactionModal({ isOpen, onClose, userId, currentUser }) {
       setLoading(true)
       const data = await fetchWalletTransactions(userId)
       setTransactions(Array.isArray(data) ? data : [])
-    } catch (err) {
-      console.error('[TransactionModal] Failed to load ledger:', err)
+    } catch {
+      // Handled silently
     } finally {
       setLoading(false)
     }
@@ -49,8 +49,8 @@ export function TransactionModal({ isOpen, onClose, userId, currentUser }) {
     try {
       const data = await fetchWalletTransactions(userId)
       setTransactions(Array.isArray(data) ? data : [])
-    } catch (err) {
-      console.error('[TransactionModal] Refresh failed:', err)
+    } catch {
+      // Handled silently
     } finally {
       setTimeout(() => setRefreshing(false), 600)
     }

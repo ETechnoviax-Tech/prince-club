@@ -92,6 +92,18 @@ export const paymentLockMiddleware = async (req, res, next) => {
     res.once('finish', releaseLock);
     res.once('close', releaseLock);
 
+    const origJson = res.json.bind(res);
+    res.json = (body) => {
+        releaseLock();
+        return origJson(body);
+    };
+
+    const origSend = res.send.bind(res);
+    res.send = (body) => {
+        releaseLock();
+        return origSend(body);
+    };
+
     next();
 };
 

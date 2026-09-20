@@ -12514,14 +12514,14 @@ html, body, #root {
   color: #ff4d4f !important;
 }
 
-/* Inputs & Form Elements */
-input, select, textarea {
+/* Inputs & Form Elements (exclude dark gaming inputs) */
+input:not(.spribe-amount-input):not(.spribe-auto-mult-input):not([type="checkbox"]):not([type="radio"]), select, textarea {
   background: #ffffff !important;
   color: #111827 !important;
   border: 1px solid #e2e8f0 !important;
 }
 
-input::placeholder {
+input:not(.spribe-amount-input):not(.spribe-auto-mult-input)::placeholder {
   color: #9ca3af !important;
 }
 

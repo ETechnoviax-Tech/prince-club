@@ -387,7 +387,7 @@ export async function updateUserRole(req, res) {
       if (!prof) return res.status(404).json({ error: 'User not found' })
       prof.role = role
       prof.is_admin = isAdmin
-      saveProfilesToDisk()
+      await saveProfilesToDisk()
     }
 
     return res.json({ success: true, message: `User role updated to ${role}`, userId: id, role, isAdmin })
@@ -413,7 +413,7 @@ export async function updateUserStatus(req, res) {
       const prof = memoryProfiles.get(id)
       if (!prof) return res.status(404).json({ error: 'User not found' })
       prof.status = status
-      saveProfilesToDisk()
+      await saveProfilesToDisk()
     }
 
     return res.json({ success: true, message: `User status set to ${status}`, userId: id, status })
@@ -442,8 +442,8 @@ export async function deleteUser(req, res) {
         if (prof.email) memoryCredentials.delete(prof.email)
         memoryProfiles.delete(id)
         memoryWallets.delete(id)
-        saveProfilesToDisk()
-        saveCredentialsToDisk()
+        await saveProfilesToDisk()
+        await saveCredentialsToDisk()
       }
     }
 
@@ -491,7 +491,7 @@ export async function promoteOrSeedAdmin(req, res) {
         ) {
           prof.role = 'admin'
           prof.is_admin = true
-          saveProfilesToDisk()
+          await saveProfilesToDisk()
           found = prof
           break
         }

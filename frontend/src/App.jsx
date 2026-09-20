@@ -637,9 +637,8 @@ export function App() {
         if (!isCancelled && walData?.wallet?.balance !== undefined) {
           setBalance(Number(walData.wallet.balance))
         }
-      } catch (err) {
+      } catch {
         if (!isCancelled) {
-          console.warn('[Session Boot Check]: Invalid session, returning to Auth Gate')
           handleLogout()
         }
       }
@@ -666,9 +665,6 @@ export function App() {
 
   // Results and settlements are supplied by the live provider only.
   const settleCurrentRound = useCallback(() => {
-    if (betsRef.current.length === 0) {
-      console.log('[Win Go Debug] Period settled without user bets:', roundNumber)
-    }
     return undefined
   }, [roundNumber])
 
@@ -701,7 +697,6 @@ export function App() {
   // Open bet sheet
   const handleSelectTarget = (type, val, multiplier) => {
     if (!currentUser) {
-      console.log('[Win Go Bet Debug] Target clicked without login')
       setToast({
         type: 'warning',
         title: 'Login Required',
@@ -713,7 +708,6 @@ export function App() {
     }
 
     if (isLocked || seconds <= activeLevel.lock) {
-      console.log('[Win Go Bet Debug] Target clicked during lock period')
       setToast({
         type: 'warning',
         title: 'Round Locked',
@@ -745,7 +739,6 @@ export function App() {
     }
 
     if (isLocked || seconds <= activeLevel.lock) {
-      console.log('[Win Go Bet Debug] Confirm bet blocked: period locked')
       setToast({
         type: 'warning',
         title: 'Round Locked',
@@ -765,7 +758,6 @@ export function App() {
     }
 
     if (totalBetAmount > balance) {
-      console.log('[Win Go Bet Debug] Insufficient balance:', { totalBetAmount, balance })
       setToast({
         type: 'loss',
         title: 'Insufficient Balance',
@@ -787,14 +779,6 @@ export function App() {
       outcome: null,
       createdAt: 'Just now',
     }
-
-    console.log('[Win Go Bet Debug] Placing bet:', {
-      user: currentUser?.username,
-      round: roundNumber,
-      target: selectedTarget,
-      amount: totalBetAmount,
-      balance,
-    })
 
     setIsPlacingBet(true)
     // Try backend placeBet
@@ -827,14 +811,12 @@ export function App() {
           ? selectedTarget.val.toUpperCase()
           : 'Number ' + selectedTarget.val
 
-      console.log('[Win Go Bet Debug] Bet confirmed successfully:', newBet)
       setToast({
         type: 'success',
         title: 'Bet Placed Successfully',
         detail: `₹${formatCredits(totalBetAmount)} on ${targetLabel} (${selectedMode})`,
       })
     } catch (err) {
-      console.error('[Win Go Bet Debug] Bet placement error:', err)
       setToast({
         type: 'loss',
         title: 'Bet Rejected',

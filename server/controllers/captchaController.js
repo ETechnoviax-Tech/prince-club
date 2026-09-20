@@ -17,7 +17,7 @@ function sign(payload) {
   return `${encoded}.${signature}`
 }
 
-export function issueCaptcha(req, res) {
+export async function issueCaptcha(req, res) {
   const id = crypto.randomUUID()
   const challenge = {
     id,

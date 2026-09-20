@@ -351,8 +351,19 @@ export async function placeBet(userId, selection, amount, arg4 = null, arg5 = nu
   return json
 }
 
-export async function requestWithdrawal(userId, { amount, payoutMethod = 'UPI', upiId, bankDetails }) {
-  // Always send payoutDetails as a proper nested object so server can store it correctly
+export async function requestWithdrawal(arg1, arg2) {
+  let targetUserId = arg1
+  let options = arg2 || {}
+
+  if (typeof arg1 === 'object' && arg1 !== null) {
+    targetUserId = arg1.userId
+    options = arg1
+  }
+
+  const { amount, payoutMethod = 'UPI' } = options
+  const upiId = options.upiId || options.accountDetails?.upiId
+  const bankDetails = options.bankDetails || (payoutMethod === 'BANK' ? options.accountDetails : null)
+
   const payoutDetails = upiId
     ? { upiId }
     : bankDetails
@@ -363,11 +374,10 @@ export async function requestWithdrawal(userId, { amount, payoutMethod = 'UPI', 
     method: 'POST',
     headers: authHeaders(),
     body: JSON.stringify({
-      userId,
+      userId: targetUserId,
       amount,
       payoutMethod,
       payoutDetails,
-      // Also send flat fields for backward-compat with any legacy server path
       upiId: upiId || undefined,
       bankDetails: bankDetails || undefined,
     }),
@@ -439,11 +449,11 @@ export async function fetchAviatorState(userId = null) {
   return res.json()
 }
 
-export async function placeAviatorBet(userId, amount, autoCashout = null) {
+export async function placeAviatorBet(userId, amount, autoCashout = null, panelId = 0) {
   const res = await apiFetch(`${API_BASE}/game/aviator/bet`, {
     method: 'POST',
     headers: authHeaders(),
-    body: JSON.stringify({ userId, amount, autoCashout }),
+    body: JSON.stringify({ userId, amount, autoCashout, panelId }),
     timeoutMs: 8000,
   }, 'Placing Aviator bet...', false)
   const json = await res.json().catch(() => ({}))

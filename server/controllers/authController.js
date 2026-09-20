@@ -16,10 +16,10 @@ export const memoryProfiles = new Map()
 export const memoryCredentials = new Map() // id/username/email -> passwordHash
 export const resetCodes = new Map() // identity -> { code, expiresAt }
 
-export function loadCredentialsFromDisk() {
+export async function loadCredentialsFromDisk() {
   try {
-    if (fs.existsSync(CREDENTIALS_FILE)) {
-      const raw = fs.readFileSync(CREDENTIALS_FILE, 'utf8')
+    const raw = await fs.promises.readFile(CREDENTIALS_FILE, 'utf8').catch(() => null)
+    if (raw) {
       const parsed = JSON.parse(raw)
       for (const [k, v] of Object.entries(parsed)) {
         memoryCredentials.set(k, v)
@@ -30,19 +30,19 @@ export function loadCredentialsFromDisk() {
   }
 }
 
-export function saveCredentialsToDisk() {
+export async function saveCredentialsToDisk() {
   try {
     const obj = Object.fromEntries(memoryCredentials.entries())
-    fs.writeFileSync(CREDENTIALS_FILE, JSON.stringify(obj, null, 2), 'utf8')
+    await fs.promises.writeFile(CREDENTIALS_FILE, JSON.stringify(obj, null, 2), 'utf8')
   } catch (err) {
     console.warn('[Credentials] Failed to save credentials to disk:', err.message)
   }
 }
 
-export function loadProfilesFromDisk() {
+export async function loadProfilesFromDisk() {
   try {
-    if (fs.existsSync(PROFILES_FILE)) {
-      const raw = fs.readFileSync(PROFILES_FILE, 'utf8')
+    const raw = await fs.promises.readFile(PROFILES_FILE, 'utf8').catch(() => null)
+    if (raw) {
       const parsed = JSON.parse(raw)
       for (const [k, v] of Object.entries(parsed)) {
         memoryProfiles.set(k, v)
@@ -53,18 +53,19 @@ export function loadProfilesFromDisk() {
   }
 }
 
-export function saveProfilesToDisk() {
+export async function saveProfilesToDisk() {
   try {
     const obj = Object.fromEntries(memoryProfiles.entries())
-    fs.writeFileSync(PROFILES_FILE, JSON.stringify(obj, null, 2), 'utf8')
+    await fs.promises.writeFile(PROFILES_FILE, JSON.stringify(obj, null, 2), 'utf8')
   } catch (err) {
     console.warn('[Profiles] Failed to save profiles to disk:', err.message)
   }
 }
 
-// Load on boot
-loadCredentialsFromDisk()
-loadProfilesFromDisk()
+// Load on boot (async non-blocking)
+loadCredentialsFromDisk().catch(() => {})
+loadProfilesFromDisk().catch(() => {})
+
 
 export function hashPassword(password) {
   return crypto.createHash('sha256').update(String(password) + '_prince_salt_2026_vault').digest('hex')
@@ -296,7 +297,7 @@ export async function register(req, res) {
         memoryCredentials.set(`91${cleanUsername}`, hashed)
       }
       if (cleanEmail) memoryCredentials.set(cleanEmail, hashed)
-      saveCredentialsToDisk()
+      await saveCredentialsToDisk()
 
       const startingBal = referralCode ? 1200.0 : 1000.0
       await supabase.from('wallets').insert({
@@ -347,8 +348,8 @@ export async function register(req, res) {
       memoryCredentials.set(`91${cleanUsername}`, hashed)
     }
     if (cleanEmail) memoryCredentials.set(cleanEmail, hashed)
-    saveCredentialsToDisk()
-    saveProfilesToDisk()
+    await saveCredentialsToDisk()
+    await saveProfilesToDisk()
 
     const token = generateToken({
       id: profile.id,
@@ -658,7 +659,7 @@ export async function resetPassword(req, res) {
     }
 
     memoryCredentials.set(cleanId, newHash)
-    saveCredentialsToDisk()
+    await saveCredentialsToDisk()
     resetCodes.delete(cleanId)
 
     return res.json({

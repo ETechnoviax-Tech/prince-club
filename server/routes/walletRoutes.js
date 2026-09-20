@@ -27,8 +27,8 @@ router.post(
   '/withdraw',
   requireAuth,
   withdrawalRateLimit,
-  paymentLockMiddleware,
   idempotencyMiddleware,
+  paymentLockMiddleware,
   validateWithdrawalRequest,
   requestWithdrawal
 )

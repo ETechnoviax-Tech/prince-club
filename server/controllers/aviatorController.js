@@ -406,7 +406,7 @@ async function settleCashout(bet, multiplier) {
 }
 
 // 1. Get Live Aviator State (Broadcast to all connected players)
-export function getAviatorState(req, res) {
+export async function getAviatorState(req, res) {
   const now = Date.now()
   let currentMultiplier = 1.0
   let remainingMs = 0
@@ -440,6 +440,7 @@ export function getAviatorState(req, res) {
       if (b.userId === authUserId) {
         userBets.push({
           id: b.id,
+          panelId: b.panelId !== undefined ? b.panelId : 0,
           amount: b.amount,
           autoCashout: b.autoCashout,
           status: b.status,
@@ -477,7 +478,8 @@ export function getAviatorState(req, res) {
 // 2. Place Bet with Per-User Concurrency Mutex
 export async function placeAviatorBet(req, res) {
   const authUserId = req.user ? req.user.id : req.body.userId
-  const { amount, autoCashout } = req.body
+  const { amount, autoCashout, panelId: rawPanelId } = req.body
+  const panelId = (rawPanelId === 1 || rawPanelId === '1') ? 1 : 0
 
   if (!authUserId) {
     return res.status(401).json({ error: 'User authentication required' })
@@ -511,10 +513,11 @@ export async function placeAviatorBet(req, res) {
         return res.status(400).json({ error: 'Round has already taken off' })
       }
 
-      // Strictly prevent double bets: check if user already has an active bet for this round
+      // Strictly prevent double bets on the SAME panel: check if user already has an active bet on this panel
       for (const b of state.bets.values()) {
-        if (b.userId === authUserId && b.roundId === state.roundId && (b.status === 'ACTIVE' || b.status === 'PLACED')) {
-          return res.status(409).json({ error: 'You already have an active bet placed for this round' })
+        const betPanel = b.panelId !== undefined ? b.panelId : 0
+        if (b.userId === authUserId && b.roundId === state.roundId && betPanel === panelId && (b.status === 'ACTIVE' || b.status === 'PLACED')) {
+          return res.status(409).json({ error: `You already have an active bet placed on panel ${panelId + 1} for this round` })
         }
       }
 
@@ -593,6 +596,7 @@ export async function placeAviatorBet(req, res) {
       const betRecord = {
         id: betId,
         userId: authUserId,
+        panelId,
         amount: numAmount,
         autoCashout: cleanAuto,
         status: 'ACTIVE',
@@ -607,6 +611,7 @@ export async function placeAviatorBet(req, res) {
       return res.json({
         success: true,
         betId,
+        panelId,
         roundId: state.roundId,
         amount: numAmount,
         autoCashout: cleanAuto,
@@ -777,7 +782,7 @@ export async function cancelAviatorBet(req, res) {
 }
 
 // 5. Get History
-export function getAviatorHistory(req, res) {
+export async function getAviatorHistory(req, res) {
   return res.json({
     history: state.history,
   })

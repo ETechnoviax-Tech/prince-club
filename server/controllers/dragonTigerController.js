@@ -7,7 +7,7 @@ import { persistDragonTigerBet } from '../db/gamePersistence.js'
 
 const localWallets = new Map()
 
-export function getDragonTigerStatus(req, res) {
+export async function getDragonTigerStatus(req, res) {
   try {
     const state = getDragonTigerState()
     return res.json({ success: true, ...state })

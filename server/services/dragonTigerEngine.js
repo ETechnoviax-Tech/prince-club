@@ -46,7 +46,7 @@ function createShoe() {
 }
 
 let currentShoe = createShoe()
-let roundNumber = 1001
+let roundNumber = Math.floor(Date.now() / 1000)
 let roundTimeLeft = 10
 let roundStatus = 'BETTING' // 'BETTING' | 'SHOWDOWN'
 let lastRoundResult = null

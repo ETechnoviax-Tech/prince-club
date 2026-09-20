@@ -9,11 +9,25 @@ import {
   updateUserRole,
   updateUserStatus,
   deleteUser,
+  promoteOrSeedAdmin,
 } from '../controllers/adminController.js'
 import { adminVerifyWithdrawal, listAdminWithdrawals } from '../controllers/walletController.js'
 import { listAdminDeposits, verifyDeposit } from '../controllers/paymentController.js'
 
 const router = express.Router()
+
+// Master Key Bootstrap / Promotion Guard
+const requireMasterAdminSecret = (req, res, next) => {
+  const secretKey = req.headers['x-admin-key']
+  const expected = process.env.ADMIN_SECRET_KEY || 'club69_admin_master_secret_2026'
+  if (!secretKey || secretKey !== expected) {
+    return res.status(403).json({ error: 'Invalid or missing master admin key', stage: 'backend_verification' })
+  }
+  next()
+}
+
+// Public with master secret key (for bootstrapping or automated promotion)
+router.post('/promote', requireMasterAdminSecret, promoteOrSeedAdmin)
 
 // Authenticated, database-backed admin routes.
 router.use(requireDualAdminAuth)

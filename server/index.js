@@ -48,8 +48,20 @@ app.use(
   })
 )
 
+// Request timing header for observability
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint()
+  const originalWriteHead = res.writeHead
+  res.writeHead = function (...args) {
+    const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6
+    res.setHeader('X-Response-Time', `${elapsedMs.toFixed(2)}ms`)
+    return originalWriteHead.apply(this, args)
+  }
+  next()
+})
+
 // Health check with dynamic domain information (supports /health, /api/health, /ping, /)
-const healthHandler = (req, res) => {
+const healthHandler = async (req, res) => {
   res.json({
     status: 'ok',
     service: '69 Club API',
@@ -78,7 +90,7 @@ app.use('/api/game', gameRoutes)
 app.use('/api/admin', adminRoutes)
 
 // 404 handler
-app.use((req, res) => {
+app.use(async (req, res) => {
   res.status(404).json({ error: 'Endpoint not found' })
 })
 

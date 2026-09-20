@@ -84,7 +84,5 @@ export function initAntiInspect(onBlockedAttempt) {
         console.clear()
       }
     }, 1500)
-  } catch {}
-
-  console.log('[69 Club Shield]: Anti-Inspect Protection Engine active.')
+  } catch { }
 }

@@ -353,7 +353,7 @@ if (gameLoopInterval?.unref) {
 }
 
 // ─── 1. Current Round State (Multi-Mode aware) ────────────────────────────────
-export function getCurrentRound(req, res) {
+export async function getCurrentRound(req, res) {
   const rawMode = req.query.mode || req.body?.mode || 'PARITY'
   const modeKey = String(rawMode).trim().toUpperCase()
   const cfg = GAME_MODES[modeKey] || GAME_MODES.PARITY

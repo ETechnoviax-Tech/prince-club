@@ -108,7 +108,7 @@ export async function handleSlotSpin(req, res) {
   }
 }
 
-export function getSlotConfig(req, res) {
+export async function getSlotConfig(req, res) {
   try {
     const { gameId = 'crazy777' } = req.params
     return res.json({

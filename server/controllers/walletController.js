@@ -150,7 +150,75 @@ export async function requestWithdrawal(req, res) {
       return res.status(400).json({ error: 'Valid userId and minimum amount ₹100 required' })
     }
 
+    const targetUpi = (payoutDetails.upiId || '').trim().toLowerCase()
+    const targetAccount = (payoutDetails.accountNumber || '').trim()
+
+    // 1. Check if user already has an active pending withdrawal in memory
+    for (const w of memoryWithdrawals.values()) {
+      if (w.user_id === userId && w.status === 'PENDING') {
+        return res.status(409).json({
+          error: `You already have a pending withdrawal request of ₹${w.amount} via ${w.payout_method}. Please wait until it is processed.`,
+          pendingWithdrawal: w
+        })
+      }
+      // Check if duplicate UPI or Bank account is already pending across any user
+      if (w.status === 'PENDING') {
+        const det = w.payout_details || {}
+        if (targetUpi && (det.upiId || '').trim().toLowerCase() === targetUpi) {
+          return res.status(409).json({
+            error: 'A withdrawal request for this UPI ID is already pending. Please wait for completion.'
+          })
+        }
+        if (targetAccount && (det.accountNumber || '').trim() === targetAccount) {
+          return res.status(409).json({
+            error: 'A withdrawal request for this Bank Account is already pending. Please wait for completion.'
+          })
+        }
+      }
+    }
+
     if (isSupabaseConfigured) {
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)
+      if (isUuid) {
+        // Check if user has an active pending withdrawal in DB
+        const { data: existingUserPending } = await supabase
+          .from('withdrawal_requests')
+          .select('id, amount, payout_method, created_at')
+          .eq('user_id', userId)
+          .eq('status', 'PENDING')
+          .limit(1)
+
+        if (existingUserPending && existingUserPending.length > 0) {
+          const pending = existingUserPending[0]
+          return res.status(409).json({
+            error: `You already have a pending withdrawal request of ₹${pending.amount} via ${pending.payout_method}. Please wait until it is processed.`,
+            pendingWithdrawal: pending
+          })
+        }
+
+        // Check if destination UPI or Bank is pending in DB
+        if (targetUpi || targetAccount) {
+          const { data: dbPending } = await supabase
+            .from('withdrawal_requests')
+            .select('id, payout_details')
+            .eq('status', 'PENDING')
+            .limit(100)
+
+          if (dbPending) {
+            if (targetUpi && dbPending.some(p => ((p.payout_details?.upiId || '').trim().toLowerCase() === targetUpi))) {
+              return res.status(409).json({
+                error: 'A withdrawal request for this UPI ID is already pending. Please wait for completion.'
+              })
+            }
+            if (targetAccount && dbPending.some(p => ((p.payout_details?.accountNumber || '').trim() === targetAccount))) {
+              return res.status(409).json({
+                error: 'A withdrawal request for this Bank Account is already pending. Please wait for completion.'
+              })
+            }
+          }
+        }
+      }
+
       // 1. Try atomic stored procedure for concurrency & race-condition safety
       try {
         const { data: rpcRes, error: rpcErr } = await supabase.rpc('request_withdrawal_atomic', {

@@ -12,7 +12,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **In-House Slots**: Native slots including Crazy 777 (with 4th bonus reel), Fortune Gems (with 15x multiplier wheel), and Super Ace (243 ways).
 - **Lottery Games**: Live period rounds across Win Go (30s, 1m, 3m, 5m) synchronized with official live draw streams, K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
   - **Simplified Win Go Betting**: Clear stake → market → confirmation flow with visible payout and number-range labels.
-- **Real-Time Aviator Crash Game**: Authoritative Spribe-style multiplayer crash game with per-user concurrency mutex locks, 1-bet-per-round anti-double-click protection, 60 FPS interpolated flight curves, pre-flight bet cancellations, server-reconciled auto-cashouts, and high-contrast dark cockpit styling.
+- **Real-Time Aviator Crash Arena**: Authentic Spribe mobile radar crash interface with 69 Club branding, dual independent betting decks (Panel 1 & Panel 2), 60 FPS HTML5 Canvas propeller flight curve, real-time multiplier counter, live cashouts, pre-flight cancellations, auto-cashout, and provably fair cryptographic SHA-256 verification.
 - **Private Admin Management & Risk Matrix**:
   - **Server-Authoritative Admin Security**: The dedicated `/admin` route requires an authenticated bearer session and a live database `admin` role on every request. No admin secret is accepted from the browser.
   - **Live Bet Distribution Matrix**: Real-time aggregation of bet volumes across Color markets (Red, Green, Violet), Size markets (Big, Small), and individual Digits (0 to 9).
@@ -21,7 +21,8 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **Bets & Winners Ledger**: Detailed tracking of all placed bets, targets, wager amounts, winning outcomes, and exact payouts.
   - **Users Management (CRUD)**: Search users, adjust balances (credit/debit with audit trail), switch roles (`user`/`admin`), freeze accounts, and safely delete accounts.
   - **Payments & Settlements Queue**: Review and verify deposits and payout withdrawals with inline confirmation panels, custom admin notes, and automated balance reconciliation.
-- **Production-Grade Payment Gateway**:
+- **Production-Grade Payment Gateway & Withdrawal Locks**:
+  - **Duplicate & Concurrent Withdrawal Prevention**: Strictly blocks double submissions; users with an existing `PENDING` withdrawal cannot initiate another until completed. Rejects duplicate destination UPI VPAs or Bank Account Numbers concurrently across requests.
   - **Idempotency Layer**: Duplicate request prevention via `Idempotency-Key` headers (fast-path in-memory LRU + persistent DB cache).
   - **Per-User Mutex**: Prevents race conditions and double-click deductions on concurrent withdrawals or deposits.
   - **Signed Webhooks**: Ingests provider notifications with HMAC-SHA256 signature verification (`x-webhook-signature`) and replay attack deduplication.
@@ -40,6 +41,8 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
 - **Universal Site Loading Spinner & Top Progress Bar**: Automated API interceptor driving a sleek neon gradient top progress bar during network operations and a branded double-ring spinner overlay for high-friction workflows.
 - **Audio Isolation & Sound Shield**: Zero background sounds or countdown ticks for unauthenticated visitors, authentication modals, or non-active game viewports; game audio only initializes for logged-in players inside active game arenas.
 - **Bonus & Activity System**: Daily attendance streak rewards, gift redemption codes, betting rebates, and daily fortune wheel spins.
+- **100% Asynchronous & Non-Blocking Architecture**: All HTTP controllers, background routines, and disk persistence use `async/await` and `fs.promises` with zero synchronous event-loop blocking, instrumented with high-precision response timing headers (`X-Response-Time`).
+- **Zero-Leak Production Logging**: Automated build-time stripping of all `console` and `debugger` calls via Vite 8 and Oxc minifier; sandbox verification codes and internal debug routines are strictly isolated behind non-production environment checks.
 - **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, iOS Safe Area insets, touch targets, and desktop-centered canvas.
 
 ---
