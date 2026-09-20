@@ -10,8 +10,8 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **Mines**: 5x5 tile grid with 1–24 configurable mines, multiplier ladder, and real-time cashout.
   - **Dragon vs Tiger**: 2-card table duel with an 8-deck shoe simulation, 10s countdown intervals, and bead plate roadmap history.
   - **In-House Slots**: Native slots including Crazy 777 (with 4th bonus reel), Fortune Gems (with 15x multiplier wheel), and Super Ace (243 ways).
-- **Lottery Games**: Live period rounds across Win Go (30s, 1m, 3m, 5m) synchronized with official live draw streams, K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
-  - **Simplified Win Go Betting**: Clear stake → market → confirmation flow with visible payout and number-range labels.
+- **Lottery Games**: Live period rounds across Win Go (30s, 1m, 3m, 5m) synchronized with official live draw streams with dual-provider failover, resilient caching, and circuit-breaker protection, K3 (3-dice sum matrix), 5D (5 animated reels), and TRX Win Go (Tron blockchain hash verification).
+  - **Authentic Win Go Casino Experience**: Deep royal purple casino palette with 69 Club branding, giant circular radar countdown animation, and bet-dependent settlement popup (Golden Congratulations celebration with celebratory fanfares for wins, dark purple card for losses, zero popups when no bet was placed in the round).
 - **Real-Time Aviator Crash Arena**: Authentic Spribe mobile radar crash interface with 69 Club branding, dual independent betting decks (Panel 1 & Panel 2), 60 FPS HTML5 Canvas propeller flight curve, real-time multiplier counter, live cashouts, pre-flight cancellations, auto-cashout, and provably fair cryptographic SHA-256 verification.
 - **Private Admin Management & Risk Matrix**:
   - **Server-Authoritative Admin Security**: The dedicated `/admin` route requires an authenticated bearer session and a live database `admin` role on every request. No admin secret is accepted from the browser.
@@ -43,7 +43,8 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
 - **Bonus & Activity System**: Daily attendance streak rewards, gift redemption codes, betting rebates, and daily fortune wheel spins.
 - **100% Asynchronous & Non-Blocking Architecture**: All HTTP controllers, background routines, and disk persistence use `async/await` and `fs.promises` with zero synchronous event-loop blocking, instrumented with high-precision response timing headers (`X-Response-Time`).
 - **Zero-Leak Production Logging**: Automated build-time stripping of all `console` and `debugger` calls via Vite 8 and Oxc minifier; sandbox verification codes and internal debug routines are strictly isolated behind non-production environment checks.
-- **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, iOS Safe Area insets, touch targets, and desktop-centered canvas.
+- **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, iOS Safe Area insets, touch targets, zero desktop scrollbar gutter, and symmetrically centered desktop luxury canvas.
+- **Fullscreen Gaming View**: Bottom navigation automatically unmounts when entering any game (Win Go, Aviator, K3, 5D, TRX, Mines, Dragon Tiger, Slots) to maximize vertical play area; players seamlessly return to the lobby via the in-game header back button or native device system back navigation.
 
 ---
 

@@ -51,6 +51,7 @@ import { TransactionModal } from './components/TransactionModal'
 import WithdrawModal from './components/WithdrawModal'
 
 import HomeLobby from './components/HomeLobby'
+import WingoGame from './components/WingoGame'
 import AviatorGame from './components/AviatorGame'
 import K3Game from './components/K3Game'
 import FiveDGame from './components/FiveDGame'
@@ -206,13 +207,14 @@ if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
 
 export function App() {
   // Navigation & Core State
-  const [activeTab, setActiveTab] = useState(() => localStorage.getItem('club69_active_tab') || 'win') // 'win', 'trend', 'wallet', 'rules'
+  const [activeTab, setActiveTab] = useState('win')
   const [activeSubTab, setActiveSubTab] = useState(() => localStorage.getItem('club69_active_subtab') || 'record') // 'record', 'chart', 'mybets'
   const [depositModalOpen, setDepositModalOpen] = useState(false)
   const [isMuted, setIsMuted] = useState(sound.isMuted)
   const [serverOnline, setServerOnline] = useState(false)
   const [currentGame, setCurrentGame] = useState(() => localStorage.getItem('club69_current_game') || null) // null = lobby
   const [activeNav, setActiveNav] = useState(() => localStorage.getItem('club69_active_nav') || 'home')
+  const [returnGame, setReturnGame] = useState(null)
   const [fortuneWheelOpen, setFortuneWheelOpen] = useState(false)
   const [activeThirdPartyGame, setActiveThirdPartyGame] = useState(null)
 
@@ -304,7 +306,7 @@ export function App() {
   }, [activeTab, activeSubTab, selectedMode, activeNav, currentGame])
 
   useEffect(() => {
-    localStorage.setItem('club69_active_tab', activeTab)
+    localStorage.removeItem('club69_active_tab')
     localStorage.setItem('club69_active_subtab', activeSubTab)
     localStorage.setItem('club69_selected_mode', selectedMode)
     localStorage.setItem('club69_active_nav', activeNav)
@@ -398,6 +400,44 @@ export function App() {
     }
   }
 
+  const handleOpenDeposit = (fromGame = null) => {
+    if (!currentUser) {
+      setToast({
+        type: 'warning',
+        title: 'Login Required',
+        detail: 'Please sign in to your 69 Club account to deposit funds.',
+      })
+      setAuthMode('login')
+      setAuthModalOpen(true)
+      return
+    }
+    if (fromGame) {
+      setReturnGame(fromGame)
+      setCurrentGame(null)
+    }
+    setActiveNav('deposit')
+    sound.playTick()
+  }
+
+  const handleOpenWithdraw = (fromGame = null) => {
+    if (!currentUser) {
+      setToast({
+        type: 'warning',
+        title: 'Login Required',
+        detail: 'Please sign in to your 69 Club account to withdraw funds.',
+      })
+      setAuthMode('login')
+      setAuthModalOpen(true)
+      return
+    }
+    if (fromGame) {
+      setReturnGame(fromGame)
+      setCurrentGame(null)
+    }
+    setActiveNav('withdraw')
+    sound.playTick()
+  }
+
   const [balance, setBalance] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
@@ -432,6 +472,9 @@ export function App() {
   const [phase, setPhase] = useState('locked') // Server-authoritative only
   const [lastOutcome, setLastOutcome] = useState(null)
   const [history, setHistory] = useState([])
+  const [resultModalData, setResultModalData] = useState(null)
+  const [resultModalCountdown, setResultModalCountdown] = useState(3)
+  const lastSettledIssueRef = useRef(null)
 
   // Betting Sheet (Mobile Drawer) State
   const [betSheetOpen, setBetSheetOpen] = useState(false)
@@ -447,6 +490,21 @@ export function App() {
   const SELECTED_TO_GAME_MODE = { PARITY: '30s', SAPRE: '1m', BCONE: '3m', EMERD: '5m' }
   const GAME_MODE_TO_SELECTED = { '30s': 'PARITY', '1m': 'SAPRE', '3m': 'BCONE', '5m': 'EMERD' }
   const gameMode = SELECTED_TO_GAME_MODE[selectedMode] || '30s'
+
+  // Win Go My Bets — Strictly isolate Win Go bets from other games (Aviator, Slots, Mines, etc.)
+  const [wingoBetModeFilter, setWingoBetModeFilter] = useState('ALL')
+  const wingoBets = useMemo(() => {
+    const WINGO_MODES = new Set(['PARITY', 'SAPRE', 'BCONE', 'EMERD', 'WINGO'])
+    return bets.filter((b) => {
+      const m = String(b.gameMode || '').toUpperCase()
+      return WINGO_MODES.has(m) || m.includes('WINGO')
+    })
+  }, [bets])
+
+  const displayedWingoBets = useMemo(() => {
+    if (wingoBetModeFilter === 'ALL') return wingoBets
+    return wingoBets.filter((b) => String(b.gameMode || '').toUpperCase() === wingoBetModeFilter)
+  }, [wingoBets, wingoBetModeFilter])
 
   // Toast & Notifications
   const [toast, setToast] = useState(null)
@@ -521,6 +579,19 @@ export function App() {
     return () => clearTimeout(timer)
   }, [toast])
 
+  // Auto-countdown timer for Win Go Result Modal (3s auto shut off)
+  useEffect(() => {
+    if (!resultModalData) return
+    if (resultModalCountdown <= 0) {
+      setResultModalData(null)
+      return
+    }
+    const timer = setTimeout(() => {
+      setResultModalCountdown((prev) => prev - 1)
+    }, 1000)
+    return () => clearTimeout(timer)
+  }, [resultModalData, resultModalCountdown])
+
   // Backend Sync Initial & Periodic with VeerGame
   // selectedModeRef is used inside the callback without being in deps, preventing
   // polling interval restarts on every mode switch.
@@ -565,7 +636,91 @@ export function App() {
         }))
         setHistory(formatted)
         if (formatted[0]) {
-          setLastOutcome(formatted[0])
+          const latestRound = formatted[0]
+          if (
+            lastSettledIssueRef.current &&
+            lastSettledIssueRef.current !== latestRound.round &&
+            currentGame === 'wingo'
+          ) {
+            const userBets = betsRef.current.filter((b) => {
+              if (!b.round) return false
+              const bRound = String(b.round).trim()
+              const lRound = String(latestRound.round).trim()
+              return bRound === lRound || (bRound.length >= 8 && lRound.length >= 8 && (bRound.endsWith(lRound) || lRound.endsWith(bRound)))
+            })
+
+            // ONLY show settlement popup if user placed a bet in this completed round!
+            if (userBets.length > 0) {
+              let isWon = false
+              let totalPayout = 0
+
+              for (const b of userBets) {
+                if (b.status === 'won' || Number(b.payout) > 0) {
+                  isWon = true
+                  totalPayout += Number(b.payout || 0)
+                } else {
+                  const sel = String(b.selection || '').toLowerCase().trim()
+                  const digit = Number(latestRound.digit)
+                  const size = digit >= 5 ? 'big' : 'small'
+                  let betWon = false
+                  let mult = 2
+
+                  if (sel === size) {
+                    betWon = true
+                    mult = 1.96
+                  } else if (sel === String(digit)) {
+                    betWon = true
+                    mult = 9
+                  } else if (sel === 'green') {
+                    if ([1, 3, 7, 9].includes(digit)) {
+                      betWon = true
+                      mult = 2
+                    } else if (digit === 5) {
+                      betWon = true
+                      mult = 1.5
+                    }
+                  } else if (sel === 'red') {
+                    if ([2, 4, 6, 8].includes(digit)) {
+                      betWon = true
+                      mult = 2
+                    } else if (digit === 0) {
+                      betWon = true
+                      mult = 1.5
+                    }
+                  } else if (sel === 'violet') {
+                    if (digit === 0 || digit === 5) {
+                      betWon = true
+                      mult = 4.5
+                    }
+                  }
+
+                  if (betWon) {
+                    isWon = true
+                    totalPayout += Math.round(Number(b.amount || 0) * mult)
+                  }
+                }
+              }
+
+              if (isWon) {
+                sound.playWin()
+              }
+
+              setResultModalData({
+                round: latestRound.round,
+                digit: latestRound.digit,
+                color: latestRound.color,
+                size: latestRound.size || (Number(latestRound.digit) >= 5 ? 'Big' : 'Small'),
+                isWon,
+                hadBet: true,
+                payout: totalPayout,
+              })
+              setResultModalCountdown(3)
+            } else {
+              setResultModalData(null)
+            }
+          }
+          lastSettledIssueRef.current = latestRound.round
+          setLastOutcome(latestRound)
         }
       }
     } catch {}
@@ -713,170 +868,7 @@ export function App() {
     return () => clearInterval(interval)
   }, [phase, settleCurrentRound, currentUser, authModalOpen, activeNav, currentGame])
 
-  // Open bet sheet
-  const handleSelectTarget = (type, val, multiplier) => {
-    if (!currentUser) {
-      setToast({
-        type: 'warning',
-        title: 'Login Required',
-        detail: 'Please sign in to your 69 Club account to place bets.',
-      })
-      setAuthMode('login')
-      setAuthModalOpen(true)
-      return
-    }
 
-    if (isLocked || seconds <= activeLevel.lock) {
-      setToast({
-        type: 'warning',
-        title: 'Round Locked',
-        detail: 'Bets are closed for this period. Please wait for next round.',
-      })
-      return
-    }
-
-    sound.playTick()
-    setSelectedTarget({ type, val, multiplier })
-    setBetSheetOpen(true)
-  }
-
-  // Confirm bet placement
-  const handleConfirmBet = async () => {
-    if (!selectedTarget) return
-    if (isPlacingBet) return
-
-    if (!currentUser) {
-      setToast({
-        type: 'warning',
-        title: 'Login Required',
-        detail: 'Please sign in to your 69 Club account to place bets.',
-      })
-      setBetSheetOpen(false)
-      setAuthMode('login')
-      setAuthModalOpen(true)
-      return
-    }
-
-    if (isLocked || seconds <= activeLevel.lock) {
-      setToast({
-        type: 'warning',
-        title: 'Round Locked',
-        detail: 'Betting has locked for this round. Please wait for next round.',
-      })
-      setBetSheetOpen(false)
-      return
-    }
-
-    if (!Number.isFinite(totalBetAmount) || totalBetAmount <= 0) {
-      setToast({
-        type: 'loss',
-        title: 'Invalid Amount',
-        detail: 'Please select a valid contract amount.',
-      })
-      return
-    }
-
-    if (totalBetAmount > balance) {
-      setToast({
-        type: 'loss',
-        title: 'Insufficient Balance',
-        detail: `Required ₹${formatCredits(totalBetAmount)}, but available balance is ₹${formatCredits(balance)}.`,
-      })
-      return
-    }
-
-    const newBet = {
-      id: `bet-${Date.now()}`,
-      round: roundNumber,
-      selection: String(selectedTarget.val),
-      type: selectedTarget.type,
-      amount: totalBetAmount,
-      multiplier: selectedTarget.multiplier,
-      potentialReturn: potentialPayout,
-      payout: 0,
-      status: 'pending',
-      outcome: null,
-      createdAt: 'Just now',
-    }
-
-    setIsPlacingBet(true)
-    // Try backend placeBet
-    try {
-      const typeId = gameMode === '30s' ? 30 : gameMode === '1m' ? 1 : gameMode === '3m' ? 2 : 3
-      if (serverOnline) {
-        const res = await apiPlaceBet(userId, String(selectedTarget.val), totalBetAmount, {
-          mode: selectedMode,
-          issueNumber: String(roundNumber),
-          typeId,
-        })
-        const confirmedId = res?.bet?.id || res?.betId || newBet.id
-        const confirmedBet = {
-          ...newBet,
-          id: confirmedId,
-        }
-        setBets((prev) => [confirmedBet, ...prev.filter((b) => b.id !== confirmedId && b.id !== newBet.id)])
-      } else {
-        setBalance((curr) => curr - totalBetAmount)
-        setBets((prev) => [newBet, ...prev])
-      }
-
-      setBetSheetOpen(false)
-      sound.playBetPlaced()
-
-      const targetLabel =
-        selectedTarget.type === 'color'
-          ? selectedTarget.val.toUpperCase()
-          : selectedTarget.type === 'size'
-          ? selectedTarget.val.toUpperCase()
-          : 'Number ' + selectedTarget.val
-
-      setToast({
-        type: 'success',
-        title: 'Bet Placed Successfully',
-        detail: `₹${formatCredits(totalBetAmount)} on ${targetLabel} (${selectedMode})`,
-      })
-    } catch (err) {
-      setToast({
-        type: 'loss',
-        title: 'Bet Rejected',
-        detail: err.message || 'Server rejected bet. Please try again.',
-      })
-    } finally {
-      setIsPlacingBet(false)
-    }
-  }
-
-  // Handle wallet reset
-  const handleResetCredits = async () => {
-    try {
-      await apiResetWallet(userId)
-    } catch {}
-    setBalance(STARTING_BALANCE)
-    setBets([])
-    setToast({
-      type: 'neutral',
-      title: 'Wallet Reset',
-      detail: `Balance restored to ₹${formatCredits(STARTING_BALANCE)}.`,
-    })
-  }
-
-  // Trend stats computation
-  const stats = useMemo(() => {
-    const recent = history.slice(0, 20)
-    const greenCount = recent.filter((r) => r.color === 'green').length
-    const redCount = recent.filter((r) => r.color === 'red').length
-    const violetCount = recent.filter((r) => r.color === 'violet').length
-    const total = recent.length || 1
-
-    return {
-      greenPercent: Math.round((greenCount / total) * 100),
-      redPercent: Math.round((redCount / total) * 100),
-      violetPercent: Math.round((violetCount / total) * 100),
-      greenCount,
-      redCount,
-      violetCount,
-    }
-  }, [history])
 
   const leaveAdminRoute = useCallback(() => {
     window.location.replace('/')
@@ -957,8 +949,8 @@ export function App() {
               balance={balance}
               onBalanceUpdate={(newBal) => setBalance(newBal)}
               onBackToLobby={() => setCurrentGame(null)}
-              onOpenDeposit={() => setDepositModalOpen(true)}
-              onOpenWithdraw={() => setWithdrawModalOpen(true)}
+              onOpenDeposit={() => handleOpenDeposit('k3')}
+              onOpenWithdraw={() => handleOpenWithdraw('k3')}
               setToast={setToast}
             />
           )}
@@ -970,8 +962,8 @@ export function App() {
               balance={balance}
               onBalanceUpdate={(newBal) => setBalance(newBal)}
               onBackToLobby={() => setCurrentGame(null)}
-              onOpenDeposit={() => setDepositModalOpen(true)}
-              onOpenWithdraw={() => setWithdrawModalOpen(true)}
+              onOpenDeposit={() => handleOpenDeposit('5d')}
+              onOpenWithdraw={() => handleOpenWithdraw('5d')}
               setToast={setToast}
             />
           )}
@@ -983,8 +975,8 @@ export function App() {
               balance={balance}
               onBalanceUpdate={(newBal) => setBalance(newBal)}
               onBackToLobby={() => setCurrentGame(null)}
-              onOpenDeposit={() => setDepositModalOpen(true)}
-              onOpenWithdraw={() => setWithdrawModalOpen(true)}
+              onOpenDeposit={() => handleOpenDeposit('trx')}
+              onOpenWithdraw={() => handleOpenWithdraw('trx')}
               setToast={setToast}
             />
           )}
@@ -1113,8 +1105,7 @@ export function App() {
             }}
             onOpenFortuneWheel={() => setFortuneWheelOpen(true)}
             onOpenRules={() => {
-              setCurrentGame('wingo')
-              setActiveTab('rules')
+              setHowToPlayOpen(true)
               sound.playTick()
             }}
             onOpenBets={() => {
@@ -1205,7 +1196,12 @@ export function App() {
             currentUser={currentUser}
             balance={balance}
             onBack={() => {
-              setActiveNav('account')
+              if (returnGame) {
+                setCurrentGame(returnGame)
+                setReturnGame(null)
+              } else {
+                setActiveNav('account')
+              }
               sound.playTick()
             }}
             onBalanceUpdated={(newBal) => {
@@ -1225,7 +1221,12 @@ export function App() {
             currentUser={currentUser}
             balance={balance}
             onBack={() => {
-              setActiveNav('account')
+              if (returnGame) {
+                setCurrentGame(returnGame)
+                setReturnGame(null)
+              } else {
+                setActiveNav('account')
+              }
               sound.playTick()
             }}
             onWithdrawSuccess={(newBal) => {
@@ -1342,1014 +1343,103 @@ export function App() {
           />
         )}
 
-        {/* 3. Win Go Game Arena */}
+        {/* 3. Win Go Game Arena (Modular Dedicated Component) */}
         {currentGame === 'wingo' && (
-          <>
-            <header className="raja-header">
-              <button
-                className="raja-circle-btn"
-                onClick={() => {
-                  setCurrentGame(null)
-                  setActiveNav('home')
-                }}
-                title="Back to 69 Club Lobby"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              
-              <div className="raja-brand">
-                <span className="raja-crown">👑</span>
-                <span className="raja-brand-name">WIN GO</span>
-              </div>
-
-          <div className="raja-header-actions">
-            {/* Live Server Indicator */}
-            <div
-              className={`server-indicator ${serverOnline ? 'online' : 'offline'}`}
-              title={serverOnline ? 'Synced with Express & Supabase' : 'Offline Local Mode'}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 5,
-                marginRight: 4,
-                background: serverOnline ? '#f0fdf4' : '#fef2f2',
-                border: `1px solid ${serverOnline ? '#bbf7d0' : '#fecaca'}`,
-                borderRadius: 12,
-                padding: '2px 8px',
-              }}
-            >
-              <span className="status-dot" style={{ background: serverOnline ? '#22c55e' : '#ef4444' }} />
-              <span
-                className="indicator-label"
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: serverOnline ? '#16a34a' : '#dc2626',
-                }}
-              >
-                {serverOnline ? 'Live' : 'Local'}
-              </span>
-            </div>
-
-            {/* VIP Daily Check-In Bonus */}
-            <button
-              className="raja-circle-btn"
-              onClick={handleClaimVIPBonus}
-              disabled={vipBonusLoading}
-              title="Claim Daily VIP Bonus (₹15-₹50)"
-              style={{ color: '#f59e0b' }}
-            >
-              <Gift size={16} />
-            </button>
-            <button
-              className="raja-circle-btn"
-              onClick={() => setHowToPlayOpen(true)}
-              title="Customer Support & Rules"
-            >
-              <Headphones size={18} />
-            </button>
-            <button
-              className="raja-circle-btn"
-              onClick={toggleMute}
-              title={isMuted ? "Unmute sound" : "Mute sound"}
-            >
-              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
-            </button>
-          </div>
-        </header>
-
-        {/* WINNER TICKER MARQUEE */}
-        <div className="mobile-ticker">
-          <Bell size={13} className="ticker-bell" />
-          <div className="ticker-content" key={tickerIndex}>
-            <span>{WINNER_TICKERS[tickerIndex]}</span>
-          </div>
-          <ShieldCheck size={14} className="ticker-shield" />
-        </div>
-
-        {/* WIN GO IN-GAME SUBNAV TABS */}
-        <div className="wingo-subnav-bar">
-          <button
-            className={`wingo-subnav-pill ${activeTab === 'win' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('win')
-              sound.playTick()
+          <WingoGame
+            currentUser={currentUser}
+            userId={currentUser?.id || userId}
+            balance={balance}
+            bets={bets}
+            onBetPlaced={(newBet) => {
+              setBets((prev) => [newBet, ...prev])
+              syncWithBackend()
             }}
-          >
-            🎮 Game
-          </button>
-          <button
-            className={`wingo-subnav-pill ${activeTab === 'trend' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('trend')
-              sound.playTick()
-            }}
-          >
-            📊 Trend
-          </button>
-          <button
-            className={`wingo-subnav-pill ${activeTab === 'wallet' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('wallet')
-              sound.playTick()
-            }}
-          >
-            👛 Wallet
-          </button>
-          <button
-            className={`wingo-subnav-pill ${activeTab === 'rules' ? 'active' : ''}`}
-            onClick={() => {
-              setActiveTab('rules')
-              sound.playTick()
-            }}
-          >
-            📜 Rules
-          </button>
-        </div>
-
-        {/* MAIN BODY BASED ON ACTIVE TAB */}
-        <main className="mobile-main">
-          {activeTab === 'win' && (
-            <div className="win-view-content">
-              {/* RAJALUCK HERO WALLET CARD */}
-              <div className="raja-wallet-card">
-                <div className="raja-wallet-header">
-                  <div className="raja-balance-row">
-                    <span className="raja-balance-num">{balance.toFixed(2)}</span>
-                    <button
-                      className="raja-refresh-btn"
-                      onClick={syncWithBackend}
-                      title="Refresh balance"
-                    >
-                      <RefreshCw size={17} />
-                    </button>
-                  </div>
-                  <div className="raja-wallet-subtitle">
-                    <span className="raja-wallet-icon">👛</span>
-                    <span>wallet balance</span>
-                  </div>
-                </div>
-
-                <div className="raja-wallet-actions">
-                  <button
-                    className="raja-btn-withdraw"
-                    onClick={() => setWithdrawModalOpen(true)}
-                  >
-                    Withdraw
-                  </button>
-                  <button
-                    className="raja-btn-deposit"
-                    onClick={() => setDepositModalOpen(true)}
-                  >
-                    Deposit
-                  </button>
-                </div>
-              </div>
-
-              {/* WIN GO 4-TIME SELECTOR BAR */}
-              <div className="raja-modes-bar">
-                {[
-                  { id: '30s', top: 'Win Go', sub: '30s' },
-                  { id: '1m', top: 'Win Go', sub: '1Min' },
-                  { id: '3m', top: 'Win Go', sub: '3Min' },
-                  { id: '5m', top: 'Win Go', sub: '5Min' },
-                ].map((m) => {
-                  const isActive = gameMode === m.id
-                  return (
-                    <button
-                      key={m.id}
-                      className={`raja-mode-tab ${isActive ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedMode(GAME_MODE_TO_SELECTED[m.id] || 'PARITY')
-                        sound.playTick()
-                      }}
-                    >
-                      <div className={`raja-clock-icon-wrap ${isActive ? 'active' : ''}`}>
-                        <Clock size={20} />
-                      </div>
-                      <span className="raja-mode-title">{m.top}</span>
-                      <span className="raja-mode-sub">{m.sub}</span>
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* GAME STAGE & COUNTDOWN CARD */}
-              <div className="raja-countdown-card">
-                {/* Left Section */}
-                <div className="raja-cd-left">
-                  <button
-                    className="raja-howtoplay-btn"
-                    onClick={() => setHowToPlayOpen(true)}
-                  >
-                    <BookOpen size={13} /> How to play
-                  </button>
-                  <div className="raja-mode-active-text">
-                    {gameMode === '30s' ? 'Win Go 30s' : gameMode === '1m' ? 'Win Go 1Min' : gameMode === '3m' ? 'Win Go 3Min' : 'Win Go 5Min'}
-                  </div>
-                  <div className="raja-recent-balls">
-                    {history.slice(0, 5).map((h, i) => {
-                      const isDual0 = Number(h.digit) === 0
-                      const isDual5 = Number(h.digit) === 5
-                      const ballClass = isDual0
-                        ? 'raja-ball-mini raja-ball-mini--dual-0'
-                        : isDual5
-                        ? 'raja-ball-mini raja-ball-mini--dual-5'
-                        : `raja-ball-mini raja-ball-mini--${h.color}`
-                      return (
-                        <div key={i} className={ballClass}>
-                          <span>{h.digit}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Center Divider with notch */}
-                <div className="raja-cd-divider" />
-
-                {/* Right Section */}
-                <div className="raja-cd-right">
-                  <div className="raja-cd-title">time of purchase</div>
-                  <div className="raja-timer-boxes">
-                    <span className="raja-tbox">{String(Math.floor(seconds / 60)).padStart(2, '0')[0]}</span>
-                    <span className="raja-tbox">{String(Math.floor(seconds / 60)).padStart(2, '0')[1]}</span>
-                    <span className="raja-tcolon">:</span>
-                    <span className={`raja-tbox ${seconds <= 8 ? 'urgent' : ''}`}>{String(seconds % 60).padStart(2, '0')[0]}</span>
-                    <span className={`raja-tbox ${seconds <= 8 ? 'urgent' : ''}`}>{String(seconds % 60).padStart(2, '0')[1]}</span>
-                  </div>
-                  <div className="raja-period-num">{formatPeriod(roundNumber, gameMode)}</div>
-                </div>
-              </div>
-
-              <section className="wingo-bet-guide" aria-label="How to place a Win Go bet">
-                <span className="wingo-guide-step"><strong>1</strong> Choose stake</span>
-                <span className="wingo-guide-arrow">→</span>
-                <span className="wingo-guide-step"><strong>2</strong> Pick a market</span>
-                <span className="wingo-guide-arrow">→</span>
-                <span className="wingo-guide-step"><strong>3</strong> Confirm</span>
-              </section>
-
-              <section className="wingo-stake-picker" aria-label="Quick stake selection">
-                <div className="wingo-section-heading">
-                  <span>Choose your stake</span>
-                  <strong>₹{baseAmount} per ticket</strong>
-                </div>
-                <div className="wingo-stake-options">
-                  {PRESET_AMOUNTS.map((amount) => (
-                    <button
-                      key={amount}
-                      type="button"
-                      className={`wingo-stake-option ${baseAmount === amount ? 'active' : ''}`}
-                      onClick={() => setBaseAmount(amount)}
-                    >
-                      ₹{amount}
-                    </button>
-                  ))}
-                  <label className="wingo-custom-stake">
-                    <span>Custom</span>
-                    <span className="wingo-custom-input-wrap">
-                      <span>₹</span>
-                      <input
-                        type="number"
-                        min="10"
-                        max="50000"
-                        step="1"
-                        inputMode="numeric"
-                        value={baseAmount || ''}
-                        onChange={(event) => {
-                          const value = event.target.value
-                          setBaseAmount(value === '' ? 0 : Math.min(50000, Math.max(0, Math.floor(Number(value)))))
-                        }}
-                        aria-label="Custom stake amount"
-                      />
-                    </span>
-                  </label>
-                </div>
-                <small className="wingo-stake-hint">Custom amount: ₹10–₹50,000, whole numbers only</small>
-              </section>
-
-              {/* PRIMARY 3 COLOR ACTION BUTTONS */}
-              <div className="wingo-market-label">Choose a color <span>Tap to continue</span></div>
-              <div className="raja-color-buttons">
-                <button
-                  className="raja-color-btn raja-btn--green"
-                  disabled={isLocked}
-                  onClick={() => handleSelectTarget('color', 'green', 2.0)}
-                >
-                  <span>Green</span><small>2x payout</small>
-                </button>
-                <button
-                  className="raja-color-btn raja-btn--purple"
-                  disabled={isLocked}
-                  onClick={() => handleSelectTarget('color', 'violet', 4.5)}
-                >
-                  <span>Violet</span><small>4.5x payout</small>
-                </button>
-                <button
-                  className="raja-color-btn raja-btn--red"
-                  disabled={isLocked}
-                  onClick={() => handleSelectTarget('color', 'red', 2.0)}
-                >
-                  <span>Red</span><small>2x payout</small>
-                </button>
-              </div>
-
-              {/* NUMBER LOTTERY BALLS (0-9) 2X5 GRID */}
-              <div className="raja-numbers-card">
-                <div className="wingo-section-heading">
-                  <span>Choose a number</span>
-                  <strong>9x payout</strong>
-                </div>
-                <div className="raja-numbers-grid">
-                  {NUMBER_OPTIONS.map((num) => (
-                    <button
-                      key={num.digit}
-                      className={`raja-lottery-ball ball-${num.digit} ${num.dual ? `ball-dual-${num.dual}` : ''}`}
-                      disabled={isLocked}
-                      onClick={() => handleSelectTarget('number', num.digit, 9.0)}
-                    >
-                      <div className="raja-ball-inner">
-                        <span className="raja-ball-digit">{num.digit}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* BIG / SMALL SPLIT BUTTONS */}
-              <div className="wingo-market-label">Choose a size <span>2x payout</span></div>
-              <div className="raja-bigsmall-bar">
-                <button
-                  className="raja-bs-btn raja-btn--big"
-                  disabled={isLocked}
-                  onClick={() => handleSelectTarget('size', 'Big', 2.0)}
-                >
-                  <span>Big</span><small>5 – 9</small>
-                </button>
-                <button
-                  className="raja-bs-btn raja-btn--small"
-                  disabled={isLocked}
-                  onClick={() => handleSelectTarget('size', 'Small', 2.0)}
-                >
-                  <span>Small</span><small>0 – 4</small>
-                </button>
-              </div>
-
-              {/* SUB-TABS: RECORD / CHART / MY BETS */}
-              <div className="game-subtabs">
-                <button
-                  className={`subtab-btn ${activeSubTab === 'record' ? 'active' : ''}`}
-                  onClick={() => setActiveSubTab('record')}
-                >
-                  <History size={14} /> Game Record
-                </button>
-                <button
-                  className={`subtab-btn ${activeSubTab === 'chart' ? 'active' : ''}`}
-                  onClick={() => setActiveSubTab('chart')}
-                >
-                  <TrendingUp size={14} /> Trend Parity
-                </button>
-                <button
-                  className={`subtab-btn ${activeSubTab === 'mybets' ? 'active' : ''}`}
-                  onClick={() => setActiveSubTab('mybets')}
-                >
-                  <Layers size={14} /> My Bets ({bets.length})
-                </button>
-              </div>
-
-              {/* SUBTAB 1: GAME RECORDS */}
-              {activeSubTab === 'record' && (
-                <div className="subtab-content">
-                  <div className="records-table-wrap">
-                    <table className="records-table">
-                      <thead>
-                        <tr>
-                          <th>Period</th>
-                          <th>Number</th>
-                          <th>Size</th>
-                          <th>Color</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {history.slice(0, 10).map((h) => (
-                          <tr key={h.round}>
-                            <td className="mono">{formatPeriod(h.round)}</td>
-                            <td>
-                              <span className={`num-badge badge-${h.color}`}>{h.digit}</span>
-                            </td>
-                            <td>
-                              <span className={`size-tag ${h.digit >= 5 ? 'big' : 'small'}`}>
-                                {h.digit >= 5 ? 'Big' : 'Small'}
-                              </span>
-                            </td>
-                            <td>
-                              <div className="color-dots-group">
-                                <span className={`mini-dot dot-${h.color}`} />
-                                {(h.digit === 0 || h.digit === 5) && (
-                                  <span
-                                    className={`mini-dot dot-${h.digit === 0 ? 'red' : 'green'}`}
-                                  />
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* SUBTAB 2: TREND PARITY */}
-              {activeSubTab === 'chart' && (
-                <div className="subtab-content">
-                  {/* Statistics Summary */}
-                  <div className="trend-stats-bar">
-                    <div className="stat-pill">
-                      <span className="stat-label">Green</span>
-                      <strong className="stat-val text-green">{stats.greenPercent}%</strong>
-                    </div>
-                    <div className="stat-pill">
-                      <span className="stat-label">Red</span>
-                      <strong className="stat-val text-red">{stats.redPercent}%</strong>
-                    </div>
-                    <div className="stat-pill">
-                      <span className="stat-label">Violet</span>
-                      <strong className="stat-val text-violet">{stats.violetPercent}%</strong>
-                    </div>
-                  </div>
-
-                  {/* Trend Bead Matrix */}
-                  <div className="trend-matrix">
-                    <div className="matrix-title">Recent 20 Draws Roadmap</div>
-                    <div className="matrix-beads">
-                      {history.slice(0, 20).map((h) => (
-                        <div
-                          key={h.round}
-                          className={`matrix-bead bead-${h.color}`}
-                          title={`Period: ${formatPeriod(h.round)} | Digit: ${h.digit}`}
-                        >
-                          <span>{h.digit}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* SUBTAB 3: MY BETS */}
-              {activeSubTab === 'mybets' && (
-                <div className="subtab-content">
-                  {!currentUser ? (
-                    <div className="empty-state-card">
-                      <Layers size={32} className="empty-icon" />
-                      <p>Please log in to view your real-time bet history and live settlements.</p>
-                      <button
-                        className="empty-login-btn"
-                        onClick={() => {
-                          setAuthMode('login')
-                          setAuthModalOpen(true)
-                        }}
-                      >
-                        Log in now
-                      </button>
-                    </div>
-                  ) : bets.length === 0 ? (
-                    <div className="empty-state-card">
-                      <Layers size={32} className="empty-icon" />
-                      <p>No bets placed yet. Pick a color, size, or number to start!</p>
-                    </div>
-                  ) : (
-                    <div className="bets-list">
-                      {bets.map((b) => {
-                        const selStr = String(b.selection).toLowerCase()
-                        const targetLabel =
-                          b.type === 'color' || ['green', 'red', 'violet'].includes(selStr)
-                            ? selStr.toUpperCase()
-                            : b.type === 'size' || ['big', 'small'].includes(selStr)
-                            ? selStr.toUpperCase()
-                            : `Number ${b.selection}`
-
-                        const targetColor =
-                          selStr === 'green'
-                            ? '#22c55e'
-                            : selStr === 'red'
-                            ? '#ef4444'
-                            : selStr === 'violet'
-                            ? '#a855f7'
-                            : selStr === 'big'
-                            ? '#f59e0b'
-                            : selStr === 'small'
-                            ? '#0ea5e9'
-                            : '#64748b'
-
-                        return (
-                          <div key={b.id} className={`bet-card-item status-${b.status}`}>
-                            <div className="bet-card-header">
-                              <div>
-                                <span className="bet-period">{b.gameMode || 'WINGO'} · {b.round && b.round !== 'undefined' ? formatPeriod(b.round) : 'Round record'}</span>
-                                <span className="bet-target" style={{ color: targetColor }}>
-                                  {targetLabel}
-                                </span>
-                              </div>
-                              <span className={`bet-badge ${b.status}`}>
-                                {b.status === 'won'
-                                  ? `+₹${formatCredits(b.payout)}`
-                                  : b.status === 'lost'
-                                  ? 'Failed'
-                                  : 'Waiting'}
-                              </span>
-                            </div>
-                            <div className="bet-card-details">
-                              <span>Amount: ₹{formatCredits(b.amount)}</span>
-                              <span>Multiplier: {b.multiplier}x</span>
-                              <span>{b.createdAt}</span>
-                              <span>
-                                {b.status === 'won'
-                                  ? `Won: ₹${formatCredits(b.payout)}`
-                                  : `Return: ₹${formatCredits(b.potentialReturn)}`}
-                              </span>
-                            </div>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: FULL TREND VIEW */}
-          {activeTab === 'trend' && (
-            <div className="tab-view-container">
-              <div className="view-title-header">
-                <h2>Parity & Statistics</h2>
-                <p>Real-time statistical trend analysis</p>
-              </div>
-
-              <div className="trend-hero-card">
-                <div className="hero-stat-row">
-                  <div className="hero-stat">
-                    <span className="stat-dot dot-green" />
-                    <span>Green ({stats.greenCount})</span>
-                    <strong>{stats.greenPercent}%</strong>
-                  </div>
-                  <div className="hero-stat">
-                    <span className="stat-dot dot-red" />
-                    <span>Red ({stats.redCount})</span>
-                    <strong>{stats.redPercent}%</strong>
-                  </div>
-                  <div className="hero-stat">
-                    <span className="stat-dot dot-violet" />
-                    <span>Violet ({stats.violetCount})</span>
-                    <strong>{stats.violetPercent}%</strong>
-                  </div>
-                </div>
-
-                <div className="trend-progress-track">
-                  <div
-                    className="prog-seg green"
-                    style={{ width: `${stats.greenPercent}%` }}
-                  />
-                  <div
-                    className="prog-seg red"
-                    style={{ width: `${stats.redPercent}%` }}
-                  />
-                  <div
-                    className="prog-seg violet"
-                    style={{ width: `${stats.violetPercent}%` }}
-                  />
-                </div>
-              </div>
-
-              <div className="records-table-wrap" style={{ marginTop: '14px' }}>
-                <table className="records-table">
-                  <thead>
-                    <tr>
-                      <th>Period</th>
-                      <th>Digit</th>
-                      <th>Parity</th>
-                      <th>Color</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((h) => (
-                      <tr key={h.round}>
-                        <td className="mono">{formatPeriod(h.round)}</td>
-                        <td>
-                          <span className={`num-badge badge-${h.color}`}>{h.digit}</span>
-                        </td>
-                        <td>{h.digit % 2 === 0 ? 'Even' : 'Odd'}</td>
-                        <td>
-                          <span className={`tag-color tag-${h.color}`}>
-                            {h.color.toUpperCase()}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 3: WALLET VIEW */}
-          {activeTab === 'wallet' && (
-            <div className="tab-view-container">
-              <div className="view-title-header">
-                <h2>Wallet Balance</h2>
-                <p>UPI Instant Recharge & Balance Management</p>
-              </div>
-
-              {/* Wallet Main Card */}
-              <div className="wallet-hero-glass">
-                <span className="hero-eyebrow">Available Balance</span>
-                <div className="hero-balance-sum">
-                  <span className="currency">₹</span>
-                  <strong>{formatCredits(balance)}</strong>
-                </div>
-                <div className="hero-chip-id">
-                  <span>User ID: {userId}</span>
-                  <span className="badge-verified">Verified</span>
-                </div>
-
-                <div className="wallet-hero-actions">
-                  <button
-                    className="wallet-btn deposit-btn"
-                    onClick={() => setDepositModalOpen(true)}
-                  >
-                    <QrCode size={16} /> Deposit
-                  </button>
-                  <button
-                    className="wallet-btn withdraw-btn"
-                    onClick={() => setWithdrawModalOpen(true)}
-                  >
-                    <ArrowDownCircle size={16} /> Withdraw
-                  </button>
-                  <button
-                    className="wallet-btn reset-btn"
-                    onClick={handleResetCredits}
-                  >
-                    <RotateCcw size={16} /> Reset
-                  </button>
-                </div>
-              </div>
-
-              {/* Wallet Features Grid */}
-              <div className="wallet-feature-list">
-                <div
-                  className="wallet-feature-row"
-                  onClick={() => setDepositModalOpen(true)}
-                >
-                  <div className="feature-icon deposit-icon">
-                    <PlusCircle size={18} />
-                  </div>
-                  <div className="feature-info">
-                    <strong>UPI Fast Deposit</strong>
-                    <p>PhonePe, Google Pay, Paytm, BHIM with 12-digit UTR</p>
-                  </div>
-                  <ChevronRight size={16} className="arrow" />
-                </div>
-
-                <div
-                  className="wallet-feature-row"
-                  onClick={() => setWithdrawModalOpen(true)}
-                >
-                  <div className="feature-icon withdraw-icon">
-                    <ArrowDownCircle size={18} />
-                  </div>
-                  <div className="feature-info">
-                    <strong>Withdrawal Payouts</strong>
-                    <p>Direct UPI VPA & IMPS Bank Account Transfers</p>
-                  </div>
-                  <ChevronRight size={16} className="arrow" />
-                </div>
-
-                <div className="wallet-feature-row">
-                  <div className="feature-icon secure-icon">
-                    <ShieldCheck size={18} />
-                  </div>
-                  <div className="feature-info">
-                    <strong>Atomic Ledger Verification</strong>
-                    <p>Supabase database stored procedure approval</p>
-                  </div>
-                  <Check size={16} className="text-green" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: RULES / PROFILE VIEW */}
-          {activeTab === 'rules' && (
-            <div className="tab-view-container">
-              <div className="view-title-header">
-                <h2>Game Rules</h2>
-                <p>69 Club Presale & Calculation Guide</p>
-              </div>
-
-              {/* Account Management Card */}
-              <div className="rules-section-card" style={{ marginBottom: '14px' }}>
-                <h3>Account & Security</h3>
-                <p style={{ marginBottom: '12px' }}>
-                  {currentUser
-                    ? `Active Session: ${currentUser.username} (${currentUser.role || 'Member'})`
-                    : 'Currently playing as Guest. Sign in or register an account to preserve your balance and betting records.'}
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                  <button
-                    type="button"
-                    className="preset-btn"
-                    style={{ background: '#2563eb', color: '#fff', border: 'none' }}
-                    onClick={() => {
-                      setAuthMode('login')
-                      setAuthModalOpen(true)
-                    }}
-                  >
-                    {currentUser ? 'Switch Account' : 'Sign In'}
-                  </button>
-                  <button
-                    type="button"
-                    className="preset-btn"
-                    style={{ background: '#10b981', color: '#fff', border: 'none' }}
-                    onClick={() => {
-                      setAuthMode('signup')
-                      setAuthModalOpen(true)
-                    }}
-                  >
-                    Register / Sign Up
-                  </button>
-                  <button
-                    type="button"
-                    className="preset-btn"
-                    onClick={() => {
-                      setAuthMode('forgot')
-                      setAuthModalOpen(true)
-                    }}
-                  >
-                    Forgot Password
-                  </button>
-                  <button
-                    type="button"
-                    className="preset-btn"
-                    onClick={() => {
-                      setAuthMode('reset')
-                      setAuthModalOpen(true)
-                    }}
-                  >
-                    Reset Password
-                  </button>
-                </div>
-                {currentUser && (
-                  <button
-                    type="button"
-                    className="preset-btn"
-                    style={{ marginTop: '8px', width: '100%', borderColor: 'rgba(239, 68, 68, 0.4)', color: '#ef4444' }}
-                    onClick={handleLogout}
-                  >
-                    Sign Out ({currentUser.username})
-                  </button>
-                )}
-              </div>
-
-              <div className="rules-section-card">
-                <h3>1. Period Cycle</h3>
-                <p>
-                  {gameMode === '30s' && <>Every <strong>Win Go 30s</strong> round lasts <strong>30 seconds</strong>. Selections open for 25s, locked for the last <strong>5 seconds</strong>.</>}
-                  {gameMode === '1m' && <>Every <strong>Win Go 1Min</strong> round lasts <strong>60 seconds</strong>. Selections open for 50s, locked for the last <strong>10 seconds</strong>.</>}
-                  {gameMode === '3m' && <>Every <strong>Win Go 3Min</strong> round lasts <strong>3 minutes</strong>. Selections open for 150s, locked for the last <strong>30 seconds</strong>.</>}
-                  {gameMode === '5m' && <>Every <strong>Win Go 5Min</strong> round lasts <strong>5 minutes</strong>. Selections open for 255s, locked for the last <strong>45 seconds</strong>.</>}
-                </p>
-
-                <h3>2. Color Outcomes & Payouts</h3>
-                <div className="rule-badge-list">
-                  <div className="rule-badge-item">
-                    <span className="badge-color bg-green">Green</span>
-                    <span>Numbers 1, 3, 7, 9 · Returns <strong>2.0x</strong></span>
-                  </div>
-                  <div className="rule-badge-item">
-                    <span className="badge-color bg-red">Red</span>
-                    <span>Numbers 2, 4, 6, 8 · Returns <strong>2.0x</strong></span>
-                  </div>
-                  <div className="rule-badge-item">
-                    <span className="badge-color bg-violet">Violet</span>
-                    <span>Numbers 0, 5 · Returns <strong>4.5x</strong></span>
-                  </div>
-                  <div className="rule-badge-item">
-                    <span className="badge-color bg-gold">Number</span>
-                    <span>Direct number match 0–9 · Returns <strong>9.0x</strong></span>
-                  </div>
-                </div>
-
-                <h3>3. Practice Simulator Notice</h3>
-                <p>
-                  This platform is a real-time mathematical trading simulation.
-                  Virtual credits do not hold fiat cash value or represent legal gambling.
-                </p>
-              </div>
-            </div>
-          )}
-        </main>
-
-        {/* BOTTOM SHEET BET MODAL */}
-        {betSheetOpen && selectedTarget && (
-          <div className="bottom-sheet-overlay" onClick={() => setBetSheetOpen(false)}>
-            <div className="bottom-sheet-card" onClick={(e) => e.stopPropagation()}>
-              <div className="sheet-handle" />
-              <div className="sheet-header">
-                <div>
-                  <h3 className="sheet-title">
-                    Select {selectedTarget.type === 'color' ? selectedTarget.val.toUpperCase() : selectedTarget.type === 'size' ? selectedTarget.val.toUpperCase() : `Number ${selectedTarget.val}`}
-                  </h3>
-                  <span className="sheet-payout-tag">{selectedTarget.multiplier.toFixed(1)}x Potential Payout ({selectedMode})</span>
-                </div>
-                <button className="sheet-close-btn" onClick={() => setBetSheetOpen(false)}>
-                  <X size={18} />
-                </button>
-              </div>
-
-              {/* Amount Presets */}
-              <div className="sheet-row-label">Stake per ticket</div>
-              <div className="sheet-preset-chips">
-                {PRESET_AMOUNTS.map((amt) => (
-                  <button
-                    key={amt}
-                    className={`preset-chip ${baseAmount === amt ? 'active' : ''}`}
-                    onClick={() => setBaseAmount(amt)}
-                  >
-                    ₹{amt}
-                  </button>
-                ))}
-                <label className="sheet-custom-stake">
-                  <span>Custom</span>
-                  <span className="sheet-custom-input-wrap">
-                    <span>₹</span>
-                    <input
-                      type="number"
-                      min="10"
-                      max="50000"
-                      step="1"
-                      inputMode="numeric"
-                      value={baseAmount || ''}
-                      onChange={(event) => {
-                        const value = event.target.value
-                        setBaseAmount(value === '' ? 0 : Math.min(50000, Math.max(0, Math.floor(Number(value)))))
-                      }}
-                      aria-label="Custom stake amount"
-                    />
-                  </span>
-                </label>
-              </div>
-              <small className="sheet-stake-hint">₹10–₹50,000 per ticket · whole numbers only</small>
-
-              {/* Multiplier / Quantity Stepper */}
-              <div className="sheet-row-label">Number of tickets</div>
-              <div className="sheet-stepper-row">
-                <div className="stepper-controls">
-                  <button
-                    className="step-btn"
-                    onClick={() => setBetQuantity((q) => Math.max(1, q - 1))}
-                  >
-                    <Minus size={14} />
-                  </button>
-                  <span className="step-val">{betQuantity}</span>
-                  <button
-                    className="step-btn"
-                    onClick={() => setBetQuantity((q) => q + 1)}
-                  >
-                    <Plus size={14} />
-                  </button>
-                </div>
-
-                <div className="multiplier-quick-chips">
-                  {MULTIPLIERS.map((m) => (
-                    <button
-                      key={m}
-                      className={`mult-chip ${betQuantity === m ? 'active' : ''}`}
-                      onClick={() => setBetQuantity(m)}
-                    >
-                      {m}x
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Total Calculation & Terms */}
-              <div className="sheet-summary-box">
-                <div className="sum-row">
-                  <span>Total stake:</span>
-                  <strong>₹{formatCredits(totalBetAmount)}</strong>
-                </div>
-                <div className="sum-row highlight">
-                  <span>Potential payout:</span>
-                  <strong>₹{formatCredits(potentialPayout)}</strong>
-                </div>
-              </div>
-
-              <div
-                className="sheet-terms-check"
-                onClick={() => setAgreeTerms(!agreeTerms)}
-              >
-                <input
-                  type="checkbox"
-                  checked={agreeTerms}
-                  onChange={(e) => setAgreeTerms(e.target.checked)}
-                />
-                <span>I have checked my selection and stake</span>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="sheet-action-btns">
-                <button
-                  className="sheet-cancel-btn"
-                  onClick={() => setBetSheetOpen(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  className="sheet-submit-btn"
-                  disabled={isPlacingBet || !agreeTerms || totalBetAmount <= 0 || totalBetAmount > balance}
-                  onClick={handleConfirmBet}
-                >
-                  {isPlacingBet
-                    ? <><Loader2 size={16} className="spin-anim" /> Placing bet...</>
-                    : totalBetAmount > balance
-                    ? 'Insufficient Balance'
-                    : `Confirm ₹${formatCredits(totalBetAmount)} bet`}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </>
-    )}
-        </div>
-
-        {/* 69 CLUB BOTTOM NAVIGATION BAR */}
-        <nav className="home-55-bottom-nav">
-          <button
-            className={`nav-55-item ${currentGame === null && activeNav === 'home' ? 'active' : ''}`}
-            onClick={() => {
+            onBalanceUpdate={(newBal) => setBalance(newBal)}
+            onBackToLobby={() => {
               setCurrentGame(null)
               setActiveNav('home')
               sound.playTick()
             }}
-          >
-            <Home size={20} />
-            <span className="nav-55-label">Home</span>
-          </button>
-
-          <button
-            className={`nav-55-item ${currentGame === null && activeNav === 'activity' ? 'active' : ''}`}
-            onClick={() => {
-              setCurrentGame(null)
-              setActiveNav('activity')
-              sound.playTick()
+            onOpenDeposit={() => handleOpenDeposit('wingo')}
+            onOpenWithdraw={() => handleOpenWithdraw('wingo')}
+            onOpenAuth={() => {
+              setAuthMode('login')
+              setAuthModalOpen(true)
             }}
-          >
-            <Sparkles size={20} />
-            <span className="nav-red-dot" />
-            <span className="nav-55-label">Activity</span>
-          </button>
+            setToast={setToast}
+            sound={sound}
+            isMuted={isMuted}
+            toggleMute={toggleMute}
+          />
+        )}
+      </div>
 
-          {/* Elevated Center Wheel Button */}
-          <button
-            className="nav-center-wheel-item"
-            onClick={() => {
-              setFortuneWheelOpen(true)
-              sound.playTick()
-            }}
-            title="Spin Lucky Wheel for up to ₹500"
-          >
-            <div className="elevated-wheel-circle">🎡</div>
-            <span className="elevated-wheel-text">Get ₹500</span>
-          </button>
+        {/* 69 CLUB BOTTOM NAVIGATION BAR (Hidden whenever any game is active) */}
+        {currentGame === null && !activeThirdPartyGame && (
+          <nav className="home-55-bottom-nav">
+            <button
+              className={`nav-55-item ${currentGame === null && activeNav === 'home' ? 'active' : ''}`}
+              onClick={() => {
+                setCurrentGame(null)
+                setActiveNav('home')
+                sound.playTick()
+              }}
+            >
+              <Home size={20} />
+              <span className="nav-55-label">Home</span>
+            </button>
 
-          <button
-            className={`nav-55-item ${currentGame === null && activeNav === 'promotion' ? 'active' : ''}`}
-            onClick={() => {
-              setCurrentGame(null)
-              setActiveNav('promotion')
-              sound.playTick()
-            }}
-          >
-            <Trophy size={20} />
-            <span className="nav-55-label">Promotion</span>
-          </button>
+            <button
+              className={`nav-55-item ${currentGame === null && activeNav === 'activity' ? 'active' : ''}`}
+              onClick={() => {
+                setCurrentGame(null)
+                setActiveNav('activity')
+                sound.playTick()
+              }}
+            >
+              <Sparkles size={20} />
+              <span className="nav-red-dot" />
+              <span className="nav-55-label">Activity</span>
+            </button>
 
-          <button
-            className={`nav-55-item ${currentGame === null && activeNav === 'account' ? 'active' : ''}`}
-            onClick={() => {
-              setCurrentGame(null)
-              setActiveNav('account')
-              sound.playTick()
-            }}
-          >
-            <User size={20} />
-            <span className="nav-55-label">Account</span>
-          </button>
-        </nav>
+            {/* Elevated Center Wheel Button */}
+            <button
+              className="nav-center-wheel-item"
+              onClick={() => {
+                setFortuneWheelOpen(true)
+                sound.playTick()
+              }}
+              title="Spin Lucky Wheel for up to ₹500"
+            >
+              <div className="elevated-wheel-circle">🎡</div>
+              <span className="elevated-wheel-text">Get ₹500</span>
+            </button>
+
+            <button
+              className={`nav-55-item ${currentGame === null && activeNav === 'promotion' ? 'active' : ''}`}
+              onClick={() => {
+                setCurrentGame(null)
+                setActiveNav('promotion')
+                sound.playTick()
+              }}
+            >
+              <Trophy size={20} />
+              <span className="nav-55-label">Promotion</span>
+            </button>
+
+            <button
+              className={`nav-55-item ${currentGame === null && activeNav === 'account' ? 'active' : ''}`}
+              onClick={() => {
+                setCurrentGame(null)
+                setActiveNav('account')
+                sound.playTick()
+              }}
+            >
+              <User size={20} />
+              <span className="nav-55-label">Account</span>
+            </button>
+          </nav>
+        )}
 
         {/* FORTUNE WHEEL MODAL */}
         <FortuneWheelModal
@@ -2381,7 +1471,7 @@ export function App() {
         <DepositModal
           isOpen={depositModalOpen}
           onClose={() => setDepositModalOpen(false)}
-          userId={userId}
+          userId={currentUser?.id || userId}
           onBalanceUpdated={(newBal) => setBalance(newBal)}
         />
 

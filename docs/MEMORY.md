@@ -1,5 +1,45 @@
 # Memory
 
+## Mobile Screen Responsiveness & Desktop Centering
+- Status: done
+- Purpose: Fullscreen edge-to-edge responsiveness on mobile smartphone screens and centered luxury casino frame on desktop.
+- Key logic: Global scrollbar suppression (`scrollbar-width: none` and `::-webkit-scrollbar { display: none; }`), removed 17px native scrollbar gutter, centered `.mobile-app-container` (`max-width: 450px`, `margin: 0 auto`), expanded edge-to-edge cutoff to `@media (max-width: 600px)`, removed 100vw horizontal overflow, aligned `.bottom-sheet-card` to 450px, and enforced mathematical symmetrical card centering (`width: calc(100% - 24px)`, `margin: 0 auto 12px auto`).
+- Files: frontend/src/styles.css
+- Dependencies: CSS3 Flexbox, Media Queries
+- Last change: 2026-09-20 — Centered all arena content symmetrically, removed Windows Chrome desktop scrollbars, and matched bottom sheet drawer width.
+
+## Deposit & Withdrawal Button Alignment & Auth Gate
+- Status: done
+- Purpose: Align Deposit (left/primary) and Withdraw (right) buttons with auth gates, audio feedback, and authentic casino gradients.
+- Key logic: Swapped button order (Deposit left, Withdraw right), added unauthenticated login prompt guards, passed `currentUser?.id || userId` to `DepositModal`, and styled with authentic red/amber pill gradients.
+- Files: frontend/src/App.jsx, frontend/src/styles.css
+- Dependencies: React 18, Web Audio API
+- Last change: 2026-09-20 — Fixed button order, handlers, auth checks, and active states.
+
+## Win Go UI Color Harmonization & Golden Victory Settlement Modal
+- Status: done
+- Purpose: Harmonize Win Go color scheme to royal purple, theme Trend Parity stat-pills and roadmap beads, and show golden victory modal only on user win.
+- Key logic: Replaced stark white `.stat-pill` background with rich dark royal purple gradient (`linear-gradient(145deg, #2c1652, #1d0e3a)`), neon percentage glows (`text-green`, `text-red`, `text-violet`), 3D radial roadmap beads, golden celebratory card for wins, dark purple card for losses.
+- Files: frontend/src/styles.css, frontend/src/components/WingoGame.jsx
+- Dependencies: React 18, Web Audio API
+- Last change: 2026-09-20 — Themed Trend Parity stat-pills from stark white to dark purple casino palette.
+
+## Game-Specific My Bets Isolation
+- Status: done
+- Purpose: Strictly isolate and display real-time Win Go bet history across subtabs and sessions.
+- Key logic: Connected `WingoGame.jsx` with parent `bets` prop and direct `fetchUserBets(userId)` background API sync; updated filter to match Win Go modes (`PARITY`, `SAPRE`, `BCONE`, `EMERD`, `WINGO`) and selections (`green`, `red`, `violet`, `big`, `small`, numbers `0-9`) while excluding non-Win Go games.
+- Files: frontend/src/App.jsx, frontend/src/components/WingoGame.jsx
+- Dependencies: React 18
+- Last change: 2026-09-20 — Wired real-time fetchUserBets syncing and parent bets prop to WingoGame component.
+
+## Game Arena Fullscreen & Bottom Navigation Gate
+- Status: done
+- Purpose: Hide bottom navigation bar when playing any game (Win Go, Aviator, K3, 5D, TRX, Mines, etc.).
+- Key logic: Conditional render `{currentGame === null && !activeThirdPartyGame && <nav ...>}` with top/system back navigation.
+- Files: frontend/src/App.jsx
+- Dependencies: React 18
+- Last change: 2026-09-20 — Suppressed bottom nav inside active games.
+
 ## Authentication & Access Gate
 - Status: done
 - Purpose: Production-grade auth system with strict verification and non-blocking persistence.
@@ -8,13 +48,13 @@
 - Dependencies: Express, Supabase, crypto, JWT
 - Last change: 2026-09-20 — Converted disk persistence to async non-blocking I/O.
 
-## Win Go Game Engine
+## Win Go Game Engine & Standalone Component Architecture
 - Status: done
-- Purpose: Multi-period color and digit prediction engine (Parity 30s, Sapre 1m, Bcone 3m, Emerd 5m).
-- Key logic: Authoritative round calculation, lock window enforcement, and dual-layer settlement.
-- Files: server/controllers/gameController.js, server/routes/gameRoutes.js
-- Dependencies: Supabase, veerGameService.js, gamePersistence.js
-- Last change: 2026-09-20 — Made round state querying async and non-blocking.
+- Purpose: Multi-period color and digit prediction engine (Parity 30s, Sapre 1m, Bcone 3m, Emerd 5m) modularized into dedicated WingoGame component with production deposit and withdrawal page navigation.
+- Key logic: Extracted Win Go from App.jsx into `frontend/src/components/WingoGame.jsx`; wired Deposit and Withdraw buttons to dedicated full-screen `DepositPage` and `WithdrawPage` with `returnGame` back-navigation; removed redundant in-game subnav tabs; authoritative round calculation and golden settlement modal.
+- Files: frontend/src/components/WingoGame.jsx, frontend/src/App.jsx, frontend/src/components/pages/DepositPage.jsx, frontend/src/components/pages/WithdrawPage.jsx, server/controllers/gameController.js
+- Dependencies: React 18, Supabase, veerGameService.js, gamePersistence.js
+- Last change: 2026-09-20 — Modularized Win Go into dedicated component and wired to production Deposit & Withdrawal pages.
 
 ## Aviator Crash Arena
 - Status: done
@@ -299,10 +339,10 @@
 
 ## Win Go Simplified Betting UX
 - Status: done
-- Purpose: Make the Win Go market selection and bet confirmation flow easier to understand on mobile.
-- Key logic: Added a visible three-step betting guide, quick stake selector, explicit market payout/range labels, and clearer stake/ticket/confirmation copy; removed the random-bet and ambiguous multiplier shortcut from the primary screen.
+- Purpose: Streamline Win Go mobile interface by eliminating redundant subnav bar and organizing market flow.
+- Key logic: Removed redundant top in-game subnav tabs (Game, Trend, Wallet, Rules) to save vertical screen real estate; defaulted `activeTab` to 'win'; wired rules directly to HowToPlay modal; streamlined betting view.
 - Files: `frontend/src/App.jsx`, `frontend/src/styles.css`
-- Last change: 2026-09-18 — Reorganized the Win Go betting UI into a clear stake → market → confirm journey.
+- Last change: 2026-09-20 — Removed redundant top in-game subnav bar (Game, Trend, Wallet, Rules) and cleaned up layout.
 
 ## Live-Data Integrity Controls
 - Status: done

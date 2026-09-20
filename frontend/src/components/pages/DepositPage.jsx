@@ -242,6 +242,12 @@ export default function DepositPage({
               </div>
             </div>
 
+            {/* Expiry Timer */}
+            <div className="qr-expiry-notice" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 13, color: '#f59e0b', fontWeight: 600 }}>
+              <Clock size={15} />
+              <span>QR Code Valid for 5:00 minutes</span>
+            </div>
+
             {/* VPA Copy Box */}
             <div className="vpa-copy-card">
               <div className="vpa-info-col">
@@ -263,18 +269,50 @@ export default function DepositPage({
 
             {/* UTR Submission Box */}
             <div className="utr-submit-card">
-              <label className="utr-label">
-                Step 2: Enter 12-Digit UTR / Transaction Ref ID
-              </label>
-              <input
-                type="text"
-                maxLength={12}
-                inputMode="numeric"
-                className="utr-input-field"
-                placeholder="e.g. 425619385712"
-                value={utr}
-                onChange={(e) => setUtr(e.target.value.replace(/\D/g, ''))}
-              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <label className="utr-label" style={{ margin: 0 }}>
+                  Enter 12-Digit UTR Number
+                </label>
+                <span style={{ fontSize: 11, fontWeight: 700, color: utr.length === 12 ? '#16a34a' : '#64748b' }}>
+                  {utr.length}/12 Digits
+                </span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  type="text"
+                  maxLength={12}
+                  inputMode="numeric"
+                  className="utr-input-field"
+                  placeholder="e.g. 425619385712"
+                  value={utr}
+                  onChange={(e) => setUtr(e.target.value.replace(/\D/g, ''))}
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const text = await navigator.clipboard?.readText()
+                      if (text) {
+                        const digits = text.replace(/\D/g, '').slice(0, 12)
+                        if (digits) setUtr(digits)
+                      }
+                    } catch {}
+                  }}
+                  style={{
+                    padding: '0 14px',
+                    borderRadius: 10,
+                    border: '1.5px solid #cbd5e1',
+                    background: '#f8fafc',
+                    fontWeight: 700,
+                    fontSize: 12,
+                    cursor: 'pointer',
+                    color: '#334155',
+                  }}
+                >
+                  Paste
+                </button>
+              </div>
 
               {error && <div className="deposit-alert error mt-2">{error}</div>}
 
@@ -282,8 +320,27 @@ export default function DepositPage({
                 className="btn-submit-utr"
                 onClick={handleSubmitUTR}
                 disabled={loading || utr.length !== 12}
+                style={{ marginTop: 12 }}
               >
                 {loading ? 'Verifying UTR...' : 'Confirm Deposit (Submit UTR)'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                style={{
+                  width: '100%',
+                  marginTop: 8,
+                  padding: '8px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#64748b',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                }}
+              >
+                Change Amount or Channel
               </button>
             </div>
           </div>

@@ -290,29 +290,37 @@ export async function settleVeerRound(outcome, typeId = 30) {
 // ─── Background VeerGame settlement poller ────────────────────────────────────
 let isVeerPolling = false
 let veerLoopInterval = null
+let veerPollerTick = 0
 
 setTimeout(() => {
   veerLoopInterval = setInterval(async () => {
     if (isVeerPolling) return
     isVeerPolling = true
     try {
-      const [h30, h1, h3, h5] = await Promise.allSettled([
-        getLiveHistory(30, 1),
-        getLiveHistory(1, 1),
-        getLiveHistory(2, 1),
-        getLiveHistory(3, 1),
-      ])
+      veerPollerTick++
+      const tasks = [getLiveHistory(30, 1)] // Win Go 30s checked every interval
+      const types = [30]
 
-      const pairs = [
-        { result: h30, typeId: 30 },
-        { result: h1, typeId: 1 },
-        { result: h3, typeId: 2 },
-        { result: h5, typeId: 3 },
-      ]
+      if (veerPollerTick % 2 === 0) {
+        tasks.push(getLiveHistory(1, 1)) // Win Go 1m checked every ~7s
+        types.push(1)
+      }
+      if (veerPollerTick % 4 === 0) {
+        tasks.push(getLiveHistory(2, 1)) // Win Go 3m checked every ~14s
+        types.push(2)
+      }
+      if (veerPollerTick % 6 === 0) {
+        tasks.push(getLiveHistory(3, 1)) // Win Go 5m checked every ~21s
+        types.push(3)
+      }
 
-      for (const { result, typeId } of pairs) {
-        if (result.status === 'fulfilled' && Array.isArray(result.value?.list)) {
-          for (const item of result.value.list.slice(0, 5)) {
+      const results = await Promise.allSettled(tasks)
+
+      for (let i = 0; i < results.length; i++) {
+        const res = results[i]
+        const typeId = types[i]
+        if (res.status === 'fulfilled' && Array.isArray(res.value?.list)) {
+          for (const item of res.value.list.slice(0, 5)) {
             await settleVeerRound(item, typeId)
           }
         }
@@ -678,18 +686,29 @@ export async function getUserBets(req, res) {
 }
 
 // ─── 4. Live VeerGame Issue Proxy ─────────────────────────────────────────────
+let lastIssueWarn = 0
 export async function getVeerIssue(req, res) {
   try {
     const typeId = Number(req.query.typeId) || 30
     const issue = await getLiveIssue(typeId)
     return res.json(issue)
   } catch (err) {
+    const isProviderDown = err.message?.includes('temporarily unavailable') || err.message === 'circuit open'
+    if (isProviderDown) {
+      const now = Date.now()
+      if (now - lastIssueWarn > 15000) {
+        lastIssueWarn = now
+        console.warn(`[getVeerIssue]: ${err.message}`)
+      }
+      return res.status(503).json({ error: 'Live Win Go issue is temporarily unavailable', code: 'UNAVAILABLE' })
+    }
     console.error('[getVeerIssue Exception]:', err)
     return res.status(500).json({ error: 'Failed to fetch VeerGame issue' })
   }
 }
 
 // ─── 5. Live VeerGame Draw History Proxy ──────────────────────────────────────
+let lastHistoryWarn = 0
 export async function getVeerHistory(req, res) {
   try {
     const typeId = Number(req.query.typeId) || 30
@@ -697,6 +716,15 @@ export async function getVeerHistory(req, res) {
     const history = await getLiveHistory(typeId, page)
     return res.json(history)
   } catch (err) {
+    const isProviderDown = err.message?.includes('temporarily unavailable') || err.message === 'circuit open'
+    if (isProviderDown) {
+      const now = Date.now()
+      if (now - lastHistoryWarn > 15000) {
+        lastHistoryWarn = now
+        console.warn(`[getVeerHistory]: ${err.message}`)
+      }
+      return res.status(503).json({ error: 'Live Win Go history is temporarily unavailable', code: 'UNAVAILABLE' })
+    }
     console.error('[getVeerHistory Exception]:', err)
     return res.status(500).json({ error: 'Failed to fetch VeerGame history' })
   }

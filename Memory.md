@@ -1,0 +1,97 @@
+# Memory
+
+## Feature Index
+- [Live Win Go Provider Synchronization](#feature-live-win-go-provider-synchronization) - done
+- [Authentication & Session Security](#feature-authentication--session-security) - done
+- [Wallet & Payment Gateway](#feature-wallet--payment-gateway) - done
+- [In-House Casino & Crash Games](#feature-in-house-casino--crash-games) - done
+- [Administrative Risk & User Management](#feature-administrative-risk--user-management) - done
+- [Mobile Screen Responsiveness & Desktop Centering](#feature-mobile-screen-responsiveness--desktop-centering) - done
+- [Win Go UI Color Harmonization & Real-Time Bets](#feature-win-go-ui-color-harmonization--real-time-bets) - done
+
+---
+
+## Feature: Win Go UI Color Harmonization & Real-Time Bets
+- Status: done
+- Purpose: Royal purple casino theming for Trend Parity stats/beads and real-time synchronization of user bets.
+- Files: `frontend/src/styles.css`, `frontend/src/components/WingoGame.jsx`, `frontend/src/App.jsx`
+- Behavior / key decisions:
+  - Replaced stark white `.stat-pill` background with royal purple cards (`linear-gradient(145deg, #2c1652, #1d0e3a)`), neon glows on percentages, and 3D glossy bead spheres.
+  - Linked `WingoGame.jsx` with parent `bets` prop, `onBetPlaced` callback, and local fallback persistence (`prince-club-state-v2`).
+  - Added direct background `fetchUserBets(userId)` API polling so user bets populate immediately on mount and remain fresh across round transitions.
+- Config / env: none
+- Known issues / TODO: none
+- Last changed: 2026-09-20 - Themed Trend Parity stats to royal purple and restored real-time bet syncing.
+
+## Feature: Mobile Screen Responsiveness & Desktop Centering
+- Status: done
+- Purpose: Fullscreen edge-to-edge responsiveness on mobile smartphone screens and centered luxury casino frame on desktop.
+- Files: `frontend/src/styles.css`, `frontend/src/components/WingoGame.jsx`
+- Behavior / key decisions:
+  - Global scrollbar suppression (`scrollbar-width: none` and `::-webkit-scrollbar { display: none; }`) eliminates the 17px Windows Chrome grey desktop scrollbar.
+  - Centered mobile frame at `max-width: 450px` with `margin: 0 auto !important` on desktop screens.
+  - Responsive edge-to-edge breakpoint at `@media (max-width: 600px)` for smartphones and narrow viewports.
+  - Symmetrical card centering (`width: calc(100% - 24px) !important; margin: 0 auto 12px auto !important; box-sizing: border-box !important;`) ensures mathematically equal 12px margins on both sides without horizontal overflow.
+  - Bottom-sheet betting drawer width aligned with container (`max-width: 450px`).
+- Config / env: none
+- Known issues / TODO: none
+- Last changed: 2026-09-20 - Removed Windows Chrome desktop scrollbars and enforced symmetrical card centering across all screen sizes.
+
+## Feature: Live Win Go Provider Synchronization
+- Status: done
+- Purpose: Fetches authoritative live draw issues and history from upstream 55Club / VeerGame endpoints for Win Go rounds.
+- Files: `server/services/veerGameService.js`, `server/controllers/gameController.js`, `server/routes/gameRoutes.js`, `frontend/src/App.jsx`
+- Behavior / key decisions:
+  - 6000ms per-server timeout with dual-endpoint failover (55club -> veergame).
+  - Circuit breaker trips after 6 consecutive failures with a 20s recovery window.
+  - Stale-while-revalidate fallback serves last-known draw history and calculated countdowns during transient upstream network lag.
+  - Background poller staggers queries by cycle (30s every interval, 1m every 2nd, 3m every 4th, 5m every 6th) to avoid rate limits.
+  - Controller returns HTTP 503 on provider downtime without flooding server logs with multi-line stack traces.
+- Config / env: none (uses official upstream WebAPIs)
+- Known issues / TODO: none
+- Last changed: 2026-09-20 - Increased timeout to 6s, added stale cache fallback, and staggered poller cadence.
+
+## Feature: Authentication & Session Security
+- Status: done
+- Purpose: Multi-method player authentication (phone/email) with captcha verification and JWT enforcement.
+- Files: `frontend/src/components/pages/LoginPage.jsx`, `frontend/src/components/pages/RegisterPage.jsx`, `server/middleware/auth.js`, `server/controllers/userController.js`
+- Behavior / key decisions:
+  - Interactive slide-to-verify jigsaw captcha before credential validation.
+  - Password hashing via bcrypt and role-based access control (`admin`, `user`).
+- Config / env: `JWT_SECRET`
+- Known issues / TODO: none
+- Last changed: 2026-09-19 - Modularized dedicated auth views and added slide captcha.
+
+## Feature: Wallet & Payment Gateway
+- Status: done
+- Purpose: Production-grade financial transactions supporting UPI QR deposits, manual/automated withdrawal queues, and ledger tracking.
+- Files: `server/controllers/paymentController.js`, `server/middleware/idempotency.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/WithdrawPage.jsx`
+- Behavior / key decisions:
+  - Idempotency middleware preventing duplicate operations.
+  - Per-user mutex lock preventing concurrent balance mutations.
+  - Atomic database transactions with stored procedures.
+- Config / env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- Known issues / TODO: none
+- Last changed: 2026-09-19 - Hardened duplicate withdrawal checks and added balance audit logging.
+
+## Feature: In-House Casino & Crash Games
+- Status: done
+- Purpose: Houses native mini-games including Aviator crash, Mines, Dragon vs Tiger, and in-house slots.
+- Files: `frontend/src/components/games/*`, `server/controllers/*`
+- Behavior / key decisions:
+  - Aviator uses HTML5 Canvas 60 FPS animation with provably fair SHA-256 crash points.
+  - Native slots (Crazy 777, Fortune Gems, Super Ace) calculate outcomes server-authoritatively.
+- Config / env: none
+- Known issues / TODO: none
+- Last changed: 2026-09-19 - Added full-screen immersive view and sound controls.
+
+## Feature: Administrative Risk & User Management
+- Status: done
+- Purpose: Back-office portal for platform operators to monitor risk distributions, manage user accounts, and approve payouts.
+- Files: `frontend/src/components/pages/AdminPage.jsx`, `server/controllers/adminController.js`
+- Behavior / key decisions:
+  - Strict bearer JWT authentication validating active `admin` role directly against the database.
+  - Real-time exposure matrices for active game markets.
+- Config / env: `ADMIN_SECRET`
+- Known issues / TODO: none
+- Last changed: 2026-09-19 - Enforced database-verified admin role checks.

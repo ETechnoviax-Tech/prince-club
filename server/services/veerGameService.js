@@ -17,9 +17,9 @@ const circuit = {
   failures: 0,
   open: false,
   openedAt: 0,
-  THRESHOLD: 3,          // require 3 consecutive all-server failures before opening
-  RESET_AFTER_MS: 60000, // retry after 60s
-  lastWarnAt: 0,         // throttle console.warn to once per 60s
+  THRESHOLD: 6,          // require 6 consecutive all-server failures before opening
+  RESET_AFTER_MS: 20000, // retry after 20s
+  lastWarnAt: 0,         // throttle console.warn to once per 20s
   startupGraceMs: 8000,  // ignore failures for 8s after process start (network warmup)
   startedAt: Date.now(),
 }
@@ -89,7 +89,7 @@ export async function call55ClubAPI(endpoint, data = {}) {
   let lastErr = null
   for (const s of servers) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 3500) // 3.5s per server
+    const timeoutId = setTimeout(() => controller.abort(), 6000) // 6s per server
     try {
       const res = await fetch(`${s.base}${endpoint}`, {
         method: 'POST',
@@ -125,7 +125,7 @@ export async function call55ClubAPI(endpoint, data = {}) {
     if (circuit.failures >= circuit.THRESHOLD && !circuit.open) {
       circuit.open = true
       circuit.openedAt = Date.now()
-      console.warn('[55CLUB API] Circuit breaker OPEN — all servers unreachable. Live data is unavailable for 60s.')
+      console.warn('[55CLUB API] Circuit breaker OPEN — all servers unreachable. Live data is unavailable for 20s.')
     }
   }
 
@@ -210,6 +210,20 @@ export async function getLiveIssue(typeId = 30) {
       inFlightRequests.delete(inFlightKey)
     }
 
+    // Resilience fallback: Serve last-known issue with adjusted countdown if available
+    if (cached?.data) {
+      const endTimestamp = new Date(cached.data.endTime.replace(/-/g, '/')).getTime()
+      const msRemaining = Math.max(0, endTimestamp - Date.now())
+      const secondsRemaining = Math.ceil(msRemaining / 1000)
+      const lockSec = cached.data.lockSeconds || 5
+      return {
+        ...cached.data,
+        secondsRemaining,
+        isLocked: secondsRemaining <= lockSec,
+        stale: true,
+      }
+    }
+
     throw new Error('Live Win Go issue is temporarily unavailable')
   })()
 
@@ -269,6 +283,14 @@ export async function getLiveHistory(typeId = 30, page = 1) {
       }
     } finally {
       inFlightRequests.delete(inFlightKey)
+    }
+
+    // Resilience fallback: Serve last-known draw history if available
+    if (cached?.data) {
+      return {
+        ...cached.data,
+        stale: true,
+      }
     }
 
     throw new Error('Live Win Go history is temporarily unavailable')

@@ -1,4 +1,4 @@
-# Architecture & System Design - 69 Club
+# Architecture & System Design - 69 Club [PROD]
 
 ## System Stack
 - **Frontend**: React 18, Vite, Lucide React, Web Audio API, Vanilla CSS (Mobile-first 430px container).

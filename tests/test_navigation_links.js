@@ -12,9 +12,12 @@ const requiredComponents = [
   'PromotionView.jsx',
   'AccountView.jsx',
   'AviatorGame.jsx',
+  'WingoGame.jsx',
   'FortuneWheelModal.jsx',
   'DepositModal.jsx',
   'WithdrawModal.jsx',
+  'pages/DepositPage.jsx',
+  'pages/WithdrawPage.jsx',
 ]
 
 for (const comp of requiredComponents) {
@@ -30,23 +33,24 @@ const appContent = fs.readFileSync(appFile, 'utf8')
 assert(appContent.includes("import ActivityView from './components/ActivityView'"), 'ActivityView import missing')
 assert(appContent.includes("import PromotionView from './components/PromotionView'"), 'PromotionView import missing')
 assert(appContent.includes("import AccountView from './components/AccountView'"), 'AccountView import missing')
+assert(appContent.includes("import WingoGame from './components/WingoGame'"), 'WingoGame import missing')
 assert(appContent.includes("activeNav === 'home'"), 'home route missing')
 assert(appContent.includes("activeNav === 'activity'"), 'activity route missing')
 assert(appContent.includes("activeNav === 'promotion'"), 'promotion route missing')
 assert(appContent.includes("activeNav === 'account'"), 'account route missing')
 assert(appContent.includes("currentGame === 'aviator'"), 'aviator route missing')
 assert(appContent.includes("currentGame === 'wingo'"), 'wingo route missing')
-assert(appContent.includes("wingo-subnav-bar"), 'wingo subnav missing')
-console.log('✓ App.jsx routes and subnav verified')
+assert(appContent.includes("<WingoGame"), 'WingoGame component mount missing')
+console.log('✓ App.jsx routes and WingoGame component verified')
 
 // 3. Check HomeLobby.jsx redirections
 const lobbyFile = path.join(frontendDir, 'HomeLobby.jsx')
 const lobbyContent = fs.readFileSync(lobbyFile, 'utf8')
 
-assert(lobbyContent.includes("onSelectGame('wingo', 'PARITY')"), 'Win Go parity route missing in lobby')
-assert(lobbyContent.includes("onSelectGame('wingo', 'SAPRE')"), 'K3 sapre route missing in lobby')
-assert(lobbyContent.includes("onSelectGame('wingo', 'BCONE')"), '5D bcone route missing in lobby')
-assert(lobbyContent.includes("onSelectGame('wingo', 'EMERD')"), 'Moto Racing emerd route missing in lobby')
+assert(lobbyContent.includes("onSelectGame('wingo'"), 'Win Go route missing in lobby')
+assert(lobbyContent.includes("onSelectGame('k3')"), 'K3 route missing in lobby')
+assert(lobbyContent.includes("onSelectGame('5d')"), '5D route missing in lobby')
+assert(lobbyContent.includes("onSelectGame('trx')"), 'TRX route missing in lobby')
 assert(lobbyContent.includes("onSelectGame('aviator')"), 'Aviator route missing in lobby')
 assert(lobbyContent.includes("handleCategorySelect"), 'Category selection missing in lobby')
 assert(lobbyContent.includes("section-minigame"), 'Minigame section anchor missing')
