@@ -12802,77 +12802,50 @@ html, body {
 }
 
 .raja-lottery-ball {
-  width: 48px !important;
-  height: 48px !important;
-  border-radius: 50% !important;
+  width: 52px !important;
+  height: 52px !important;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;
-  position: relative !important;
-  border: none !important;
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12) !important;
-  transition: transform 0.15s ease !important;
+  touch-action: manipulation !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  box-shadow: none !important;
+  transition: transform 0.12s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.raja-lottery-ball:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.05) !important;
 }
 
 .raja-lottery-ball:active:not(:disabled) {
-  transform: scale(0.95) !important;
+  transform: scale(0.92) !important;
 }
 
 .raja-lottery-ball:disabled {
-  opacity: 0.6 !important;
+  opacity: 0.55 !important;
   cursor: not-allowed !important;
 }
 
-.raja-ball-inner {
-  width: 32px !important;
-  height: 32px !important;
-  border-radius: 50% !important;
-  background: #ffffff !important;
+.wingo-lottery-ball-svg {
+  transition: transform 0.1s ease !important;
+}
+
+.records-digit-cell {
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
 }
 
-.raja-ball-digit {
-  font-size: 18px !important;
-  font-weight: 900 !important;
-}
-
-/* Ball Ring Outer Colors */
-.ball-0 {
-  background: linear-gradient(135deg, #ef4444 50%, #a855f7 50%) !important;
-}
-.ball-0 .raja-ball-digit {
-  color: #a855f7 !important;
-}
-
-.ball-1, .ball-3, .ball-7, .ball-9 {
-  background: radial-gradient(circle at 40% 40%, #34d399 0%, #10b981 70%, #059669 100%) !important;
-}
-.ball-1 .raja-ball-digit,
-.ball-3 .raja-ball-digit,
-.ball-7 .raja-ball-digit,
-.ball-9 .raja-ball-digit {
-  color: #10b981 !important;
-}
-
-.ball-2, .ball-4, .ball-6, .ball-8 {
-  background: radial-gradient(circle at 40% 40%, #f87171 0%, #ef4444 70%, #dc2626 100%) !important;
-}
-.ball-2 .raja-ball-digit,
-.ball-4 .raja-ball-digit,
-.ball-6 .raja-ball-digit,
-.ball-8 .raja-ball-digit {
-  color: #ef4444 !important;
-}
-
-.ball-5 {
-  background: linear-gradient(135deg, #10b981 50%, #a855f7 50%) !important;
-}
-.ball-5 .raja-ball-digit {
-  color: #a855f7 !important;
+.matrix-bead-wrap {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 /* 5. BIG / SMALL SPLIT BUTTONS */

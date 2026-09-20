@@ -78,6 +78,101 @@ function formatCredits(val) {
   })
 }
 
+export const WingoLotteryBall = React.memo(({ digit, size = 48, className = '', style = {} }) => {
+  const d = Number(digit)
+  const isDual0 = d === 0
+  const isDual5 = d === 5
+  const isGreen = [1, 3, 7, 9].includes(d)
+  const isRed = [2, 4, 6, 8].includes(d)
+
+  let digitColor = '#dc2626'
+  if (isGreen) digitColor = '#16a34a'
+  if (isDual0 || isDual5) digitColor = '#9333ea'
+
+  let rimFill = 'url(#wball-rim-red)'
+  if (isGreen) rimFill = 'url(#wball-rim-green)'
+  else if (isDual0) rimFill = 'url(#wball-rim-dual0)'
+  else if (isDual5) rimFill = 'url(#wball-rim-dual5)'
+
+  let innerFill = 'url(#wball-inner-red)'
+  if (isGreen) innerFill = 'url(#wball-inner-green)'
+  else if (isDual0 || isDual5) innerFill = 'url(#wball-inner-violet)'
+
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 60 60"
+      className={`wingo-lottery-ball-svg ${className}`}
+      style={{
+        display: 'inline-block',
+        verticalAlign: 'middle',
+        filter: 'drop-shadow(0 3px 6px rgba(0, 0, 0, 0.16))',
+        flexShrink: 0,
+        ...style,
+      }}
+    >
+      <defs>
+        <mask id="wball-notch-mask">
+          <circle cx="30" cy="30" r="28" fill="#ffffff" />
+          <circle cx="30" cy="2" r="4.8" fill="#000000" />
+          <circle cx="58" cy="30" r="4.8" fill="#000000" />
+          <circle cx="30" cy="58" r="4.8" fill="#000000" />
+          <circle cx="2" cy="30" r="4.8" fill="#000000" />
+        </mask>
+        <radialGradient id="wball-rim-green" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#4ade80" />
+          <stop offset="60%" stopColor="#16a34a" />
+          <stop offset="100%" stopColor="#14532d" />
+        </radialGradient>
+        <radialGradient id="wball-rim-red" cx="35%" cy="30%" r="70%">
+          <stop offset="0%" stopColor="#f87171" />
+          <stop offset="60%" stopColor="#ef4444" />
+          <stop offset="100%" stopColor="#991b1b" />
+        </radialGradient>
+        <linearGradient id="wball-rim-dual0" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#f87171" />
+          <stop offset="47%" stopColor="#ef4444" />
+          <stop offset="53%" stopColor="#9333ea" />
+          <stop offset="100%" stopColor="#6b21a8" />
+        </linearGradient>
+        <linearGradient id="wball-rim-dual5" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#4ade80" />
+          <stop offset="47%" stopColor="#16a34a" />
+          <stop offset="53%" stopColor="#9333ea" />
+          <stop offset="100%" stopColor="#6b21a8" />
+        </linearGradient>
+        <radialGradient id="wball-inner-green" cx="45%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="60%" stopColor="#f8fafc" />
+          <stop offset="100%" stopColor="#bbf7d0" />
+        </radialGradient>
+        <radialGradient id="wball-inner-red" cx="45%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="60%" stopColor="#f8fafc" />
+          <stop offset="100%" stopColor="#fecaca" />
+        </radialGradient>
+        <radialGradient id="wball-inner-violet" cx="45%" cy="35%" r="65%">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="60%" stopColor="#f8fafc" />
+          <stop offset="100%" stopColor="#e9d5ff" />
+        </radialGradient>
+        <linearGradient id="wball-specular" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <circle cx="30" cy="30" r="28" fill={rimFill} mask="url(#wball-notch-mask)" />
+      <circle cx="30" cy="30" r="27.5" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth="0.8" mask="url(#wball-notch-mask)" />
+      <circle cx="30" cy="30" r="18.5" fill={innerFill} stroke="rgba(0,0,0,0.08)" strokeWidth="0.8" />
+      <ellipse cx="30" cy="21" rx="13" ry="6.5" fill="url(#wball-specular)" opacity="0.65" />
+      <text x="30" y="32" textAnchor="middle" dominantBaseline="central" fontSize="22" fontWeight="900" fontFamily="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fill={digitColor}>
+        {d}
+      </text>
+    </svg>
+  )
+})
+
 export default function WingoGame({
   currentUser,
   userId,
@@ -773,20 +868,9 @@ export default function WingoGame({
                 {gameMode === '30s' ? 'WinGo 30sec' : gameMode === '1m' ? 'WinGo 1 Min' : gameMode === '3m' ? 'WinGo 3 Min' : 'WinGo 5 Min'}
               </div>
               <div className="raja-recent-balls">
-                {history.slice(0, 5).map((h, i) => {
-                  const isDual0 = Number(h.digit) === 0
-                  const isDual5 = Number(h.digit) === 5
-                  const ballClass = isDual0
-                    ? 'raja-ball-mini raja-ball-mini--dual-0'
-                    : isDual5
-                    ? 'raja-ball-mini raja-ball-mini--dual-5'
-                    : `raja-ball-mini raja-ball-mini--${h.color}`
-                  return (
-                    <div key={i} className={ballClass}>
-                      <span>{h.digit}</span>
-                    </div>
-                  )
-                })}
+                {history.slice(0, 5).map((h, i) => (
+                  <WingoLotteryBall key={i} digit={h.digit} size={24} />
+                ))}
               </div>
             </div>
 
@@ -866,13 +950,13 @@ export default function WingoGame({
                 {NUMBER_OPTIONS.map((num) => (
                   <button
                     key={num.digit}
-                    className={`raja-lottery-ball ball-${num.digit} ${num.dual ? `ball-dual-${num.dual}` : ''}`}
+                    type="button"
+                    className={`raja-lottery-ball ball-${num.digit}`}
                     disabled={isLocked}
                     onClick={() => handleSelectTarget('number', num.digit, 9.0)}
+                    aria-label={`Select number ${num.digit}`}
                   >
-                    <div className="raja-ball-inner">
-                      <span className="raja-ball-digit">{num.digit}</span>
-                    </div>
+                    <WingoLotteryBall digit={num.digit} size={50} />
                   </button>
                 ))}
               </div>
@@ -936,8 +1020,8 @@ export default function WingoGame({
                     {history.slice(0, 10).map((h) => (
                       <tr key={h.round}>
                         <td className="mono">{formatPeriod(h.round)}</td>
-                        <td>
-                          <span className={`num-badge badge-${h.color}`}>{h.digit}</span>
+                        <td className="records-digit-cell">
+                          <WingoLotteryBall digit={h.digit} size={28} />
                         </td>
                         <td>
                           <span className={`size-tag ${h.digit >= 5 ? 'big' : 'small'}`}>
@@ -986,10 +1070,10 @@ export default function WingoGame({
                   {history.slice(0, 20).map((h) => (
                     <div
                       key={h.round}
-                      className={`matrix-bead bead-${h.color}`}
+                      className="matrix-bead-wrap"
                       title={`Period: ${formatPeriod(h.round)} | Digit: ${h.digit}`}
                     >
-                      <span>{h.digit}</span>
+                      <WingoLotteryBall digit={h.digit} size={26} />
                     </div>
                   ))}
                 </div>
@@ -1307,9 +1391,7 @@ export default function WingoGame({
               <span className={`wingo-result-pill pill-${String(resultModalData.color || '').toLowerCase()}`}>
                 {resultModalData.color}
               </span>
-              <div className={`wingo-result-ball-circle ball-${String(resultModalData.color || '').toLowerCase()}`}>
-                {resultModalData.digit}
-              </div>
+              <WingoLotteryBall digit={resultModalData.digit} size={56} />
               <span className={`wingo-result-pill pill-${String(resultModalData.size || '').toLowerCase()}`}>
                 {resultModalData.size}
               </span>
