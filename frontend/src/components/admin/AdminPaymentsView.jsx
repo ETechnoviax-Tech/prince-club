@@ -1,5 +1,17 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, Check, ChevronDown, ChevronUp, Copy, RotateCcw, X } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Landmark,
+  Phone,
+  RotateCcw,
+  Smartphone,
+  X,
+} from 'lucide-react'
 import {
   adminVerifyDeposit,
   adminVerifyWithdrawal,
@@ -19,19 +31,46 @@ function PaymentCard({ item, kind, onAction, busyId }) {
   const [expanded, setExpanded] = useState(false)
   const [note, setNote] = useState('')
   const [confirmAction, setConfirmAction] = useState(null) // 'APPROVE' | 'REJECT' | null
+  const [copiedKey, setCopiedKey] = useState(null)
   const noteRef = useRef(null)
 
   const isBusy = busyId === item.id
-  const payoutTarget =
-    kind === 'deposits'
-      ? item.utr_number
-      : item.payout_details?.upiId ||
-        item.payout_details?.accountNumber ||
-        item.payout_details?.ifsc ||
-        '—'
 
-  async function copy(value) {
-    if (value && value !== '—') await navigator.clipboard?.writeText(String(value))
+  const userMobile =
+    item.user_phone ||
+    (/^\d{10}$/.test(item.username) ? item.username : null) ||
+    item.username ||
+    item.user_id?.slice(0, 10)
+
+  const targetUpi =
+    item.target_upi ||
+    item.payout_details?.upiId ||
+    item.payout_details?.upi_id ||
+    item.payout_details?.upi ||
+    (item.payout_method === 'UPI' ? item.payout_details?.accountNumber : null)
+
+  const depositUpi = item.upi_id || item.upi_vpa || '—'
+
+  const acNum = item.account_number || item.payout_details?.accountNumber
+  const ifscCode = item.ifsc || item.payout_details?.ifsc
+  const holderName = item.holder_name || item.payout_details?.holderName
+
+  async function copy(value, key) {
+    if (!value || value === '—') return
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(String(value))
+      } else {
+        const el = document.createElement('textarea')
+        el.value = String(value)
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+      }
+      setCopiedKey(key)
+      setTimeout(() => setCopiedKey(null), 1800)
+    } catch (_) {}
   }
 
   function startAction(action) {
@@ -58,6 +97,9 @@ function PaymentCard({ item, kind, onAction, busyId }) {
         <div>
           <strong>{money(item.amount)}</strong>
           <span className={`admin-payment-status status-${item.status?.toLowerCase()}`}>{item.status}</span>
+          <span className="admin-method-badge">
+            {kind === 'deposits' ? 'Deposit / QR' : item.payout_method || 'UPI Payout'}
+          </span>
         </div>
         <button
           className="admin-expand-btn"
@@ -68,24 +110,142 @@ function PaymentCard({ item, kind, onAction, busyId }) {
         </button>
       </div>
 
-      <div className="admin-payment-meta">
-        <span>
-          User: <code>{item.user_id?.slice(0, 16)}…</code>
-        </span>
-        <span>
-          {kind === 'deposits' ? `Order: ${item.order_ref || '—'}` : `Method: ${item.payout_method || '—'}`}
-        </span>
-        <span>
-          {kind === 'deposits' ? 'UTR' : 'Payout'}:{' '}
-          <code>{payoutTarget || 'Not provided'}</code>
-          {payoutTarget && payoutTarget !== '—' && (
-            <button className="admin-copy-btn" onClick={() => copy(payoutTarget)} title="Copy">
-              <Copy size={13} />
+      {/* User Information Strip */}
+      <div className="admin-user-identity-strip">
+        <span className="user-mob-badge" title="Registered User Mobile Number">
+          <Phone size={13} className="mob-icon" />
+          <span className="mob-label">Mobile:</span>
+          <strong className="mob-val">{userMobile || '—'}</strong>
+          {userMobile && userMobile !== '—' && (
+            <button
+              className={`admin-copy-mini-btn ${copiedKey === `mob_${item.id}` ? 'copied' : ''}`}
+              onClick={() => copy(userMobile, `mob_${item.id}`)}
+              title="Copy Mobile Number"
+            >
+              {copiedKey === `mob_${item.id}` ? <Check size={11} /> : <Copy size={11} />}
             </button>
           )}
         </span>
+        <span className="user-uid-pill" title="User ID">
+          UID: <code>{item.user_id?.slice(0, 10)}…</code>
+        </span>
         <small className="admin-payment-date">{date(item.created_at)}</small>
       </div>
+
+      {/* TARGET DESTINATION BOX FOR WITHDRAWALS: "Kis UPI mein withdrawal karna hai" */}
+      {kind === 'withdrawals' && (
+        <div className="admin-payout-target-box">
+          <div className="payout-box-header">
+            <Smartphone size={15} className="payout-header-icon" />
+            <span className="payout-box-title">SEND WITHDRAWAL TO (TARGET UPI / ACCOUNT):</span>
+          </div>
+
+          {item.payout_method === 'UPI' || targetUpi ? (
+            <div className="target-upi-row">
+              <div className="target-upi-val-box">
+                <span className="upi-field-tag">DESTINATION UPI ID</span>
+                <code className="target-upi-val">{targetUpi || 'UPI Not Provided'}</code>
+              </div>
+              {targetUpi && (
+                <button
+                  className={`admin-copy-pill-btn ${copiedKey === `upi_${item.id}` ? 'copied' : ''}`}
+                  onClick={() => copy(targetUpi, `upi_${item.id}`)}
+                  title="Copy Target UPI ID"
+                >
+                  {copiedKey === `upi_${item.id}` ? (
+                    <>
+                      <Check size={13} /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} /> Copy UPI ID
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="target-bank-grid">
+              <div className="target-bank-item">
+                <span className="bank-sub-label">A/C Number:</span>
+                <code>{acNum || '—'}</code>
+                {acNum && (
+                  <button
+                    className={`admin-copy-mini-btn ${copiedKey === `ac_${item.id}` ? 'copied' : ''}`}
+                    onClick={() => copy(acNum, `ac_${item.id}`)}
+                    title="Copy Account Number"
+                  >
+                    {copiedKey === `ac_${item.id}` ? <Check size={11} /> : <Copy size={11} />}
+                  </button>
+                )}
+              </div>
+              <div className="target-bank-item">
+                <span className="bank-sub-label">IFSC Code:</span>
+                <code>{ifscCode || '—'}</code>
+                {ifscCode && (
+                  <button
+                    className={`admin-copy-mini-btn ${copiedKey === `ifsc_${item.id}` ? 'copied' : ''}`}
+                    onClick={() => copy(ifscCode, `ifsc_${item.id}`)}
+                    title="Copy IFSC Code"
+                  >
+                    {copiedKey === `ifsc_${item.id}` ? <Check size={11} /> : <Copy size={11} />}
+                  </button>
+                )}
+              </div>
+              <div className="target-bank-item">
+                <span className="bank-sub-label">Holder Name:</span>
+                <strong>{holderName || '—'}</strong>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* TARGET / VERIFICATION BOX FOR DEPOSITS: User Mobile, Deposit UPI, and UTR */}
+      {kind === 'deposits' && (
+        <div className="admin-deposit-target-box">
+          <div className="deposit-row-item">
+            <span className="deposit-field-tag">DEPOSIT RECEIVER UPI (VPA)</span>
+            <code className="deposit-val">{depositUpi}</code>
+            {depositUpi && (
+              <button
+                className={`admin-copy-mini-btn ${copiedKey === `dep_upi_${item.id}` ? 'copied' : ''}`}
+                onClick={() => copy(depositUpi, `dep_upi_${item.id}`)}
+                title="Copy Deposit UPI"
+              >
+                {copiedKey === `dep_upi_${item.id}` ? <Check size={11} /> : <Copy size={11} />}
+              </button>
+            )}
+          </div>
+          <div className="deposit-row-item highlight-utr-item">
+            <span className="deposit-field-tag">SUBMITTED UTR NUMBER</span>
+            <code className="utr-code-val">{item.utr_number || 'Not Submitted'}</code>
+            {item.utr_number && (
+              <button
+                className={`admin-copy-pill-btn utr-copy-btn ${copiedKey === `utr_${item.id}` ? 'copied' : ''}`}
+                onClick={() => copy(item.utr_number, `utr_${item.id}`)}
+                title="Copy UTR Number"
+              >
+                {copiedKey === `utr_${item.id}` ? (
+                  <>
+                    <Check size={12} /> Copied!
+                  </>
+                ) : (
+                  <>
+                    <Copy size={12} /> Copy UTR
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+          {item.order_ref && (
+            <div className="deposit-row-item">
+              <span className="deposit-field-tag">ORDER REF</span>
+              <code>{item.order_ref}</code>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Expandable detail panel */}
       {expanded && (
@@ -96,8 +256,8 @@ function PaymentCard({ item, kind, onAction, busyId }) {
                 <div key={k} className="admin-detail-row">
                   <span className="admin-detail-key">{k}:</span>
                   <code>{String(v)}</code>
-                  <button className="admin-copy-btn" onClick={() => copy(String(v))} title="Copy">
-                    <Copy size={11} />
+                  <button className="admin-copy-btn" onClick={() => copy(String(v), `det_${k}_${item.id}`)} title="Copy">
+                    {copiedKey === `det_${k}_${item.id}` ? <Check size={11} /> : <Copy size={11} />}
                   </button>
                 </div>
               ))}
@@ -124,7 +284,7 @@ function PaymentCard({ item, kind, onAction, busyId }) {
               <textarea
                 ref={noteRef}
                 className="admin-note-input"
-                placeholder="Optional note (e.g. UTR verified, date matched)"
+                placeholder="Optional note (e.g. UTR verified, payout transferred)"
                 rows={2}
                 value={note}
                 onChange={(e) => setNote(e.target.value)}

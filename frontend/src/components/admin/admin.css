@@ -1430,6 +1430,18 @@
 .status-approved { background: #dcfce7; color: #166534; }
 .status-rejected { background: #fee2e2; color: #991b1b; }
 
+.admin-method-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
 .admin-expand-btn {
   background: none;
   border: 1px solid #e2e8f0;
@@ -1441,24 +1453,253 @@
 }
 .admin-expand-btn:hover { background: #f1f5f9; }
 
-.admin-payment-meta {
+/* User Identity Strip */
+.admin-user-identity-strip {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  margin-bottom: 10px;
   font-size: 12px;
-  color: #475569;
 }
-.admin-payment-meta code {
-  background: #f1f5f9;
-  padding: 1px 5px;
-  border-radius: 4px;
-  font-family: monospace;
+
+.user-mob-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #0f172a;
+  font-size: 12.5px;
+}
+.user-mob-badge .mob-icon {
+  color: #059669;
+}
+.user-mob-badge .mob-label {
+  color: #64748b;
   font-size: 11.5px;
-  color: #1e293b;
 }
+.user-mob-badge .mob-val {
+  font-family: monospace;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  color: #047857;
+  background: #ecfdf5;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid #a7f3d0;
+}
+
+.user-uid-pill {
+  color: #64748b;
+  font-size: 11px;
+}
+.user-uid-pill code {
+  color: #475569;
+  background: #edf2f7;
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
 .admin-payment-date {
+  margin-left: auto;
   color: #94a3b8;
   font-size: 11px;
+}
+
+/* ============================================================================
+   TARGET DESTINATION BOX FOR WITHDRAWALS: "Kis UPI mein withdrawal karna hai"
+   ============================================================================ */
+.admin-payout-target-box {
+  background: linear-gradient(135deg, #f0f9ff 0%, #f0fdf4 100%);
+  border: 1.5px solid #38bdf8;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  box-shadow: 0 2px 6px rgba(14, 165, 233, 0.08);
+}
+
+.payout-box-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.payout-header-icon {
+  color: #0284c7;
+}
+.payout-box-title {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  color: #0369a1;
+  text-transform: uppercase;
+}
+
+.target-upi-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #ffffff;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #bae6fd;
+}
+
+.target-upi-val-box {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.upi-field-tag {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #64748b;
+  text-transform: uppercase;
+}
+.target-upi-val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0284c7;
+  font-family: monospace;
+  word-break: break-all;
+}
+
+/* Bank Target Grid */
+.target-bank-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  background: #ffffff;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+.target-bank-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 12px;
+}
+.bank-sub-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+.target-bank-item code {
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f172a;
+  background: #f8fafc;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: monospace;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Deposit Target Box */
+.admin-deposit-target-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin: 10px 0;
+}
+.deposit-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+}
+.deposit-field-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+}
+.deposit-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  font-family: monospace;
+}
+.highlight-utr-item {
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.utr-code-val {
+  font-size: 14px;
+  font-weight: 800;
+  color: #047857;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+
+/* Copy Buttons */
+.admin-copy-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffffff;
+  background: #0284c7;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+.admin-copy-pill-btn:hover {
+  background: #0369a1;
+  transform: translateY(-1px);
+}
+.admin-copy-pill-btn.copied {
+  background: #16a34a !important;
+}
+.utr-copy-btn {
+  background: #059669;
+}
+.utr-copy-btn:hover {
+  background: #047857;
+}
+
+.admin-copy-mini-btn {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #64748b;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  margin-left: 4px;
+}
+.admin-copy-mini-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+.admin-copy-mini-btn.copied {
+  background: #dcfce7;
+  border-color: #86efac;
+  color: #16a34a;
 }
 
 .admin-copy-btn {

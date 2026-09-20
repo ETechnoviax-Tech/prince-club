@@ -14,6 +14,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <title>69 Club | Color Prediction Trading</title>
+    <script>
+      (function() {
+        function updateAppHeight() {
+          var h = window.innerHeight;
+          document.documentElement.style.setProperty('--app-height', h + 'px');
+        }
+        updateAppHeight();
+        window.addEventListener('resize', updateAppHeight, { passive: true });
+        window.addEventListener('orientationchange', updateAppHeight, { passive: true });
+      })();
+    </script>
   </head>
   <body oncontextmenu="return false;">
     <div id="root"></div>

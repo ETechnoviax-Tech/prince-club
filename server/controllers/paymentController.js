@@ -1,7 +1,9 @@
 import crypto from 'crypto'
 import QRCode from 'qrcode'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
+import { getNextMerchantUpi, getPrimaryMerchantUpi } from '../config/upiConfig.js'
 import { memoryDeposits, memoryTransactions, memoryWallets } from '../db/store.js'
+import { memoryProfiles } from './authController.js'
 
 async function logPaymentEvent(userId, eventType, referenceId, payload = {}) {
   if (!isSupabaseConfigured || !supabase) return
@@ -24,8 +26,9 @@ export async function createDeposit(req, res) {
       return res.status(400).json({ error: 'Valid userId and minimum deposit of ₹100 required' })
     }
 
-    const merchantVPA = process.env.MERCHANT_UPI_VPA || 'club69@upi'
-    const merchantName = process.env.MERCHANT_NAME || '69 Club'
+    const selectedUpi = getNextMerchantUpi()
+    const merchantVPA = selectedUpi.vpa
+    const merchantName = selectedUpi.name
     const orderRef = `C69-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
 
     // Standard UPI Intent specification
@@ -378,11 +381,50 @@ export async function listAdminDeposits(req, res) {
     if (status !== 'ALL') query = query.eq('status', status)
     const { data, error } = await query
     if (error) return res.status(500).json({ error: 'Failed to load deposit queue' })
-    return res.json({ deposits: data || [] })
+
+    const userIds = [...new Set((data || []).map((d) => d.user_id).filter(Boolean))]
+    const profileMap = new Map()
+    if (userIds.length > 0) {
+      try {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, username, email')
+          .in('id', userIds)
+        if (profs) {
+          profs.forEach((p) => profileMap.set(p.id, p))
+        }
+      } catch (_) {}
+    }
+
+    const defaultUpi = getPrimaryMerchantUpi().vpa
+    const deposits = (data || []).map((d) => {
+      const p = profileMap.get(d.user_id) || memoryProfiles.get(d.user_id)
+      const cleanPhone = p?.username && /^\d{10}$/.test(p.username) ? p.username : (p?.phone || p?.username || d.user_id?.slice(0, 10))
+      return {
+        ...d,
+        user_phone: cleanPhone,
+        username: p?.username || d.user_id?.slice(0, 10),
+        user_email: p?.email || null,
+        upi_id: d.upi_vpa || defaultUpi,
+      }
+    })
+    return res.json({ deposits })
   }
+  const defaultUpi = getPrimaryMerchantUpi().vpa
   const deposits = Array.from(memoryDeposits.values())
     .filter((deposit) => status === 'ALL' || deposit.status === status)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 100)
+    .map((d) => {
+      const p = memoryProfiles.get(d.user_id)
+      const cleanPhone = p?.username && /^\d{10}$/.test(p.username) ? p.username : (p?.phone || p?.username || d.user_id?.slice(0, 10))
+      return {
+        ...d,
+        user_phone: cleanPhone,
+        username: p?.username || d.user_id?.slice(0, 10),
+        user_email: p?.email || null,
+        upi_id: d.upi_vpa || defaultUpi,
+      }
+    })
   return res.json({ deposits })
 }

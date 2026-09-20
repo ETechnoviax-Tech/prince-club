@@ -18,9 +18,8 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **Live Bet Distribution Matrix**: Real-time aggregation of bet volumes across Color markets (Red, Green, Violet), Size markets (Big, Small), and individual Digits (0 to 9).
   - **Live-Data Integrity**: Game screens fail closed when a verified live provider is unavailable; no fabricated results, player activity, or local bet-success notices are shown.
   - **Game-Wise Exposure Detail**: Read-only per-game breakdown of every active market side and its pending stake.
-  - **Bets & Winners Ledger**: Detailed tracking of all placed bets, targets, wager amounts, winning outcomes, and exact payouts.
   - **Users Management (CRUD)**: Search users, adjust balances (credit/debit with audit trail), switch roles (`user`/`admin`), freeze accounts, and safely delete accounts.
-  - **Payments & Settlements Queue**: Review and verify deposits and payout withdrawals with inline confirmation panels, custom admin notes, and automated balance reconciliation.
+  - **Payments & Settlements Queue**: Review and verify deposits and payout withdrawals with inline confirmation panels, custom admin notes, automated balance reconciliation, registered user mobile display, prominent target destination UPI / bank account callouts, and 1-click copy buttons.
 - **Production-Grade Payment Gateway & Withdrawal Locks**:
   - **Duplicate & Concurrent Withdrawal Prevention**: Strictly blocks double submissions; users with an existing `PENDING` withdrawal cannot initiate another until completed. Rejects duplicate destination UPI VPAs or Bank Account Numbers concurrently across requests.
   - **Idempotency Layer**: Duplicate request prevention via `Idempotency-Key` headers (fast-path in-memory LRU + persistent DB cache).
@@ -43,7 +42,7 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
 - **Bonus & Activity System**: Daily attendance streak rewards, gift redemption codes, betting rebates, and daily fortune wheel spins.
 - **100% Asynchronous & Non-Blocking Architecture**: All HTTP controllers, background routines, and disk persistence use `async/await` and `fs.promises` with zero synchronous event-loop blocking, instrumented with high-precision response timing headers (`X-Response-Time`).
 - **Zero-Leak Production Logging**: Automated build-time stripping of all `console` and `debugger` calls via Vite 8 and Oxc minifier; sandbox verification codes and internal debug routines are strictly isolated behind non-production environment checks.
-- **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, iOS Safe Area insets, touch targets, zero desktop scrollbar gutter, and symmetrically centered desktop luxury canvas.
+- **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, dynamic viewport height (`--app-height`) auto-resizing across mobile browser URL bars, iOS Safe Area insets, touch targets, zero desktop scrollbar gutter, and symmetrically centered desktop luxury canvas.
 - **Fullscreen Gaming View**: Bottom navigation automatically unmounts when entering any game (Win Go, Aviator, K3, 5D, TRX, Mines, Dragon Tiger, Slots) to maximize vertical play area; players seamlessly return to the lobby via the in-game header back button or native device system back navigation.
 
 ---
@@ -126,8 +125,13 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 JWT_SECRET=your-jwt-secret-key
 ADMIN_IDENTIFIER=your-admin-phone-or-email
 PAYMENT_WEBHOOK_SECRET=your-webhook-hmac-secret
-MERCHANT_UPI_VPA=merchant@upi
-MERCHANT_NAME=69 Club
+MERCHANT_UPI_VPA=abhimanyu.maurya@pingpay
+MERCHANT_NAME=abhimanyu maurya
+# Rotational UPI Pool (10 - 15 Accounts)
+# MERCHANT_UPI_VPA_1=vpa1@upi
+# MERCHANT_UPI_VPA_2=vpa2@upi
+# ...
+# MERCHANT_UPI_VPA_15=vpa15@upi
 ```
 
 Create `frontend/.env`:

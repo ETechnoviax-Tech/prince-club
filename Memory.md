@@ -25,17 +25,17 @@
 
 ## Feature: Mobile Screen Responsiveness & Desktop Centering
 - Status: done
-- Purpose: Fullscreen edge-to-edge responsiveness on mobile smartphone screens and centered luxury casino frame on desktop.
-- Files: `frontend/src/styles.css`, `frontend/src/components/WingoGame.jsx`
+- Purpose: Fullscreen edge-to-edge responsiveness on mobile smartphone screens, persistent visible bottom navigation bar across Android/iOS browser address bars, and centered luxury casino frame on desktop.
+- Files: `frontend/src/styles.css`, `frontend/src/App.jsx`, `frontend/index.html`, `frontend/src/components/WingoGame.jsx`
 - Behavior / key decisions:
-  - Global scrollbar suppression (`scrollbar-width: none` and `::-webkit-scrollbar { display: none; }`) eliminates the 17px Windows Chrome grey desktop scrollbar.
-  - Centered mobile frame at `max-width: 450px` with `margin: 0 auto !important` on desktop screens.
-  - Responsive edge-to-edge breakpoint at `@media (max-width: 600px)` for smartphones and narrow viewports.
-  - Symmetrical card centering (`width: calc(100% - 24px) !important; margin: 0 auto 12px auto !important; box-sizing: border-box !important;`) ensures mathematically equal 12px margins on both sides without horizontal overflow.
-  - Bottom-sheet betting drawer width aligned with container (`max-width: 450px`).
+  - Synchronized CSS dynamic viewport height (`--app-height: window.innerHeight`) on resize/orientationchange to prevent Chrome Android URL bar from pushing `.home-55-bottom-nav` below the visible screen.
+  - Constrained `.app-main-viewport` with `flex: 1 1 0% !important; min-height: 0 !important; height: 0 !important;` so internal content scrolls without expanding parent flex container.
+  - Made `.home-55-bottom-nav` rigid (`flex: 0 0 auto; z-index: 99; box-sizing: border-box;`) with `env(safe-area-inset-bottom)` support.
+  - Global scrollbar suppression (`scrollbar-width: none` and `::-webkit-scrollbar { display: none; }`) eliminates desktop scrollbars.
+  - Symmetrical card centering on mobile and centered 450px canvas on desktop.
 - Config / env: none
 - Known issues / TODO: none
-- Last changed: 2026-09-20 - Removed Windows Chrome desktop scrollbars and enforced symmetrical card centering across all screen sizes.
+- Last changed: 2026-09-20 - Fixed submerged bottom navigation bar by binding viewport height to `--app-height` and isolating flex scroll container.
 
 ## Feature: Live Win Go Provider Synchronization
 - Status: done
@@ -65,14 +65,17 @@
 ## Feature: Wallet & Payment Gateway
 - Status: done
 - Purpose: Production-grade financial transactions supporting UPI QR deposits, manual/automated withdrawal queues, and ledger tracking.
-- Files: `server/controllers/paymentController.js`, `server/middleware/idempotency.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/WithdrawPage.jsx`
+- Files: `server/controllers/paymentController.js`, `server/config/upiConfig.js`, `server/middleware/idempotency.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/WithdrawPage.jsx`
 - Behavior / key decisions:
+  - Dynamically loads merchant UPI VPAs from environment (`MERCHANT_UPI_VPA`, `MERCHANT_UPI_VPA_1..15`, or `MERCHANT_UPI_POOL`), eliminating all hardcoded UPI addresses.
+  - Round-robin / random distribution across active UPI accounts for deposit QR generation.
+  - Active credentials configured to `abhimanyu.maurya@pingpay` with template pool variables ready for multi-account load balancing.
   - Idempotency middleware preventing duplicate operations.
   - Per-user mutex lock preventing concurrent balance mutations.
   - Atomic database transactions with stored procedures.
-- Config / env: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+- Config / env: `MERCHANT_UPI_VPA`, `MERCHANT_NAME`, `MERCHANT_UPI_VPA_1..15`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - Known issues / TODO: none
-- Last changed: 2026-09-19 - Hardened duplicate withdrawal checks and added balance audit logging.
+- Last changed: 2026-09-20 - Eliminated hardcoded UPI addresses and bound deposit QR generation to dynamic environment-managed UPI pool.
 
 ## Feature: In-House Casino & Crash Games
 - Status: done
@@ -87,11 +90,13 @@
 
 ## Feature: Administrative Risk & User Management
 - Status: done
-- Purpose: Back-office portal for platform operators to monitor risk distributions, manage user accounts, and approve payouts.
-- Files: `frontend/src/components/pages/AdminPage.jsx`, `server/controllers/adminController.js`
+- Purpose: Back-office portal for platform operators to monitor risk distributions, manage user accounts, and verify/approve deposits and payouts.
+- Files: `frontend/src/components/admin/AdminPaymentsView.jsx`, `frontend/src/components/admin/admin.css`, `server/controllers/paymentController.js`, `server/controllers/walletController.js`
 - Behavior / key decisions:
+  - Enriched admin deposit & withdrawal endpoints with user profile data (`user_phone`, `username`, `email`).
+  - Withdrawals prominently highlight the destination target UPI ID (`target_upi` / `payout_details.upiId`) or bank credentials with a 1-click copy button and feedback indicator.
+  - Deposits display registered user mobile, deposit gateway UPI VPA, and submitted UTR with 1-click copy buttons.
   - Strict bearer JWT authentication validating active `admin` role directly against the database.
-  - Real-time exposure matrices for active game markets.
 - Config / env: `ADMIN_SECRET`
 - Known issues / TODO: none
-- Last changed: 2026-09-19 - Enforced database-verified admin role checks.
+- Last changed: 2026-09-20 - Added prominent target UPI payout destination, user mobile, and deposit VPA/UTR display in Admin Payments.

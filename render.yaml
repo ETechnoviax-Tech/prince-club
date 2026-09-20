@@ -30,6 +30,6 @@ services:
       - key: JWT_SECRET
         generateValue: true
       - key: MERCHANT_UPI_VPA
-        value: princeclub@upi
+        value: abhimanyu.maurya@pingpay
       - key: MERCHANT_NAME
-        value: 69 Club
+        value: abhimanyu maurya

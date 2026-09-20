@@ -238,6 +238,20 @@ export function App() {
   const restoringHistoryRef = useRef(false)
   const mainViewportRef = useRef(null)
 
+  // Dynamically synchronize --app-height with visible window.innerHeight (critical for mobile browser URL bar resizing)
+  useEffect(() => {
+    const updateHeight = () => {
+      document.documentElement.style.setProperty('--app-height', `${window.innerHeight}px`)
+    }
+    updateHeight()
+    window.addEventListener('resize', updateHeight, { passive: true })
+    window.addEventListener('orientationchange', updateHeight, { passive: true })
+    return () => {
+      window.removeEventListener('resize', updateHeight)
+      window.removeEventListener('orientationchange', updateHeight)
+    }
+  }, [])
+
   // Scroll viewport to top on page / subpage / game arena enter
   useEffect(() => {
     if (mainViewportRef.current) {

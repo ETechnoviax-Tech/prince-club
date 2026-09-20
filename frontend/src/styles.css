@@ -55,6 +55,8 @@
 html, body {
   width: 100%;
   height: 100%;
+  height: var(--app-height, 100dvh);
+  max-height: var(--app-height, 100dvh);
   background: var(--bg-surface);
   color: var(--text-primary);
   font-family: var(--font-main);
@@ -75,6 +77,8 @@ button {
 #root {
   width: 100%;
   height: 100%;
+  height: var(--app-height, 100dvh);
+  max-height: var(--app-height, 100dvh);
   display: flex;
   justify-content: center;
   align-items: stretch;
@@ -96,10 +100,9 @@ button {
   justify-content: center !important;
   align-items: stretch !important;
   width: 100% !important;
-  min-height: 100vh !important;
-  min-height: 100dvh !important;
-  height: 100vh !important;
-  height: 100dvh !important;
+  height: 100% !important;
+  height: var(--app-height, 100dvh) !important;
+  max-height: var(--app-height, 100dvh) !important;
   background: radial-gradient(circle at 50% 50%, #15092a 0%, #080312 100%) !important;
   padding: 0 !important;
   margin: 0 !important;
@@ -110,9 +113,9 @@ button {
 .mobile-app-container {
   width: 100% !important;
   max-width: 450px !important;
-  min-height: 100vh !important;
-  height: 100vh !important;
-  height: 100dvh !important;
+  height: 100% !important;
+  height: var(--app-height, 100dvh) !important;
+  max-height: var(--app-height, 100dvh) !important;
   background: var(--bg-surface);
   position: relative !important;
   display: flex !important;
@@ -128,12 +131,17 @@ button {
     background: #100624 !important;
     margin: 0 !important;
     padding: 0 !important;
+    height: 100% !important;
+    height: var(--app-height, 100dvh) !important;
+    max-height: var(--app-height, 100dvh) !important;
   }
   .mobile-app-container {
     max-width: 100% !important;
     width: 100% !important;
-    height: 100vh !important;
-    height: 100dvh !important;
+    height: 100% !important;
+    height: var(--app-height, 100dvh) !important;
+    max-height: var(--app-height, 100dvh) !important;
+    min-height: 0 !important;
     margin: 0 !important;
     box-shadow: none !important;
     border: none !important;
@@ -141,10 +149,12 @@ button {
 }
 
 .app-main-viewport {
-  flex: 1;
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: 0 !important;
   width: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   scroll-behavior: auto;
@@ -4566,17 +4576,22 @@ button {
    69 CLUB BOTTOM NAVIGATION BAR (Locked strictly to container width)
    ========================================================================== */
 .home-55-bottom-nav {
-  position: relative;
-  flex-shrink: 0;
-  width: 100%;
-  height: 64px;
-  background: #ffffff;
-  border-top: 1px solid rgba(0, 0, 0, 0.08);
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  align-items: center;
-  z-index: 50;
-  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05);
+  position: relative !important;
+  flex-shrink: 0 !important;
+  flex-grow: 0 !important;
+  width: 100% !important;
+  height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+  min-height: 64px !important;
+  max-height: 84px !important;
+  background: #ffffff !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  align-items: center !important;
+  z-index: 99 !important;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08) !important;
+  padding-bottom: env(safe-area-inset-bottom, 0px) !important;
+  box-sizing: border-box !important;
 }
 
 .nav-55-item {

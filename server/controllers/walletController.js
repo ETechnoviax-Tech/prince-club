@@ -1,6 +1,7 @@
 import crypto from 'crypto'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { memoryTransactions, memoryWallets } from '../db/store.js'
+import { memoryProfiles } from './authController.js'
 
 // In-memory store for withdrawals and daily bonuses
 const memoryWithdrawals = new Map() // id -> record
@@ -548,12 +549,59 @@ export async function listAdminWithdrawals(req, res) {
     if (status !== 'ALL') query = query.eq('status', status)
     const { data, error } = await query
     if (error) return res.status(500).json({ error: 'Failed to load withdrawal queue' })
-    return res.json({ withdrawals: data || [] })
+
+    const userIds = [...new Set((data || []).map((w) => w.user_id).filter(Boolean))]
+    const profileMap = new Map()
+    if (userIds.length > 0) {
+      try {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, username, email')
+          .in('id', userIds)
+        if (profs) {
+          profs.forEach((p) => profileMap.set(p.id, p))
+        }
+      } catch (_) {}
+    }
+
+    const withdrawals = (data || []).map((w) => {
+      const p = profileMap.get(w.user_id) || memoryProfiles.get(w.user_id)
+      const details = w.payout_details || {}
+      const targetUpi = details.upiId || details.upi_id || details.upi || null
+      const cleanPhone = p?.username && /^\d{10}$/.test(p.username) ? p.username : (p?.phone || p?.username || w.user_id?.slice(0, 10))
+      return {
+        ...w,
+        user_phone: cleanPhone,
+        username: p?.username || w.user_id?.slice(0, 10),
+        user_email: p?.email || null,
+        target_upi: targetUpi,
+        account_number: details.accountNumber || null,
+        ifsc: details.ifsc || null,
+        holder_name: details.holderName || null,
+      }
+    })
+    return res.json({ withdrawals })
   }
   const withdrawals = Array.from(memoryWithdrawals.values())
     .filter((withdrawal) => status === 'ALL' || withdrawal.status === status)
     .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
     .slice(0, 100)
+    .map((w) => {
+      const p = memoryProfiles.get(w.user_id)
+      const details = w.payout_details || {}
+      const targetUpi = details.upiId || details.upi_id || details.upi || null
+      const cleanPhone = p?.username && /^\d{10}$/.test(p.username) ? p.username : (p?.phone || p?.username || w.user_id?.slice(0, 10))
+      return {
+        ...w,
+        user_phone: cleanPhone,
+        username: p?.username || w.user_id?.slice(0, 10),
+        user_email: p?.email || null,
+        target_upi: targetUpi,
+        account_number: details.accountNumber || null,
+        ifsc: details.ifsc || null,
+        holder_name: details.holderName || null,
+      }
+    })
   return res.json({ withdrawals })
 }
 
