@@ -203,13 +203,13 @@
 - Dependencies: PostgreSQL, Supabase PostgREST
 - Last change: 2026-09-17 — Executed complete database purge/truncate across all 13 tables (0 remaining rows) for clean production launch.
 
-## Standalone Subpages Architecture
+## Standalone Subpages Architecture & Viewport Scroll Engine
 - Status: done
-- Purpose: Dedicated modular pages for all account operations and portal views.
-- Key logic: Real event-driven notifications without static fake badges; genuine gift redemption; clean coupons; user-agent session detection; zero fake mock fallback records.
-- Files: `frontend/src/components/pages/*.jsx`, `frontend/src/App.jsx`, `frontend/src/components/AccountView.jsx`
-- Dependencies: React 18, Lucide React, Vanilla CSS
-- Last change: 2026-09-20 — Eliminated static 6 notification badge, purged fake mock data across subpages, and added clean zero-states.
+- Purpose: Dedicated modular subpages with zero-lag scroll reset on page entry.
+- Key logic: `mainViewportRef` resets `scrollTop = 0` on route/page enter, `scrollRestoration = 'manual'` prevents browser jumping, `overscroll-behavior-y: contain`.
+- Files: `frontend/src/App.jsx`, `frontend/src/styles.css`, `frontend/src/components/HomeLobby.jsx`, `frontend/src/components/aviator.css`
+- Dependencies: React 18, CSS DOM
+- Last change: 2026-09-20 — Fixed page enter scroll retention and replaced false 100vh overflow with 100% min-height.
 
 ## Anti-Inspect & Client Security Shield
 - Status: done

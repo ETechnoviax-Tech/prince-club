@@ -199,7 +199,10 @@ function formatPeriod(round, mode = '30s') {
   return `${yyyy}${mm}${dd}${modeCode}${seq}`
 }
 
-
+// Force manual scroll restoration to prevent browser jumping during SPA view transitions
+if (typeof window !== 'undefined' && 'scrollRestoration' in window.history) {
+  window.history.scrollRestoration = 'manual'
+}
 
 export function App() {
   // Navigation & Core State
@@ -231,6 +234,16 @@ export function App() {
   const isAdminRoute = window.location.pathname === '/admin'
   const navigationReadyRef = useRef(false)
   const restoringHistoryRef = useRef(false)
+  const mainViewportRef = useRef(null)
+
+  // Scroll viewport to top on page / subpage / game arena enter
+  useEffect(() => {
+    if (mainViewportRef.current) {
+      mainViewportRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+      mainViewportRef.current.scrollTop = 0
+    }
+    window.scrollTo(0, 0)
+  }, [activeNav, currentGame, activeTab])
 
   const closeTransientUi = useCallback(() => {
     setDepositModalOpen(false)
@@ -270,7 +283,13 @@ export function App() {
       setSelectedMode(state.selectedMode || 'PARITY')
       setActiveNav(state.activeNav || 'home')
       setCurrentGame(state.currentGame || null)
-      queueMicrotask(() => { restoringHistoryRef.current = false })
+      queueMicrotask(() => {
+        restoringHistoryRef.current = false
+        if (mainViewportRef.current) {
+          mainViewportRef.current.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+          mainViewportRef.current.scrollTop = 0
+        }
+      })
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
@@ -919,7 +938,7 @@ export function App() {
         <GlobalLoadingSpinner />
 
         {/* MAIN SCROLLABLE VIEWPORT */}
-        <div className="app-main-viewport">
+        <div ref={mainViewportRef} className="app-main-viewport">
           {/* 1. Aviator Game Arena */}
           {currentGame === 'aviator' && (
             <AviatorGame

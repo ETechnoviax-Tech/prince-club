@@ -114,6 +114,8 @@ button {
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  scroll-behavior: auto;
   display: flex;
   flex-direction: column;
   position: relative;
@@ -4578,7 +4580,7 @@ button {
    AVIATOR CRASH GAME STYLING
    ========================================================================== */
 .aviator-container {
-  min-height: 100vh;
+  min-height: 100%;
   background: #ffffff; color: #111827;
   color: #ffffff;
   padding-bottom: 30px;
@@ -8133,7 +8135,7 @@ button {
 .k3-arena-container,
 .fived-arena-container,
 .trx-arena-container {
-  min-height: 100vh;
+  min-height: 100%;
   background: #f1f5f9;
   padding-bottom: 75px;
   color: #1e293b;
@@ -14117,7 +14119,7 @@ input:not(.spribe-amount-input):not(.spribe-auto-mult-input)::placeholder {
 .subpage-container {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  min-height: 100%;
   background: #f1f5f9;
   width: 100%;
 }

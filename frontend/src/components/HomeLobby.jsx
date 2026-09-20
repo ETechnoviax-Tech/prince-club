@@ -109,7 +109,9 @@ export function HomeLobby({
   const handleCategorySelect = (catId) => {
     setActiveCategory(catId)
     if (catId === 'lobby') {
-      window.scrollTo({ top: 0, behavior: 'smooth' })
+      const vp = document.querySelector('.app-main-viewport')
+      if (vp) vp.scrollTo({ top: 0, behavior: 'smooth' })
+      else window.scrollTo({ top: 0, behavior: 'smooth' })
     } else if (catId === 'minigame') {
       document.getElementById('section-minigame')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     } else if (catId === 'slots') {

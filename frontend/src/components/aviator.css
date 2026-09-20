@@ -3,7 +3,7 @@
    ========================================================================== */
 
 .spribe-aviator-container {
-  min-height: 100vh;
+  min-height: 100%;
   background-color: #0b0d13 !important;
   color: #ffffff;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
