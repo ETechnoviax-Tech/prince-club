@@ -13,15 +13,20 @@
 
 ## Feature: Win Go UI Color Harmonization & Real-Time Bets
 - Status: done
-- Purpose: Royal purple casino theming for Trend Parity stats/beads and real-time synchronization of user bets.
+- Purpose: Win Go arena with authentic Orange & White palette, cinema ticket countdown stage, clean lottery ball betting controls, and animated loading spinner during bet placement.
 - Files: `frontend/src/styles.css`, `frontend/src/components/WingoGame.jsx`, `frontend/src/App.jsx`
 - Behavior / key decisions:
-  - Replaced stark white `.stat-pill` background with royal purple cards (`linear-gradient(145deg, #2c1652, #1d0e3a)`), neon glows on percentages, and 3D glossy bead spheres.
-  - Linked `WingoGame.jsx` with parent `bets` prop, `onBetPlaced` callback, and local fallback persistence (`prince-club-state-v2`).
-  - Added direct background `fetchUserBets(userId)` API polling so user bets populate immediately on mount and remain fresh across round transitions.
+  - Arena Palette: Entire Win Go arena themed in clean Orange & White (`#ff5200`, `#ff7a18`, `#ffffff`, `#f8fafc`). Overhauled header to vibrant orange gradient, white wallet card with orange balance highlights, and white record tables with orange accents.
+  - Mode selector bar: White rounded card with active tab orange gradient (`linear-gradient(90deg, #ff7a18, #ff5200)`) and clock icon.
+  - Stage countdown card: Cinema ticket countdown card with digit countdown boxes and period number.
+  - Betting controls: Direct color buttons (`Green`, `Violet`, `Red`), 2x5 grid of 3D number lottery balls (0–9), and `Big`/`Small` buttons in orange/blue tones.
+  - Betting Bottom-Sheet Drawer: Clean white card with dynamic theme header matching target selection (`#ff6b35` orange for Big/Small, `#22c55e` Green, `#ef4444` Red, `#a855f7` Violet), balance chips (`1, 10, 100, 1000`), rapid pointer-based quantity stepper (`[-] [1] [+]`) with zero-latency tap and continuous auto-repeat on hold, multiplier quick chips (`X1, X5, X10, X20, X50, X100`), terms agreement, and action buttons.
+  - 5-Second Countdown Stage Overlay: Frosted white card (`rgba(255, 255, 255, 0.94)`) with dashed/solid orange rotating radar rings, white digit cards with orange borders (`#ff7a18`), and fiery orange digits (`#ff5200`) harmonized with the arena.
+  - Bet Loading Animation: Dual-ring animated loading spinner overlay (`.wingo-bet-loading-overlay`) with rotating orange gradient border and glowing center dot, plus synchronized spinner animation inside the confirm button during `isPlacingBet`.
+  - Idempotency & Concurrency: All bets pass through `apiPlaceBet` with per-user mutex and client-side lockouts.
 - Config / env: none
 - Known issues / TODO: none
-- Last changed: 2026-09-20 - Themed Trend Parity stats to royal purple and restored real-time bet syncing.
+- Last changed: 2026-09-20 - Added high-speed pointer hold stepper for instant quantity adjustment and matched 5s countdown overlay to orange/white theme.
 
 ## Feature: Mobile Screen Responsiveness & Desktop Centering
 - Status: done

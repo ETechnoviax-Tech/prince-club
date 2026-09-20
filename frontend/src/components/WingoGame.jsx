@@ -12,6 +12,7 @@ import {
   X,
   Minus,
   Plus,
+  Check,
   Loader2,
   Gift,
   Headphones,
@@ -189,8 +190,9 @@ export default function WingoGame({
   // Betting Sheet (Drawer)
   const [betSheetOpen, setBetSheetOpen] = useState(false)
   const [selectedTarget, setSelectedTarget] = useState(null)
-  const [baseAmount, setBaseAmount] = useState(10)
+  const [balanceUnit, setBalanceUnit] = useState(1)
   const [betQuantity, setBetQuantity] = useState(1)
+  const [betMultiplier, setBetMultiplier] = useState(1)
   const [agreeTerms, setAgreeTerms] = useState(true)
   const [isPlacingBet, setIsPlacingBet] = useState(false)
 
@@ -199,11 +201,57 @@ export default function WingoGame({
   const [resultModalCountdown, setResultModalCountdown] = useState(3)
   const lastSettledIssueRef = useRef(null)
 
+  // Rapid stepper hold refs & handlers for instantaneous +/-
+  const holdTimerRef = useRef(null)
+  const holdIntervalRef = useRef(null)
+
+  const stopAdjust = useCallback(() => {
+    if (holdTimerRef.current) clearTimeout(holdTimerRef.current)
+    if (holdIntervalRef.current) clearInterval(holdIntervalRef.current)
+    holdTimerRef.current = null
+    holdIntervalRef.current = null
+  }, [])
+
+  const startAdjust = useCallback((delta) => {
+    stopAdjust()
+    setBetQuantity((q) => Math.max(1, q + delta))
+    holdTimerRef.current = setTimeout(() => {
+      holdIntervalRef.current = setInterval(() => {
+        setBetQuantity((q) => Math.max(1, q + delta))
+      }, 70)
+    }, 200)
+  }, [stopAdjust])
+
+  useEffect(() => {
+    return () => stopAdjust()
+  }, [stopAdjust])
+
   const isLocked = phase === 'locked' || seconds <= activeLevel.lock
 
   // Total bet & potential return
-  const totalBetAmount = baseAmount * betQuantity
+  const totalBetAmount = balanceUnit * betQuantity * betMultiplier
   const potentialPayout = Math.round(totalBetAmount * (selectedTarget?.multiplier || 2.0))
+
+  // Authentic 55Club target color & label mapping for bottom sheet (Orange/White Casino Palette)
+  const targetThemeColor = useMemo(() => {
+    if (!selectedTarget) return '#ff6b35'
+    const sel = String(selectedTarget.val).toLowerCase()
+    if (sel === 'green' || [1, 3, 7, 9].includes(Number(sel))) return '#10b981'
+    if (sel === 'red' || [2, 4, 6, 8].includes(Number(sel))) return '#ef4444'
+    if (sel === 'violet' || sel === '0' || sel === '5') return '#a855f7'
+    return '#ff6b35' // Vibrant Orange for Big / Small
+  }, [selectedTarget])
+
+  const targetTitle = useMemo(() => {
+    if (!selectedTarget) return ''
+    if (selectedTarget.type === 'color') {
+      return `Select ${selectedTarget.val.charAt(0).toUpperCase() + selectedTarget.val.slice(1)}`
+    }
+    if (selectedTarget.type === 'size') {
+      return `Select ${selectedTarget.val}`
+    }
+    return `Select ${selectedTarget.val}`
+  }, [selectedTarget])
 
   // Win Go My Bets isolation — robustly match any Win Go bet by mode or selection
   const wingoBets = useMemo(() => {
@@ -434,6 +482,10 @@ export default function WingoGame({
     }
     sound?.playTick?.()
     setSelectedTarget({ type, val, multiplier })
+    setBalanceUnit(1)
+    setBetQuantity(1)
+    setBetMultiplier(1)
+    setAgreeTerms(true)
     setBetSheetOpen(true)
   }
 
@@ -601,34 +653,6 @@ export default function WingoGame({
         </div>
 
         <div className="raja-header-actions">
-          {/* Live Server Indicator */}
-          <div
-            className={`server-indicator ${serverOnline ? 'online' : 'offline'}`}
-            title={serverOnline ? 'Synced with Express & Supabase' : 'Offline Local Mode'}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              marginRight: 4,
-              background: serverOnline ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${serverOnline ? '#bbf7d0' : '#fecaca'}`,
-              borderRadius: 12,
-              padding: '2px 8px',
-            }}
-          >
-            <span className="status-dot" style={{ background: serverOnline ? '#22c55e' : '#ef4444' }} />
-            <span
-              className="indicator-label"
-              style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: serverOnline ? '#16a34a' : '#dc2626',
-              }}
-            >
-              {serverOnline ? 'Live' : 'Local'}
-            </span>
-          </div>
-
           {/* VIP Bonus */}
           <button
             className="raja-circle-btn"
@@ -710,10 +734,10 @@ export default function WingoGame({
           {/* WIN GO 4-TIME SELECTOR BAR */}
           <div className="raja-modes-bar">
             {[
-              { id: '30s', top: 'Win Go', sub: '30s' },
-              { id: '1m', top: 'Win Go', sub: '1Min' },
-              { id: '3m', top: 'Win Go', sub: '3Min' },
-              { id: '5m', top: 'Win Go', sub: '5Min' },
+              { id: '30s', top: 'WinGo', sub: '30sec' },
+              { id: '1m', top: 'WinGo 1', sub: 'Min' },
+              { id: '3m', top: 'WinGo 3', sub: 'Min' },
+              { id: '5m', top: 'WinGo 5', sub: 'Min' },
             ].map((m) => {
               const isActive = gameMode === m.id
               return (
@@ -735,7 +759,7 @@ export default function WingoGame({
             })}
           </div>
 
-          {/* GAME STAGE & COUNTDOWN CARD */}
+          {/* GAME STAGE & COUNTDOWN CARD (55CLUB TICKET STYLE) */}
           <div className="raja-countdown-card">
             {/* Left Section */}
             <div className="raja-cd-left">
@@ -743,10 +767,10 @@ export default function WingoGame({
                 className="raja-howtoplay-btn"
                 onClick={() => setHowToPlayOpen(true)}
               >
-                <BookOpen size={13} /> How to play
+                <BookOpen size={12} /> How to play
               </button>
               <div className="raja-mode-active-text">
-                {gameMode === '30s' ? 'Win Go 30s' : gameMode === '1m' ? 'Win Go 1Min' : gameMode === '3m' ? 'Win Go 3Min' : 'Win Go 5Min'}
+                {gameMode === '30s' ? 'WinGo 30sec' : gameMode === '1m' ? 'WinGo 1 Min' : gameMode === '3m' ? 'WinGo 3 Min' : 'WinGo 5 Min'}
               </div>
               <div className="raja-recent-balls">
                 {history.slice(0, 5).map((h, i) => {
@@ -771,64 +795,17 @@ export default function WingoGame({
 
             {/* Right Section */}
             <div className="raja-cd-right">
-              <div className="raja-cd-title">time of purchase</div>
+              <div className="raja-cd-title">Time remaining</div>
               <div className="raja-timer-boxes">
                 <span className="raja-tbox">{String(Math.floor(seconds / 60)).padStart(2, '0')[0]}</span>
                 <span className="raja-tbox">{String(Math.floor(seconds / 60)).padStart(2, '0')[1]}</span>
                 <span className="raja-tcolon">:</span>
-                <span className={`raja-tbox ${seconds <= 8 ? 'urgent' : ''}`}>{String(seconds % 60).padStart(2, '0')[0]}</span>
-                <span className={`raja-tbox ${seconds <= 8 ? 'urgent' : ''}`}>{String(seconds % 60).padStart(2, '0')[1]}</span>
+                <span className="raja-tbox">{String(seconds % 60).padStart(2, '0')[0]}</span>
+                <span className="raja-tbox">{String(seconds % 60).padStart(2, '0')[1]}</span>
               </div>
-              <div className="raja-period-num">{formatPeriod(roundNumber, gameMode)}</div>
+              <div className="raja-period-num">{roundNumber || '20260920100051597'}</div>
             </div>
           </div>
-
-          <section className="wingo-bet-guide" aria-label="How to place a Win Go bet">
-            <span className="wingo-guide-step"><strong>1</strong> Choose stake</span>
-            <span className="wingo-guide-arrow">→</span>
-            <span className="wingo-guide-step"><strong>2</strong> Pick a market</span>
-            <span className="wingo-guide-arrow">→</span>
-            <span className="wingo-guide-step"><strong>3</strong> Confirm</span>
-          </section>
-
-          <section className="wingo-stake-picker" aria-label="Quick stake selection">
-            <div className="wingo-section-heading">
-              <span>Choose your stake</span>
-              <strong>₹{baseAmount} per ticket</strong>
-            </div>
-            <div className="wingo-stake-options">
-              {PRESET_AMOUNTS.map((amt) => (
-                <button
-                  key={amt}
-                  type="button"
-                  className={`wingo-stake-option ${baseAmount === amt ? 'active' : ''}`}
-                  onClick={() => setBaseAmount(amt)}
-                >
-                  ₹{amt}
-                </button>
-              ))}
-              <label className="wingo-custom-stake">
-                <span>Custom</span>
-                <span className="wingo-custom-input-wrap">
-                  <span>₹</span>
-                  <input
-                    type="number"
-                    min="10"
-                    max="50000"
-                    step="1"
-                    inputMode="numeric"
-                    value={baseAmount || ''}
-                    onChange={(event) => {
-                      const value = event.target.value
-                      setBaseAmount(value === '' ? 0 : Math.min(50000, Math.max(0, Math.floor(Number(value)))))
-                    }}
-                    aria-label="Custom stake amount"
-                  />
-                </span>
-              </label>
-            </div>
-            <small className="wingo-stake-hint">Custom amount: ₹10–₹50,000, whole numbers only</small>
-          </section>
 
           {/* BETTING CONTROLS STAGE WITH GIANT RADAR COUNTDOWN OVERLAY */}
           <div className="wingo-betting-stage-wrapper">
@@ -859,37 +836,32 @@ export default function WingoGame({
             )}
 
             {/* PRIMARY 3 COLOR ACTION BUTTONS */}
-            <div className="wingo-market-label">Choose a color <span>Tap to continue</span></div>
             <div className="raja-color-buttons">
               <button
                 className="raja-color-btn raja-btn--green"
                 disabled={isLocked}
                 onClick={() => handleSelectTarget('color', 'green', 2.0)}
               >
-                <span>Green</span><small>2x payout</small>
+                <span>Green</span>
               </button>
               <button
                 className="raja-color-btn raja-btn--purple"
                 disabled={isLocked}
                 onClick={() => handleSelectTarget('color', 'violet', 4.5)}
               >
-                <span>Violet</span><small>4.5x payout</small>
+                <span>Violet</span>
               </button>
               <button
                 className="raja-color-btn raja-btn--red"
                 disabled={isLocked}
                 onClick={() => handleSelectTarget('color', 'red', 2.0)}
               >
-                <span>Red</span><small>2x payout</small>
+                <span>Red</span>
               </button>
             </div>
 
             {/* NUMBER LOTTERY BALLS (0-9) 2X5 GRID */}
             <div className="raja-numbers-card">
-              <div className="wingo-section-heading">
-                <span>Choose a number</span>
-                <strong>9x payout</strong>
-              </div>
               <div className="raja-numbers-grid">
                 {NUMBER_OPTIONS.map((num) => (
                   <button
@@ -907,21 +879,20 @@ export default function WingoGame({
             </div>
 
             {/* BIG / SMALL SPLIT BUTTONS */}
-            <div className="wingo-market-label">Choose a size <span>2x payout</span></div>
             <div className="raja-bigsmall-bar">
               <button
                 className="raja-bs-btn raja-btn--big"
                 disabled={isLocked}
                 onClick={() => handleSelectTarget('size', 'Big', 2.0)}
               >
-                <span>Big</span><small>5 – 9</small>
+                <span>Big</span>
               </button>
               <button
                 className="raja-bs-btn raja-btn--small"
                 disabled={isLocked}
                 onClick={() => handleSelectTarget('size', 'Small', 2.0)}
               >
-                <span>Small</span><small>0 – 4</small>
+                <span>Small</span>
               </button>
             </div>
           </div>
@@ -1148,131 +1119,165 @@ export default function WingoGame({
         </div>
       </main>
 
-      {/* 4. BOTTOM SHEET BETTING DRAWER */}
+      {/* 4. BOTTOM SHEET BETTING DRAWER (EXACT 55CLUB SCREENSHOT 2 REPLICA) */}
       {betSheetOpen && selectedTarget && (
-        <div className="bottom-sheet-overlay" onClick={() => setBetSheetOpen(false)}>
-          <div className="bottom-sheet-card" onClick={(e) => e.stopPropagation()}>
-            <div className="sheet-handle" />
-            <div className="sheet-header">
-              <div>
-                <h3 className="sheet-title">
-                  Select {selectedTarget.type === 'color' ? selectedTarget.val.toUpperCase() : selectedTarget.type === 'size' ? selectedTarget.val.toUpperCase() : `Number ${selectedTarget.val}`}
-                </h3>
-                <span className="sheet-payout-tag">{selectedTarget.multiplier.toFixed(1)}x Potential Payout ({selectedMode})</span>
+        <div className="wingo-sheet-overlay-v2" onClick={() => setBetSheetOpen(false)}>
+          <div className="wingo-sheet-card-v2" onClick={(e) => e.stopPropagation()}>
+            {/* Header Banner with Target Theme Color & Downward Pointing Chevron */}
+            <div
+              className="wingo-sheet-header-v2"
+              style={{ backgroundColor: targetThemeColor }}
+            >
+              <div className="wingo-sheet-modename">
+                {gameMode === '30s' ? 'WinGo 30sec' : gameMode === '1m' ? 'WinGo 1 Min' : gameMode === '3m' ? 'WinGo 3 Min' : 'WinGo 5 Min'}
               </div>
-              <button className="sheet-close-btn" onClick={() => setBetSheetOpen(false)}>
-                <X size={18} />
-              </button>
+              <div className="wingo-sheet-pill-card">
+                {targetTitle}
+              </div>
             </div>
 
-            {/* Amount Presets */}
-            <div className="sheet-row-label">Stake per ticket</div>
-            <div className="sheet-preset-chips">
-              {PRESET_AMOUNTS.map((amt) => (
-                <button
-                  key={amt}
-                  className={`preset-chip ${baseAmount === amt ? 'active' : ''}`}
-                  onClick={() => setBaseAmount(amt)}
-                >
-                  ₹{amt}
-                </button>
-              ))}
-              <label className="sheet-custom-stake">
-                <span>Custom</span>
-                <span className="sheet-custom-input-wrap">
-                  <span>₹</span>
+            {/* Sheet Body Content */}
+            <div className="wingo-sheet-body-v2">
+              {/* Balance Row */}
+              <div className="wingo-sheet-row">
+                <span className="wingo-sheet-label">Balance</span>
+                <div className="wingo-sheet-chips">
+                  {[1, 10, 100, 1000].map((amt) => {
+                    const isSelected = balanceUnit === amt
+                    return (
+                      <button
+                        key={amt}
+                        type="button"
+                        className={`wingo-balance-chip ${isSelected ? 'active' : ''}`}
+                        style={isSelected ? { backgroundColor: targetThemeColor, color: '#ffffff' } : {}}
+                        onClick={() => setBalanceUnit(amt)}
+                      >
+                        {amt}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Quantity Row */}
+              <div className="wingo-sheet-row">
+                <span className="wingo-sheet-label">Quantity</span>
+                <div className="wingo-stepper-wrap">
+                  <button
+                    type="button"
+                    className="wingo-step-square-btn"
+                    style={{ backgroundColor: targetThemeColor }}
+                    onPointerDown={(e) => {
+                      e.preventDefault()
+                      startAdjust(-1)
+                    }}
+                    onPointerUp={stopAdjust}
+                    onPointerLeave={stopAdjust}
+                    onPointerCancel={stopAdjust}
+                    onClick={(e) => e.preventDefault()}
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus size={16} color="#ffffff" strokeWidth={3} />
+                  </button>
                   <input
                     type="number"
-                    min="10"
-                    max="50000"
-                    step="1"
-                    inputMode="numeric"
-                    value={baseAmount || ''}
-                    onChange={(event) => {
-                      const value = event.target.value
-                      setBaseAmount(value === '' ? 0 : Math.min(50000, Math.max(0, Math.floor(Number(value)))))
+                    className="wingo-stepper-input"
+                    value={betQuantity}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value, 10)
+                      setBetQuantity(isNaN(val) || val < 1 ? 1 : Math.min(99999, val))
                     }}
-                    aria-label="Custom stake amount"
+                    aria-label="Bet quantity"
                   />
-                </span>
-              </label>
-            </div>
-            <small className="sheet-stake-hint">₹10–₹50,000 per ticket · whole numbers only</small>
-
-            {/* Multiplier / Quantity Stepper */}
-            <div className="sheet-row-label">Number of tickets</div>
-            <div className="sheet-stepper-row">
-              <div className="stepper-controls">
-                <button
-                  className="step-btn"
-                  onClick={() => setBetQuantity((q) => Math.max(1, q - 1))}
-                >
-                  <Minus size={14} />
-                </button>
-                <span className="step-val">{betQuantity}</span>
-                <button
-                  className="step-btn"
-                  onClick={() => setBetQuantity((q) => q + 1)}
-                >
-                  <Plus size={14} />
-                </button>
-              </div>
-
-              <div className="multiplier-quick-chips">
-                {MULTIPLIERS.map((m) => (
                   <button
-                    key={m}
-                    className={`mult-chip ${betQuantity === m ? 'active' : ''}`}
-                    onClick={() => setBetQuantity(m)}
+                    type="button"
+                    className="wingo-step-square-btn"
+                    style={{ backgroundColor: targetThemeColor }}
+                    onPointerDown={(e) => {
+                      e.preventDefault()
+                      startAdjust(1)
+                    }}
+                    onPointerUp={stopAdjust}
+                    onPointerLeave={stopAdjust}
+                    onPointerCancel={stopAdjust}
+                    onClick={(e) => e.preventDefault()}
+                    aria-label="Increase quantity"
                   >
-                    {m}x
+                    <Plus size={16} color="#ffffff" strokeWidth={3} />
                   </button>
-                ))}
+                </div>
+              </div>
+
+              {/* Multiplier Quick Chips Row */}
+              <div className="wingo-mult-chips-row">
+                {[1, 5, 10, 20, 50, 100].map((m) => {
+                  const isSelected = betMultiplier === m
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`wingo-mult-chip-v2 ${isSelected ? 'active' : ''}`}
+                      style={isSelected ? { backgroundColor: targetThemeColor, color: '#ffffff' } : {}}
+                      onClick={() => setBetMultiplier(m)}
+                    >
+                      X{m}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Pre-sale Rules Agreement Row */}
+              <div
+                className="wingo-terms-row-v2"
+                onClick={() => setAgreeTerms(!agreeTerms)}
+              >
+                <div className={`wingo-check-circle ${agreeTerms ? 'checked' : ''}`}>
+                  {agreeTerms && <Check size={11} color="#ffffff" strokeWidth={3.5} />}
+                </div>
+                <span className="wingo-terms-text">
+                  I agree <span className="wingo-rules-red">《Pre-sale rules》</span>
+                </span>
               </div>
             </div>
 
-            {/* Summary */}
-            <div className="sheet-summary-box">
-              <div className="sum-row">
-                <span>Total stake:</span>
-                <strong>₹{formatCredits(totalBetAmount)}</strong>
+            {/* Placing Bet Animated Loading Spinner Overlay */}
+            {isPlacingBet && (
+              <div className="wingo-bet-loading-overlay">
+                <div className="wingo-bet-spinner-card">
+                  <div className="wingo-spinner-ring-anim">
+                    <div className="wingo-spinner-dot" />
+                  </div>
+                  <span className="wingo-spinner-title">Placing Bet...</span>
+                  <span className="wingo-spinner-desc">Confirming with official game server</span>
+                </div>
               </div>
-              <div className="sum-row highlight">
-                <span>Potential payout:</span>
-                <strong>₹{formatCredits(potentialPayout)}</strong>
-              </div>
-            </div>
+            )}
 
-            <div
-              className="sheet-terms-check"
-              onClick={() => setAgreeTerms(!agreeTerms)}
-            >
-              <input
-                type="checkbox"
-                checked={agreeTerms}
-                onChange={(e) => setAgreeTerms(e.target.checked)}
-              />
-              <span>I have checked my selection and stake</span>
-            </div>
-
-            {/* Actions */}
-            <div className="sheet-action-btns">
+            {/* Bottom Action Buttons (Flush Side-by-Side) */}
+            <div className="wingo-sheet-footer-v2">
               <button
-                className="sheet-cancel-btn"
+                type="button"
+                className="wingo-btn-cancel-v2"
+                disabled={isPlacingBet}
                 onClick={() => setBetSheetOpen(false)}
               >
                 Cancel
               </button>
               <button
-                className="sheet-submit-btn"
-                disabled={isPlacingBet || !agreeTerms || totalBetAmount <= 0 || totalBetAmount > balance}
+                type="button"
+                className="wingo-btn-confirm-v2"
+                style={{ backgroundColor: targetThemeColor }}
+                disabled={isPlacingBet || !agreeTerms || totalBetAmount <= 0}
                 onClick={handleConfirmBet}
               >
-                {isPlacingBet
-                  ? <><Loader2 size={16} className="spin-anim" /> Placing bet...</>
-                  : totalBetAmount > balance
-                  ? 'Insufficient Balance'
-                  : `Confirm ₹${formatCredits(totalBetAmount)} bet`}
+                {isPlacingBet ? (
+                  <span className="wingo-btn-spinner-wrap">
+                    <Loader2 size={18} className="spin-anim" />
+                    <span>Placing Bet...</span>
+                  </span>
+                ) : (
+                  `Total amount ₹${totalBetAmount.toFixed(2)}`
+                )}
               </button>
             </div>
           </div>

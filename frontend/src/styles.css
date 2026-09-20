@@ -231,25 +231,7 @@ button {
 }
 
 .server-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border-radius: 12px;
-  font-size: 0.7rem;
-  font-weight: 600;
-  border: 1px solid var(--border-subtle);
-}
-
-.server-indicator.online {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-  border-color: rgba(16, 185, 129, 0.25);
-}
-
-.server-indicator.offline {
-  background: rgba(245, 158, 11, 0.12);
-  color: #f59e0b;
+  display: none !important;
 }
 
 .status-dot {
@@ -12357,8 +12339,42 @@ html, body {
   border: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
 
+.raja-header {
+  background: linear-gradient(90deg, #ff7a18 0%, #ff5200 100%) !important;
+  color: #ffffff !important;
+  padding: 10px 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 40 !important;
+  box-shadow: 0 2px 10px rgba(255, 82, 0, 0.2) !important;
+}
+
+.raja-header .raja-brand-name {
+  color: #ffffff !important;
+  font-size: 18px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.5px !important;
+}
+
+.raja-header .raja-circle-btn {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease !important;
+}
+
 .raja-header .raja-circle-btn:hover {
-  background: rgba(255, 255, 255, 0.16) !important;
+  background: rgba(255, 255, 255, 0.35) !important;
   color: #ffffff !important;
 }
 
@@ -12368,13 +12384,13 @@ html, body {
   display: flex !important;
   flex-direction: column !important;
   margin: 0 auto !important;
-  background: #120824 !important;
+  background: #f8fafc !important;
   overflow-x: hidden !important;
 }
 
 .win-view-content {
-  background: radial-gradient(circle at 50% 0%, #2c1654 0%, #180d30 55%, #120824 100%) !important;
-  color: #ffffff !important;
+  background: #f8fafc !important;
+  color: #1e293b !important;
   min-height: 100% !important;
   padding-bottom: 28px !important;
   width: 100% !important;
@@ -12409,38 +12425,40 @@ html, body {
   margin-right: auto !important;
 }
 
+/* 55Club Orange & White Hero Wallet Card */
 .raja-wallet-card {
-  background: linear-gradient(145deg, #2b1752 0%, #1e103b 100%) !important;
+  background: linear-gradient(135deg, #ff7a18 0%, #ff5200 100%) !important;
   color: #ffffff !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  border: 1px solid #ffedd5 !important;
+  box-shadow: 0 6px 20px rgba(255, 82, 0, 0.28) !important;
   border-radius: 18px !important;
+  padding: 16px 16px !important;
 }
 
 .raja-balance-num {
-  color: #facc15 !important;
-  font-size: 32px !important;
+  color: #ffffff !important;
+  font-size: 30px !important;
   font-weight: 900 !important;
-  text-shadow: 0 2px 8px rgba(250, 204, 21, 0.25) !important;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
 }
 
 .raja-refresh-btn {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: #cbd5e1 !important;
+  background: rgba(255, 255, 255, 0.22) !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  color: #ffffff !important;
 }
 
 .raja-wallet-subtitle {
-  color: #cbd5e1 !important;
-  font-weight: 600 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-weight: 700 !important;
 }
 
 .raja-btn-deposit {
-  background: linear-gradient(90deg, #ff5e52 0%, #f2413b 50%, #e22d26 100%) !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
+  background: #ffffff !important;
+  color: #ff5200 !important;
+  font-weight: 900 !important;
   border-radius: 25px !important;
-  box-shadow: 0 4px 14px rgba(242, 65, 59, 0.45) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
   border: none !important;
   padding: 11px 0 !important;
   cursor: pointer !important;
@@ -12453,13 +12471,13 @@ html, body {
 }
 
 .raja-btn-withdraw {
-  background: linear-gradient(90deg, #ff9800 0%, #f59e0b 50%, #d97706 100%) !important;
+  background: rgba(255, 255, 255, 0.22) !important;
   color: #ffffff !important;
   font-weight: 800 !important;
   border-radius: 25px !important;
-  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4) !important;
-  border: none !important;
-  padding: 11px 0 !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.7) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  padding: 10px 0 !important;
   cursor: pointer !important;
   font-size: 15px !important;
   transition: transform 0.15s ease, box-shadow 0.15s ease !important;
@@ -12469,136 +12487,667 @@ html, body {
   transform: scale(0.96) !important;
 }
 
+/* =========================================================
+   55CLUB AUTHENTIC WIN GO ARENA & TICKET STAGE (SCREENSHOT 1)
+   ========================================================= */
+
+/* 1. 4-TIME SELECTOR BAR */
 .raja-modes-bar {
-  background: #1e103b !important;
-  border: 1px solid rgba(168, 85, 247, 0.2) !important;
-  border-radius: 16px !important;
+  display: grid !important;
+  grid-template-columns: repeat(4, 1fr) !important;
+  gap: 6px !important;
+  margin: 10px 12px 12px !important;
+  padding: 6px !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  border: 1px solid #f1f5f9 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04) !important;
 }
 
 .raja-mode-tab {
-  background: #28154e !important;
-  border: 1px solid rgba(255, 255, 255, 0.06) !important;
-  border-radius: 12px !important;
-  color: #cbd5e1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 8px 2px !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
 }
 
 .raja-mode-tab .raja-clock-icon-wrap {
-  background: #381f66 !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  color: #94a3b8 !important;
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 50% !important;
+  background: #f3f4f6 !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #9ca3af !important;
+  margin-bottom: 4px !important;
+  transition: all 0.2s ease !important;
 }
 
 .raja-mode-tab .raja-mode-title {
-  color: #94a3b8 !important;
+  font-size: 11px !important;
   font-weight: 600 !important;
+  color: #6b7280 !important;
+  line-height: 1.15 !important;
 }
 
 .raja-mode-tab .raja-mode-sub {
-  color: #cbd5e1 !important;
-  font-weight: 800 !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: #6b7280 !important;
+  line-height: 1.15 !important;
 }
 
+/* Active tab: Coral red gradient with white text & red clock in disc */
 .raja-mode-tab.active {
-  background: linear-gradient(180deg, #3b1d6e 0%, #2b1552 100%) !important;
-  border: 1.5px solid #ef4444 !important;
-  box-shadow: 0 0 14px rgba(239, 68, 68, 0.4) !important;
+  background: linear-gradient(180deg, #ff7e75 0%, #ff5247 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(255, 82, 71, 0.35) !important;
 }
 
 .raja-mode-tab.active .raja-clock-icon-wrap {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  background: rgba(255, 255, 255, 0.3) !important;
   color: #ffffff !important;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6) !important;
+  box-shadow: none !important;
   border: none !important;
 }
 
 .raja-mode-tab.active .raja-mode-title,
 .raja-mode-tab.active .raja-mode-sub {
   color: #ffffff !important;
-  font-weight: 900 !important;
+  font-weight: 800 !important;
 }
 
+/* 2. TICKET COUNTDOWN CARD (CORAL SALMON GRADIENT WITH TICKET CUTOUT NOTCHES) */
 .raja-countdown-card {
-  background: linear-gradient(145deg, #2b1752 0%, #1c0e38 100%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35) !important;
-  border-radius: 18px !important;
+  margin: 0 12px 14px !important;
+  padding: 14px 14px !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #ff6b63 0%, #fa4f45 100%) !important;
+  border: none !important;
+  box-shadow: 0 6px 18px rgba(250, 79, 69, 0.32) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  position: relative !important;
   color: #ffffff !important;
+  overflow: visible !important;
+}
+
+/* Authentic ticket semicircular cutout notches */
+.raja-countdown-card::before,
+.raja-countdown-card::after {
+  content: '' !important;
+  position: absolute !important;
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: #f4f5f8 !important;
+  left: 48% !important;
+  transform: translateX(-50%) !important;
+  z-index: 2 !important;
+}
+
+.raja-countdown-card::before {
+  top: -7px !important;
+}
+
+.raja-countdown-card::after {
+  bottom: -7px !important;
+}
+
+.raja-cd-left {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 6px !important;
+  z-index: 3 !important;
 }
 
 .raja-howtoplay-btn {
-  background: rgba(245, 158, 11, 0.12) !important;
-  border: 1px solid rgba(245, 158, 11, 0.4) !important;
-  color: #f59e0b !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  align-self: flex-start !important;
+  padding: 3px 10px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.45) !important;
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
 }
 
 .raja-mode-active-text {
-  color: #cbd5e1 !important;
+  font-size: 13px !important;
   font-weight: 700 !important;
+  color: #ffffff !important;
+  opacity: 0.95 !important;
+}
+
+.raja-recent-balls {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  margin-top: 2px !important;
+}
+
+.raja-ball-mini {
+  width: 22px !important;
+  height: 22px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  box-shadow: inset -1px -1px 2px rgba(0, 0, 0, 0.35), inset 1px 1px 2px rgba(255, 255, 255, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+}
+
+.raja-ball-mini--green {
+  background: radial-gradient(circle at 35% 35%, #4ade80 0%, #16a34a 70%, #14532d 100%) !important;
+}
+
+.raja-ball-mini--red {
+  background: radial-gradient(circle at 35% 35%, #f87171 0%, #dc2626 70%, #7f1d1d 100%) !important;
+}
+
+.raja-ball-mini--violet {
+  background: radial-gradient(circle at 35% 35%, #c084fc 0%, #9333ea 70%, #581c87 100%) !important;
+}
+
+.raja-ball-mini--dual-0 {
+  background: linear-gradient(135deg, #ef4444 50%, #9333ea 50%) !important;
+}
+
+.raja-ball-mini--dual-5 {
+  background: linear-gradient(135deg, #16a34a 50%, #9333ea 50%) !important;
+}
+
+.raja-cd-divider {
+  width: 1px !important;
+  height: 66px !important;
+  border-left: 2px dashed rgba(255, 255, 255, 0.45) !important;
+  margin: 0 10px !important;
+}
+
+.raja-cd-right {
+  flex: 1.15 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: flex-end !important;
+  text-align: right !important;
+  gap: 4px !important;
+  z-index: 3 !important;
 }
 
 .raja-cd-title {
-  color: #94a3b8 !important;
+  font-size: 13px !important;
   font-weight: 700 !important;
-  text-transform: uppercase !important;
+  color: #ffffff !important;
+  letter-spacing: 0.3px !important;
+  text-transform: none !important;
 }
 
+.raja-timer-boxes {
+  display: flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  margin: 2px 0 !important;
+}
+
+/* 4 Crisp White Countdown Digit Boxes with Dark Text */
 .raja-tbox {
-  background: #140929 !important;
-  color: #facc15 !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  width: 22px !important;
+  height: 32px !important;
+  border-radius: 4px !important;
+  background: #ffffff !important;
+  border: none !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #1e293b !important;
+  font-size: 20px !important;
   font-weight: 900 !important;
-  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5) !important;
-}
-
-.raja-tbox.urgent {
-  background: #250d18 !important;
-  color: #ef4444 !important;
-  border-color: #ef4444 !important;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5), inset 0 0 6px rgba(239, 68, 68, 0.3) !important;
-  animation: urgentPulse 0.8s infinite alternate !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12) !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;
 }
 
 .raja-tcolon {
-  color: #cbd5e1 !important;
+  color: #ffffff !important;
+  font-weight: 900 !important;
+  font-size: 20px !important;
+  margin: 0 1px !important;
 }
 
 .raja-period-num {
-  color: #facc15 !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  color: #ffffff !important;
+  letter-spacing: 0.5px !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, monospace !important;
+  margin-top: 1px !important;
+}
+
+/* 3. PRIMARY 3 COLOR ACTION BUTTONS */
+.raja-color-buttons {
+  display: grid !important;
+  grid-template-columns: repeat(3, 1fr) !important;
+  gap: 8px !important;
+  margin: 0 12px 12px !important;
+}
+
+.raja-color-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 44px !important;
+  border-radius: 8px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  cursor: pointer !important;
+  border: none !important;
+  transition: transform 0.15s ease, filter 0.15s ease !important;
+}
+
+.raja-color-btn:active:not(:disabled) {
+  transform: scale(0.97) !important;
+}
+
+.raja-color-btn:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+.raja-btn--green {
+  background: #10b981 !important;
+  box-shadow: 0 4px 10px rgba(16, 185, 129, 0.3) !important;
+}
+
+.raja-btn--purple {
+  background: #a855f7 !important;
+  box-shadow: 0 4px 10px rgba(168, 85, 247, 0.3) !important;
+}
+
+.raja-btn--red {
+  background: #ef4444 !important;
+  box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3) !important;
+}
+
+/* 4. NUMBER LOTTERY BALLS (0-9) 2X5 GRID */
+.raja-numbers-card {
+  margin: 0 12px 12px !important;
+  padding: 14px 10px !important;
+  border-radius: 12px !important;
+  background: #f8fafc !important;
+  border: 1px solid #f1f5f9 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+}
+
+.raja-numbers-grid {
+  display: grid !important;
+  grid-template-columns: repeat(5, 1fr) !important;
+  gap: 12px 6px !important;
+  justify-items: center !important;
+}
+
+.raja-lottery-ball {
+  width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  position: relative !important;
+  border: none !important;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.12) !important;
+  transition: transform 0.15s ease !important;
+}
+
+.raja-lottery-ball:active:not(:disabled) {
+  transform: scale(0.95) !important;
+}
+
+.raja-lottery-ball:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+.raja-ball-inner {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15) !important;
+}
+
+.raja-ball-digit {
+  font-size: 18px !important;
   font-weight: 900 !important;
 }
 
-.raja-numbers-card {
-  background: linear-gradient(145deg, #2b1752 0%, #1c0e38 100%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
-  border-radius: 18px !important;
+/* Ball Ring Outer Colors */
+.ball-0 {
+  background: linear-gradient(135deg, #ef4444 50%, #a855f7 50%) !important;
+}
+.ball-0 .raja-ball-digit {
+  color: #a855f7 !important;
 }
 
-.wingo-stake-picker,
-.wingo-bet-guide {
-  background: #1e103b !important;
-  border: 1px solid rgba(168, 85, 247, 0.2) !important;
-  color: #cbd5e1 !important;
+.ball-1, .ball-3, .ball-7, .ball-9 {
+  background: radial-gradient(circle at 40% 40%, #34d399 0%, #10b981 70%, #059669 100%) !important;
+}
+.ball-1 .raja-ball-digit,
+.ball-3 .raja-ball-digit,
+.ball-7 .raja-ball-digit,
+.ball-9 .raja-ball-digit {
+  color: #10b981 !important;
 }
 
-.wingo-section-heading {
+.ball-2, .ball-4, .ball-6, .ball-8 {
+  background: radial-gradient(circle at 40% 40%, #f87171 0%, #ef4444 70%, #dc2626 100%) !important;
+}
+.ball-2 .raja-ball-digit,
+.ball-4 .raja-ball-digit,
+.ball-6 .raja-ball-digit,
+.ball-8 .raja-ball-digit {
+  color: #ef4444 !important;
+}
+
+.ball-5 {
+  background: linear-gradient(135deg, #10b981 50%, #a855f7 50%) !important;
+}
+.ball-5 .raja-ball-digit {
+  color: #a855f7 !important;
+}
+
+/* 5. BIG / SMALL SPLIT BUTTONS */
+.raja-bigsmall-bar {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+  margin: 0 12px 14px !important;
+}
+
+.raja-bs-btn {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 44px !important;
+  border-radius: 8px !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+  border: none !important;
+  transition: transform 0.15s ease !important;
+}
+
+.raja-bs-btn:active:not(:disabled) {
+  transform: scale(0.97) !important;
+}
+
+.raja-bs-btn:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+.raja-btn--big {
+  background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%) !important;
   color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(245, 158, 11, 0.3) !important;
 }
 
-.wingo-market-label {
+.raja-btn--small {
+  background: #5c9df5 !important;
   color: #ffffff !important;
+  box-shadow: 0 4px 10px rgba(92, 157, 245, 0.3) !important;
 }
 
-.wingo-stake-option {
-  background: #28154e !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
-  color: #cbd5e1 !important;
+/* =========================================================
+   AUTHENTIC 55CLUB BETTING DRAWER / BOTTOM SHEET (SCREENSHOT 2)
+   ========================================================= */
+.wingo-sheet-overlay-v2 {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 100 !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: center !important;
+  animation: fadeIn 0.2s ease !important;
 }
 
-.wingo-stake-option.active {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+.wingo-sheet-card-v2 {
+  position: relative !important;
+  width: 100% !important;
+  max-width: 450px !important;
+  margin: 0 auto !important;
+  box-sizing: border-box !important;
+  background: #ffffff !important;
+  border-top-left-radius: 20px !important;
+  border-top-right-radius: 20px !important;
+  overflow: hidden !important;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.25) !important;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.wingo-sheet-header-v2 {
+  padding: 16px 20px 24px !important;
+  text-align: center !important;
+  position: relative !important;
+  clip-path: polygon(0 0, 100% 0, 100% 80%, 50% 100%, 0 80%) !important;
+  transition: background-color 0.2s ease !important;
+}
+
+.wingo-sheet-modename {
+  font-size: 15px !important;
+  font-weight: 700 !important;
   color: #ffffff !important;
-  border-color: #ef4444 !important;
+  margin-bottom: 8px !important;
+  letter-spacing: 0.3px !important;
+}
+
+.wingo-sheet-pill-card {
+  background: #ffffff !important;
+  color: #1e293b !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  padding: 6px 24px !important;
+  border-radius: 4px !important;
+  display: inline-block !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+  min-width: 220px !important;
+  max-width: 88% !important;
+}
+
+.wingo-sheet-body-v2 {
+  padding: 18px 20px 14px !important;
+  background: #ffffff !important;
+}
+
+.wingo-sheet-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 16px !important;
+}
+
+.wingo-sheet-label {
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  color: #1f2937 !important;
+}
+
+.wingo-sheet-chips {
+  display: flex !important;
+  gap: 8px !important;
+}
+
+.wingo-balance-chip {
+  min-width: 44px !important;
+  padding: 6px 12px !important;
+  border-radius: 4px !important;
+  background: #f3f4f6 !important;
+  color: #4b5563 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.wingo-stepper-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.wingo-step-square-btn {
+  width: 36px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: none !important;
+  cursor: pointer !important;
+  touch-action: manipulation !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  transition: transform 0.08s ease, filter 0.08s ease !important;
+}
+
+.wingo-step-square-btn:active {
+  transform: scale(0.92) !important;
+  filter: brightness(0.9) !important;
+}
+
+.wingo-stepper-input {
+  width: 68px !important;
+  height: 36px !important;
+  border-radius: 6px !important;
+  background: #f8fafc !important;
+  border: 1.5px solid #e2e8f0 !important;
+  text-align: center !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  color: #0f172a !important;
+  outline: none !important;
+  touch-action: manipulation !important;
+}
+
+.wingo-mult-chips-row {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 6px !important;
+  margin-top: -6px !important;
+  margin-bottom: 18px !important;
+  flex-wrap: wrap !important;
+}
+
+.wingo-mult-chip-v2 {
+  padding: 5px 12px !important;
+  border-radius: 4px !important;
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+}
+
+.wingo-terms-row-v2 {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+  margin-bottom: 8px !important;
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+.wingo-check-circle {
+  width: 18px !important;
+  height: 18px !important;
+  border-radius: 50% !important;
+  background: #ef4444 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.wingo-terms-text {
+  font-size: 13px !important;
+  color: #4b5563 !important;
+  font-weight: 500 !important;
+}
+
+.wingo-rules-red {
+  color: #ef4444 !important;
+  font-weight: 600 !important;
+}
+
+.wingo-sheet-footer-v2 {
+  display: flex !important;
+  width: 100% !important;
+  height: 48px !important;
+}
+
+.wingo-btn-cancel-v2 {
+  width: 35% !important;
+  height: 100% !important;
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  border: none !important;
+  cursor: pointer !important;
+}
+
+.wingo-btn-cancel-v2:active {
+  background: #e5e7eb !important;
+}
+
+.wingo-btn-confirm-v2 {
+  width: 65% !important;
+  height: 100% !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: filter 0.15s ease !important;
+}
+
+.wingo-btn-confirm-v2:active:not(:disabled) {
+  filter: brightness(0.9) !important;
+}
+
+.wingo-btn-confirm-v2:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
 }
 
 /* =========================================================
@@ -12612,9 +13161,9 @@ html, body {
 .wingo-countdown-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(18, 9, 36, 0.92);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -12622,6 +13171,7 @@ html, body {
   border-radius: 18px;
   animation: fadeIn 0.2s ease;
   overflow: hidden;
+  border: 1.5px solid #fed7aa;
 }
 
 .wingo-countdown-disc {
@@ -12642,20 +13192,20 @@ html, body {
 
 .wingo-disc-ring.ring-outer {
   inset: 0;
-  border: 2px dashed rgba(245, 158, 11, 0.35);
+  border: 2px dashed rgba(255, 82, 0, 0.35);
   animation: spinClockwise 20s linear infinite;
 }
 
 .wingo-disc-ring.ring-middle {
   inset: 14px;
-  border: 2.5px solid rgba(245, 158, 11, 0.65);
-  box-shadow: 0 0 25px rgba(245, 158, 11, 0.35), inset 0 0 25px rgba(245, 158, 11, 0.2);
+  border: 2.5px solid rgba(255, 122, 24, 0.7);
+  box-shadow: 0 0 25px rgba(255, 82, 0, 0.2), inset 0 0 20px rgba(255, 122, 24, 0.1);
   animation: pulseGlow 1.8s ease-in-out infinite alternate;
 }
 
 .wingo-disc-ring.ring-inner {
   inset: 28px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(254, 215, 170, 0.85);
 }
 
 .wingo-digit-cards-row {
@@ -12670,20 +13220,20 @@ html, body {
 .wingo-digit-card {
   width: 76px;
   height: 102px;
-  background: rgba(24, 11, 48, 0.85);
-  border: 2px solid rgba(245, 158, 11, 0.85);
+  background: #ffffff;
+  border: 2.5px solid #ff7a18;
   border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 25px rgba(245, 158, 11, 0.4), inset 0 0 16px rgba(245, 158, 11, 0.25);
+  box-shadow: 0 10px 25px rgba(255, 82, 0, 0.18), inset 0 1px 0 #ffffff;
 }
 
 .wingo-digit-num {
   font-size: 64px;
   font-weight: 900;
-  color: #fbbf24;
-  text-shadow: 0 0 20px rgba(251, 191, 36, 0.85);
+  color: #ff5200;
+  text-shadow: 0 2px 10px rgba(255, 82, 0, 0.3);
   line-height: 1;
   font-family: monospace;
 }
@@ -12691,8 +13241,8 @@ html, body {
 .wingo-digit-colon {
   font-size: 48px;
   font-weight: 900;
-  color: #fbbf24;
-  text-shadow: 0 0 15px rgba(251, 191, 36, 0.85);
+  color: #ff7a18;
+  text-shadow: 0 2px 8px rgba(255, 122, 24, 0.3);
   margin-bottom: 4px;
 }
 
@@ -12700,8 +13250,7 @@ html, body {
   font-size: 13px;
   font-weight: 900;
   letter-spacing: 5px;
-  color: #facc15;
-  text-shadow: 0 0 12px rgba(250, 204, 21, 0.7);
+  color: #ea580c;
   z-index: 5;
   margin-top: 6px;
 }
@@ -12987,12 +13536,12 @@ html, body {
    WIN GO HARMONIZED ROYAL PURPLE CASINO COMPONENTS
    ========================================================= */
 
-/* Win Go Dedicated Page Arena Root Container */
+/* Win Go Dedicated Page Arena Root Container (Orange & White Theme) */
 .wingo-arena-page {
   min-height: 100% !important;
   width: 100% !important;
-  background: #100624 !important;
-  color: #ffffff !important;
+  background: #f8fafc !important;
+  color: #1e293b !important;
   display: flex !important;
   flex-direction: column !important;
 }
@@ -13002,76 +13551,69 @@ html, body {
   overflow: visible !important;
   padding: 0 !important;
   margin: 0 !important;
-  width: 100% !important;
-  background: transparent !important;
 }
 
-.wingo-arena-page .win-view-content {
-  background: radial-gradient(circle at 50% 0%, #2c1654 0%, #180d30 55%, #120824 100%) !important;
-  color: #ffffff !important;
-  width: 100% !important;
-  max-width: 100% !important;
-  margin: 0 auto !important;
-  padding: 0 0 32px 0 !important;
-  box-sizing: border-box !important;
-}
-
-.wingo-arena-page .subtab-content {
-  background: transparent !important;
-  color: #ffffff !important;
-  width: 100% !important;
-}
-
-.wingo-arena-page .empty-state-card {
-  background: #1c0d38 !important;
-  border: 1px dashed rgba(168, 85, 247, 0.3) !important;
-  color: #94a3b8 !important;
-  border-radius: 14px !important;
-  margin: 12px !important;
-  padding: 24px 16px !important;
-  text-align: center !important;
-}
-
-/* Ticker in Win Go */
+/* Ticker in Win Go (Orange & White Theme) */
 .mobile-ticker {
-  background: #190c33 !important;
-  border-bottom: 1px solid rgba(168, 85, 247, 0.2) !important;
-  color: #cbd5e1 !important;
+  background: #ffffff !important;
+  border: 1px solid #fed7aa !important;
+  color: #334155 !important;
+  border-radius: 12px !important;
+  margin: 8px 12px !important;
+  padding: 8px 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03) !important;
 }
 
 .mobile-ticker .ticker-bell {
-  color: #fbbf24 !important;
+  color: #ff5200 !important;
 }
 
 .mobile-ticker .ticker-shield {
-  color: #22c55e !important;
+  color: #10b981 !important;
 }
 
-/* In-game Subnav (Game / Trend / Wallet / Rules) - Deprecated & Hidden */
+/* In-game Subnav (Deprecated & Hidden) */
 .wingo-subnav-bar {
   display: none !important;
 }
 
 /* Sub-tabs Row (Game Record / Trend Parity / My Bets) */
 .game-subtabs {
-  background: #1c0d38 !important;
-  border: 1px solid rgba(168, 85, 247, 0.2) !important;
+  background: #ffffff !important;
+  border: 1px solid #ffedd5 !important;
   border-radius: 12px !important;
   margin: 8px 12px 12px !important;
-  padding: 3px !important;
+  padding: 4px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
+  display: flex !important;
+  gap: 6px !important;
 }
 
 .subtab-btn {
-  color: #94a3b8 !important;
+  color: #64748b !important;
   font-weight: 700 !important;
-  border-radius: 9px !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  background: transparent !important;
+  border: none !important;
   transition: all 0.15s ease !important;
+  cursor: pointer !important;
+  flex: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  font-size: 12px !important;
 }
 
 .subtab-btn.active {
   color: #ffffff !important;
-  background: #2b1754 !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+  background: linear-gradient(90deg, #ff7a18 0%, #ff5200 100%) !important;
+  box-shadow: 0 3px 10px rgba(255, 82, 0, 0.25) !important;
+  font-weight: 800 !important;
 }
 
 .subtab-btn.active::after {
@@ -13080,10 +13622,10 @@ html, body {
 
 /* Game Records Table */
 .records-table-wrap {
-  background: linear-gradient(145deg, #241344 0%, #1a0d33 100%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
+  background: #ffffff !important;
+  border: 1px solid #ffedd5 !important;
   border-radius: 16px !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
   margin: 0 12px 16px !important;
   overflow: hidden !important;
 }
@@ -13094,32 +13636,33 @@ html, body {
 }
 
 .records-table th {
-  background: #170b2e !important;
-  color: #94a3b8 !important;
-  border-bottom: 1px solid rgba(168, 85, 247, 0.2) !important;
+  background: #fff7ed !important;
+  color: #ea580c !important;
+  border-bottom: 1px solid #ffedd5 !important;
   font-weight: 800 !important;
-  padding: 12px 6px !important;
-  font-size: 11px !important;
+  padding: 12px 8px !important;
+  font-size: 12px !important;
   text-transform: uppercase !important;
   letter-spacing: 0.5px !important;
 }
 
 .records-table td {
-  background: transparent !important;
-  color: #f1f5f9 !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
-  padding: 11px 6px !important;
-  font-size: 12px !important;
+  background: #ffffff !important;
+  color: #334155 !important;
+  border-bottom: 1px solid #f1f5f9 !important;
+  padding: 11px 8px !important;
+  font-size: 13px !important;
 }
 
 .records-table tr:hover td {
-  background: rgba(255, 255, 255, 0.02) !important;
+  background: #fffaf5 !important;
 }
 
 .records-table .mono {
   font-family: monospace !important;
-  color: #cbd5e1 !important;
-  font-size: 11px !important;
+  color: #475569 !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
 }
 
 .size-tag {
@@ -13131,15 +13674,15 @@ html, body {
 }
 
 .size-tag.big {
-  background: rgba(245, 158, 11, 0.18) !important;
-  color: #fbbf24 !important;
-  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  background: #fff7ed !important;
+  color: #ea580c !important;
+  border: 1px solid #fed7aa !important;
 }
 
 .size-tag.small {
-  background: rgba(14, 165, 233, 0.18) !important;
-  color: #38bdf8 !important;
-  border: 1px solid rgba(14, 165, 233, 0.35) !important;
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  border: 1px solid #bfdbfe !important;
 }
 
 /* My Bets Filter Pills & Cards */
@@ -13153,50 +13696,50 @@ html, body {
 }
 
 .mybets-filter-chip {
-  background: #241344 !important;
-  border: 1px solid rgba(168, 85, 247, 0.3) !important;
-  color: #cbd5e1 !important;
+  background: #ffffff !important;
+  border: 1px solid #fed7aa !important;
+  color: #64748b !important;
   border-radius: 20px !important;
-  padding: 5px 12px !important;
-  font-size: 11px !important;
+  padding: 5px 14px !important;
+  font-size: 12px !important;
   font-weight: 700 !important;
   cursor: pointer !important;
   white-space: nowrap !important;
 }
 
 .mybets-filter-chip:hover {
-  background: #2d1854 !important;
+  background: #fff7ed !important;
 }
 
 .mybets-filter-chip.active {
-  background: linear-gradient(90deg, #ff6054 0%, #f2413b 100%) !important;
+  background: linear-gradient(90deg, #ff7a18 0%, #ff5200 100%) !important;
   color: #ffffff !important;
-  border-color: #ef4444 !important;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.35) !important;
+  border-color: #ff5200 !important;
+  box-shadow: 0 2px 8px rgba(255, 82, 0, 0.3) !important;
 }
 
 .bet-card-item {
-  background: linear-gradient(145deg, #241344 0%, #1a0d33 100%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  border-radius: 16px !important;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
-  padding: 13px 15px !important;
-  color: #ffffff !important;
+  background: #ffffff !important;
+  border: 1px solid #ffedd5 !important;
+  border-radius: 14px !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04) !important;
+  padding: 14px 16px !important;
+  color: #1e293b !important;
   margin: 0 12px 8px !important;
 }
 
 .bet-card-item.status-won {
   border-color: rgba(16, 185, 129, 0.45) !important;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15) !important;
+  background: #f0fdf4 !important;
 }
 
 .bet-card-item.status-lost {
-  border-color: rgba(239, 68, 68, 0.25) !important;
+  border-color: #fee2e2 !important;
   opacity: 0.9 !important;
 }
 
 .bet-period {
-  color: #94a3b8 !important;
+  color: #64748b !important;
   font-family: monospace !important;
   font-size: 12px !important;
 }
@@ -13204,16 +13747,17 @@ html, body {
 .bet-target {
   font-weight: 800 !important;
   font-size: 14px !important;
+  color: #ff5200 !important;
 }
 
 .bet-card-details {
-  color: #cbd5e1 !important;
+  color: #475569 !important;
   font-weight: 600 !important;
   font-size: 12px !important;
 }
 
 .bet-card-details span {
-  color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 
 .bet-badge {
@@ -13224,61 +13768,60 @@ html, body {
 }
 
 .bet-badge.won {
-  background: rgba(16, 185, 129, 0.2) !important;
-  color: #34d399 !important;
-  border: 1px solid rgba(16, 185, 129, 0.35) !important;
+  background: #dcfce7 !important;
+  color: #15803d !important;
+  border: 1px solid #bbf7d0 !important;
 }
 
 .bet-badge.lost {
-  background: rgba(239, 68, 68, 0.2) !important;
-  color: #f87171 !important;
-  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+  background: #fee2e2 !important;
+  color: #b91c1c !important;
+  border: 1px solid #fecaca !important;
 }
 
 .bet-badge.pending {
-  background: rgba(245, 158, 11, 0.2) !important;
-  color: #fbbf24 !important;
-  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  background: #fff7ed !important;
+  color: #c2410c !important;
+  border: 1px solid #fed7aa !important;
 }
 
-/* Trend Parity Section */
+/* Trend Parity Section (Orange & White Theme) */
 .trend-stats-bar {
   display: grid !important;
   grid-template-columns: repeat(3, 1fr) !important;
   gap: 10px !important;
-  background: linear-gradient(145deg, #241344 0%, #1a0d33 100%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  border-radius: 16px !important;
+  background: #ffffff !important;
+  border: 1px solid #ffedd5 !important;
+  border-radius: 14px !important;
   margin: 0 12px 10px !important;
   padding: 12px 14px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
 }
 
 .trend-stats-bar .stat-pill,
 .wingo-arena-page .stat-pill {
-  background: linear-gradient(145deg, #2c1652 0%, #1d0e3a 100%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.3) !important;
-  border-radius: 12px !important;
+  background: #fff7ed !important;
+  border: 1px solid #fed7aa !important;
+  border-radius: 10px !important;
   padding: 10px 8px !important;
   display: flex !important;
   flex-direction: column !important;
   align-items: center !important;
   justify-content: center !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.08) !important;
-  transition: transform 0.15s ease, border-color 0.15s ease !important;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03) !important;
+  transition: transform 0.15s ease !important;
 }
 
 .trend-stats-bar .stat-pill:hover,
 .wingo-arena-page .stat-pill:hover {
   transform: translateY(-1px) !important;
-  border-color: rgba(168, 85, 247, 0.6) !important;
 }
 
 .trend-stats-bar .stat-label,
 .wingo-arena-page .stat-label {
   font-size: 11px !important;
   font-weight: 800 !important;
-  color: #cbd5e1 !important;
+  color: #64748b !important;
   text-transform: uppercase !important;
   letter-spacing: 0.8px !important;
   margin-bottom: 4px !important;
@@ -13290,41 +13833,37 @@ html, body {
   font-weight: 900 !important;
   letter-spacing: 0.5px !important;
   line-height: 1.2 !important;
-  font-family: var(--font-heading), sans-serif !important;
 }
 
 .stat-val.text-green,
 .wingo-arena-page .text-green {
-  color: #4ade80 !important;
-  text-shadow: 0 0 12px rgba(74, 222, 128, 0.55) !important;
+  color: #10b981 !important;
 }
 
 .stat-val.text-red,
 .wingo-arena-page .text-red {
-  color: #f87171 !important;
-  text-shadow: 0 0 12px rgba(248, 113, 113, 0.55) !important;
+  color: #ef4444 !important;
 }
 
 .stat-val.text-violet,
 .wingo-arena-page .text-violet {
-  color: #c084fc !important;
-  text-shadow: 0 0 12px rgba(192, 132, 252, 0.55) !important;
+  color: #a855f7 !important;
 }
 
 .trend-matrix {
-  background: linear-gradient(145deg, #241344 0%, #1a0d33 100%) !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
+  background: #ffffff !important;
+  border: 1px solid #ffedd5 !important;
   border-radius: 14px !important;
-  color: #ffffff !important;
+  color: #1e293b !important;
   margin: 0 12px 16px !important;
   padding: 12px 14px !important;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03) !important;
 }
 
 .trend-matrix .matrix-title {
-  color: #cbd5e1 !important;
+  color: #ea580c !important;
   font-weight: 800 !important;
-  font-size: 12px !important;
+  font-size: 13px !important;
   letter-spacing: 0.5px !important;
   margin-bottom: 10px !important;
 }
@@ -13338,7 +13877,7 @@ html, body {
   font-size: 11px !important;
   font-weight: 900 !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4), inset 0 1px 2px rgba(255, 255, 255, 0.35) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15) !important;
 }
 
 .matrix-bead.bead-green {
@@ -13353,96 +13892,120 @@ html, body {
   background: radial-gradient(circle at 35% 35%, #c084fc 0%, #9333ea 70%, #581c87 100%) !important;
 }
 
-/* Bottom Betting Sheet Drawer */
-.bottom-sheet-card {
-  background: linear-gradient(160deg, #271448 0%, #180c30 100%) !important;
-  color: #ffffff !important;
-  border: 1px solid rgba(168, 85, 247, 0.3) !important;
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.65) !important;
+/* Placing Bet Animated Loading Spinner Overlay */
+.wingo-bet-loading-overlay {
+  position: absolute !important;
+  inset: 0 !important;
+  background: rgba(255, 255, 255, 0.92) !important;
+  backdrop-filter: blur(5px) !important;
+  -webkit-backdrop-filter: blur(5px) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 50 !important;
+  animation: fadeIn 0.2s ease !important;
+  border-top-left-radius: 20px !important;
+  border-top-right-radius: 20px !important;
 }
 
-.sheet-handle {
-  background: rgba(255, 255, 255, 0.2) !important;
+.wingo-bet-spinner-card {
+  background: #ffffff !important;
+  padding: 24px 32px !important;
+  border-radius: 18px !important;
+  border: 1.5px solid #fed7aa !important;
+  box-shadow: 0 12px 36px rgba(255, 82, 0, 0.22) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.sheet-title {
-  color: #ffffff !important;
-  font-weight: 900 !important;
+.wingo-spinner-ring-anim {
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 50% !important;
+  border: 4px solid #ffedd5 !important;
+  border-top-color: #ff5200 !important;
+  border-right-color: #ff7a18 !important;
+  animation: wingoRotate 0.75s linear infinite !important;
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
-.sheet-row-label {
-  color: #cbd5e1 !important;
-  font-weight: 700 !important;
+.wingo-spinner-dot {
+  width: 12px !important;
+  height: 12px !important;
+  border-radius: 50% !important;
+  background: #ff5200 !important;
+  box-shadow: 0 0 10px #ff5200 !important;
 }
 
-.preset-chip {
-  background: #251347 !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  color: #e2e8f0 !important;
-  font-weight: 700 !important;
+.wingo-spinner-title {
+  font-size: 16px !important;
+  font-weight: 800 !important;
+  color: #ff5200 !important;
+  letter-spacing: 0.3px !important;
 }
 
-.preset-chip.active {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
-  color: #ffffff !important;
-  border-color: #ef4444 !important;
-  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4) !important;
+.wingo-spinner-desc {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  color: #64748b !important;
 }
 
-.stepper-controls {
-  background: #1e0f38 !important;
-  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+.wingo-btn-spinner-wrap {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
 }
 
-.step-btn, .step-val {
-  color: #ffffff !important;
+@keyframes wingoRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
-.multiplier-quick-chips .mult-chip {
-  background: #251347 !important;
-  border: 1px solid rgba(168, 85, 247, 0.25) !important;
-  color: #e2e8f0 !important;
-}
-
-.multiplier-quick-chips .mult-chip.active {
-  background: #f59e0b !important;
-  color: #000000 !important;
-  border-color: #f59e0b !important;
-  font-weight: 900 !important;
+@keyframes scaleUp {
+  0% { transform: scale(0.9); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 .sheet-summary-box {
-  background: #1c0d36 !important;
-  border: 1px solid rgba(168, 85, 247, 0.2) !important;
+  background: #fff7ed !important;
+  border: 1px solid #fed7aa !important;
   border-radius: 12px !important;
   padding: 10px 14px !important;
-  color: #e2e8f0 !important;
+  color: #1e293b !important;
 }
 
 .sum-row {
-  color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 
 .sum-row strong {
-  color: #facc15 !important;
+  color: #ea580c !important;
 }
 
 .sum-row.highlight {
-  color: #4ade80 !important;
+  color: #16a34a !important;
 }
 
 .sheet-terms-check {
-  color: #cbd5e1 !important;
+  color: #475569 !important;
 }
 
 .sheet-cancel-btn {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border: 1px solid rgba(255, 255, 255, 0.15) !important;
-  color: #cbd5e1 !important;
+  background: #f1f5f9 !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #64748b !important;
 }
 
 .sheet-submit-btn {
-  background: linear-gradient(90deg, #ff6054 0%, #f2413b 50%, #e62c25 100%) !important;
+  background: linear-gradient(90deg, #ff7a18 0%, #ff5200 100%) !important;
   color: #ffffff !important;
 }
 
