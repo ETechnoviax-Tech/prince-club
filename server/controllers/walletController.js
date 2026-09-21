@@ -31,7 +31,7 @@ export async function getWallet(req, res) {
         // Auto-create wallet with initial credits
         const { data: newWallet, error: createErr } = await supabase
           .from('wallets')
-          .insert({ user_id: userId, balance: 1000.0 })
+          .insert({ user_id: userId, balance: 50.0 })
           .select()
           .single()
 
@@ -46,7 +46,7 @@ export async function getWallet(req, res) {
 
     // Fallback store
     if (!memoryWallets.has(userId)) {
-      memoryWallets.set(userId, 1000.0)
+      memoryWallets.set(userId, 50.0)
     }
     return res.json({
       wallet: {
@@ -101,7 +101,7 @@ export async function getTransactions(req, res) {
 export async function resetWallet(req, res) {
   try {
     const authUserId = req.user ? req.user.id : req.body.userId
-    const DEFAULT_START = 1000.0
+    const DEFAULT_START = 50.0
 
     if (process.env.NODE_ENV === 'production' && req.user?.role !== 'admin') {
       return res.status(403).json({ error: 'Wallet reset is disabled in production mode' })
@@ -143,6 +143,7 @@ export async function requestWithdrawal(req, res) {
     // - flat bankDetails object (from WithdrawModal bank path)
     const payoutDetails =
       body.payoutDetails ||
+      (body.accountDetails ? body.accountDetails : null) ||
       (body.upiId ? { upiId: body.upiId } : null) ||
       (body.bankDetails ? body.bankDetails : null) ||
       {}
@@ -153,6 +154,7 @@ export async function requestWithdrawal(req, res) {
 
     const targetUpi = (payoutDetails.upiId || '').trim().toLowerCase()
     const targetAccount = (payoutDetails.accountNumber || '').trim()
+    const targetCrypto = (payoutDetails.usdtAddress || '').trim().toLowerCase()
 
     // 1. Check if user already has an active pending withdrawal in memory
     for (const w of memoryWithdrawals.values()) {
@@ -162,7 +164,7 @@ export async function requestWithdrawal(req, res) {
           pendingWithdrawal: w
         })
       }
-      // Check if duplicate UPI or Bank account is already pending across any user
+      // Check if duplicate UPI or Bank account or USDT address is already pending across any user
       if (w.status === 'PENDING') {
         const det = w.payout_details || {}
         if (targetUpi && (det.upiId || '').trim().toLowerCase() === targetUpi) {
@@ -173,6 +175,11 @@ export async function requestWithdrawal(req, res) {
         if (targetAccount && (det.accountNumber || '').trim() === targetAccount) {
           return res.status(409).json({
             error: 'A withdrawal request for this Bank Account is already pending. Please wait for completion.'
+          })
+        }
+        if (targetCrypto && (det.usdtAddress || '').trim().toLowerCase() === targetCrypto) {
+          return res.status(409).json({
+            error: 'A withdrawal request for this USDT address is already pending. Please wait for completion.'
           })
         }
       }
@@ -197,8 +204,8 @@ export async function requestWithdrawal(req, res) {
           })
         }
 
-        // Check if destination UPI or Bank is pending in DB
-        if (targetUpi || targetAccount) {
+        // Check if destination UPI, Bank, or USDT is pending in DB
+        if (targetUpi || targetAccount || targetCrypto) {
           const { data: dbPending } = await supabase
             .from('withdrawal_requests')
             .select('id, payout_details')
@@ -214,6 +221,11 @@ export async function requestWithdrawal(req, res) {
             if (targetAccount && dbPending.some(p => ((p.payout_details?.accountNumber || '').trim() === targetAccount))) {
               return res.status(409).json({
                 error: 'A withdrawal request for this Bank Account is already pending. Please wait for completion.'
+              })
+            }
+            if (targetCrypto && dbPending.some(p => ((p.payout_details?.usdtAddress || '').trim().toLowerCase() === targetCrypto))) {
+              return res.status(409).json({
+                error: 'A withdrawal request for this USDT address is already pending. Please wait for completion.'
               })
             }
           }
@@ -578,6 +590,10 @@ export async function listAdminWithdrawals(req, res) {
         account_number: details.accountNumber || null,
         ifsc: details.ifsc || null,
         holder_name: details.holderName || null,
+        target_crypto: details.usdtAddress || details.cryptoAddress || null,
+        crypto_network: details.network || 'TRC20',
+        usdt_amount: details.usdtAmount || null,
+        exchange_rate: details.exchangeRate || 92.0,
       }
     })
     return res.json({ withdrawals })
@@ -600,6 +616,10 @@ export async function listAdminWithdrawals(req, res) {
         account_number: details.accountNumber || null,
         ifsc: details.ifsc || null,
         holder_name: details.holderName || null,
+        target_crypto: details.usdtAddress || details.cryptoAddress || null,
+        crypto_network: details.network || 'TRC20',
+        usdt_amount: details.usdtAmount || null,
+        exchange_rate: details.exchangeRate || 92.0,
       }
     })
   return res.json({ withdrawals })

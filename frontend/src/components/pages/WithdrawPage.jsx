@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import {
   ChevronLeft,
   RefreshCw,
@@ -9,10 +9,30 @@ import {
   AlertCircle,
   FileText,
   X,
+  Zap,
+  Info,
+  ExternalLink,
 } from 'lucide-react'
 import { sound } from '../../utils/audio'
 import { requestWithdrawal, fetchUserWithdrawals } from '../../api/client'
 import './withdraw.css'
+
+const USDT_EXCHANGE_RATE = 92.0
+
+const MAJOR_BANKS = [
+  'State Bank of India',
+  'HDFC Bank',
+  'ICICI Bank',
+  'Punjab National Bank',
+  'Axis Bank',
+  'Bank of Baroda',
+  'Kotak Mahindra Bank',
+  'Canara Bank',
+  'Union Bank of India',
+  'IndusInd Bank',
+]
+
+const UPI_HANDLES = ['@okaxis', '@okhdfcbank', '@paytm', '@ybl', '@upi', '@ibl']
 
 export default function WithdrawPage({
   currentUser,
@@ -22,42 +42,98 @@ export default function WithdrawPage({
   onOpenHistory,
   onRefreshBalance,
 }) {
-  const [method, setMethod] = useState('BANK') // 'BANK' | 'USDT' | 'UPI'
-  const [amount, setAmount] = useState('')
-  const [accountDetails, setAccountDetails] = useState(() => {
-    try {
-      const key = `withdraw_account_${currentUser?.id || 'guest'}`
-      const saved = localStorage.getItem(key)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        // Clean any legacy hardcoded demo accounts
-        if (parsed?.accountNumber && parsed.accountNumber !== '84331398289') {
-          return parsed
-        }
-        localStorage.removeItem(key)
-      }
-    } catch {}
-    return {
-      bankName: '',
-      accountNumber: '',
-      ifsc: '',
-      holderName: '',
-      upiId: '',
-    }
-  })
+  const userId = currentUser?.id || 'guest'
 
+  // Method selector: 'BANK' | 'USDT' | 'UPI'
+  const [method, setMethod] = useState('BANK')
+  const [amount, setAmount] = useState('')
   const [refreshing, setRefreshing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [alertMsg, setAlertMsg] = useState(null)
   const [historyList, setHistoryList] = useState([])
   const [setupModalOpen, setSetupModalOpen] = useState(false)
+  const [modalError, setModalError] = useState(null)
 
-  // Fetch recent user withdrawals from live server
+  // 1. Independent account states per method
+  const [bankAccount, setBankAccount] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`withdraw_bank_${userId}`)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed?.accountNumber && parsed.accountNumber !== '84331398289') return parsed
+      }
+      // Migrate legacy single key if it had bank data
+      const legacy = localStorage.getItem(`withdraw_account_${userId}`)
+      if (legacy) {
+        const p = JSON.parse(legacy)
+        if (p?.accountNumber && p.accountNumber !== '84331398289') {
+          return {
+            bankName: p.bankName || '',
+            accountNumber: p.accountNumber || '',
+            ifsc: p.ifsc || '',
+            holderName: p.holderName || '',
+          }
+        }
+      }
+    } catch {}
+    return { bankName: '', accountNumber: '', ifsc: '', holderName: '' }
+  })
+
+  const [upiAccount, setUpiAccount] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`withdraw_upi_${userId}`)
+      if (saved) return JSON.parse(saved)
+      // Migrate legacy single key if it had UPI
+      const legacy = localStorage.getItem(`withdraw_account_${userId}`)
+      if (legacy) {
+        const p = JSON.parse(legacy)
+        if (p?.upiId) return { upiId: p.upiId, holderName: p.holderName || '' }
+      }
+    } catch {}
+    return { upiId: '', holderName: '' }
+  })
+
+  const [usdtAccount, setUsdtAccount] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`withdraw_usdt_${userId}`)
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return { usdtAddress: '', network: 'TRC20' }
+  })
+
+  // Modal editing temporary buffer
+  const [tempBank, setTempBank] = useState({ bankName: '', accountNumber: '', confirmAccount: '', ifsc: '', holderName: '' })
+  const [tempUpi, setTempUpi] = useState({ upiId: '', holderName: '' })
+  const [tempUsdt, setTempUsdt] = useState({ usdtAddress: '', network: 'TRC20' })
+
+  // Synchronize modal buffer when opening
+  useEffect(() => {
+    if (setupModalOpen) {
+      setModalError(null)
+      setTempBank({
+        bankName: bankAccount.bankName || '',
+        accountNumber: bankAccount.accountNumber || '',
+        confirmAccount: bankAccount.accountNumber || '',
+        ifsc: bankAccount.ifsc || '',
+        holderName: bankAccount.holderName || '',
+      })
+      setTempUpi({
+        upiId: upiAccount.upiId || '',
+        holderName: upiAccount.holderName || '',
+      })
+      setTempUsdt({
+        usdtAddress: usdtAccount.usdtAddress || '',
+        network: usdtAccount.network || 'TRC20',
+      })
+    }
+  }, [setupModalOpen, bankAccount, upiAccount, usdtAccount])
+
+  // Fetch recent user withdrawals from live backend
   useEffect(() => {
     if (currentUser?.id) {
       fetchUserWithdrawals(currentUser.id)
         .then((res) => {
-          if (res.withdrawals) setHistoryList(res.withdrawals.slice(0, 3))
+          if (res?.withdrawals) setHistoryList(res.withdrawals.slice(0, 3))
         })
         .catch(() => {})
     }
@@ -73,33 +149,157 @@ export default function WithdrawPage({
     setTimeout(() => setRefreshing(false), 800)
   }
 
+  // Limits per method
+  const minAmount = method === 'USDT' ? 1000 : 110
+  const maxAmount = method === 'USDT' ? 500000 : 50000
+
   const handleSelectAll = () => {
     sound.playTick?.()
-    setAmount(String(Math.floor(balance)))
+    const availableInt = Math.floor(balance)
+    if (availableInt > maxAmount) {
+      setAmount(String(maxAmount))
+    } else {
+      setAmount(String(availableInt))
+    }
   }
 
-  const handleSaveAccount = (e) => {
+  // Active account bound state calculation
+  const isBankBound = Boolean(bankAccount.accountNumber && bankAccount.ifsc && bankAccount.holderName)
+  const isUpiBound = Boolean(upiAccount.upiId)
+  const isUsdtBound = Boolean(usdtAccount.usdtAddress)
+
+  const isCurrentMethodBound = useMemo(() => {
+    if (method === 'BANK') return isBankBound
+    if (method === 'UPI') return isUpiBound
+    if (method === 'USDT') return isUsdtBound
+    return false
+  }, [method, isBankBound, isUpiBound, isUsdtBound])
+
+  const currentBoundDisplay = useMemo(() => {
+    if (method === 'BANK') {
+      if (!isBankBound) return '+ Add Bank Card'
+      const masked = `${bankAccount.accountNumber.slice(0, 4)}****${bankAccount.accountNumber.slice(-4)}`
+      return `${bankAccount.bankName ? bankAccount.bankName + ' ' : ''}${masked} (${bankAccount.holderName})`
+    }
+    if (method === 'UPI') {
+      if (!isUpiBound) return '+ Add UPI ID / VPA'
+      return `${upiAccount.upiId}${upiAccount.holderName ? ' (' + upiAccount.holderName + ')' : ''}`
+    }
+    if (method === 'USDT') {
+      if (!isUsdtBound) return '+ Add USDT Wallet Address'
+      const addr = usdtAccount.usdtAddress
+      const masked = `${addr.slice(0, 6)}...${addr.slice(-4)}`
+      return `[${usdtAccount.network || 'TRC20'}] ${masked}`
+    }
+    return '+ Add Payout Account'
+  }, [method, isBankBound, isUpiBound, isUsdtBound, bankAccount, upiAccount, usdtAccount])
+
+  // Calculation for received amount
+  const numAmount = Number(amount) || 0
+  const usdtEquivalent = (numAmount / USDT_EXCHANGE_RATE).toFixed(2)
+  const isValidAmount = numAmount >= minAmount && numAmount <= maxAmount && numAmount <= balance
+
+  // Modal save handler with comprehensive validation
+  const handleSaveModal = (e) => {
     e.preventDefault()
-    try {
-      localStorage.setItem(`withdraw_account_${currentUser?.id || 'guest'}`, JSON.stringify(accountDetails))
-    } catch {}
+    setModalError(null)
+
+    if (method === 'BANK') {
+      const { bankName, accountNumber, confirmAccount, ifsc, holderName } = tempBank
+      if (!bankName.trim()) {
+        setModalError('Please enter or select your Bank Name.')
+        return
+      }
+      if (!/^\d{9,18}$/.test(accountNumber.trim())) {
+        setModalError('Bank Account Number must be between 9 and 18 numeric digits.')
+        return
+      }
+      if (accountNumber.trim() !== confirmAccount.trim()) {
+        setModalError('Account Number and Confirmation Account Number do not match.')
+        return
+      }
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc.trim().toUpperCase())) {
+        setModalError('Please enter a valid 11-character Indian IFSC code (e.g. SBIN0001234).')
+        return
+      }
+      if (holderName.trim().length < 2) {
+        setModalError('Please enter the Account Holder Name as registered in bank records.')
+        return
+      }
+
+      const cleanBank = {
+        bankName: bankName.trim(),
+        accountNumber: accountNumber.trim(),
+        ifsc: ifsc.trim().toUpperCase(),
+        holderName: holderName.trim(),
+      }
+      setBankAccount(cleanBank)
+      try {
+        localStorage.setItem(`withdraw_bank_${userId}`, JSON.stringify(cleanBank))
+      } catch {}
+    } else if (method === 'UPI') {
+      const { upiId, holderName } = tempUpi
+      if (!upiId.trim() || !/^[\w.-]+@[\w.-]+$/.test(upiId.trim())) {
+        setModalError('Please enter a valid UPI ID (e.g. 9876543210@upi or name@okhdfcbank).')
+        return
+      }
+      const cleanUpi = {
+        upiId: upiId.trim().toLowerCase(),
+        holderName: holderName.trim(),
+      }
+      setUpiAccount(cleanUpi)
+      try {
+        localStorage.setItem(`withdraw_upi_${userId}`, JSON.stringify(cleanUpi))
+      } catch {}
+    } else if (method === 'USDT') {
+      const { usdtAddress, network } = tempUsdt
+      const cleanAddr = usdtAddress.trim()
+      const net = network === 'BEP20' ? 'BEP20' : 'TRC20'
+
+      if (net === 'TRC20') {
+        if (!/^T[a-km-zA-HJ-NP-Z1-9]{33}$/.test(cleanAddr)) {
+          setModalError('Invalid TRC20 USDT address. TRC20 addresses must start with "T" and have 34 characters.')
+          return
+        }
+      } else {
+        if (!/^0x[a-fA-F0-9]{40}$/.test(cleanAddr)) {
+          setModalError('Invalid BEP20 USDT address. BEP20 addresses must start with "0x" and have 42 characters.')
+          return
+        }
+      }
+
+      const cleanUsdt = { usdtAddress: cleanAddr, network: net }
+      setUsdtAccount(cleanUsdt)
+      try {
+        localStorage.setItem(`withdraw_usdt_${userId}`, JSON.stringify(cleanUsdt))
+      } catch {}
+    }
+
+    sound.playWin?.()
     setSetupModalOpen(false)
-    sound.playTick?.()
   }
 
+  // Submit withdrawal request to backend
   const handleSubmitWithdraw = async (e) => {
     e.preventDefault()
     setAlertMsg(null)
 
-    if (!isAccountBound) {
-      setAlertMsg({ type: 'error', text: 'Please bind your bank card or UPI payout account first.' })
+    if (!isCurrentMethodBound) {
+      setAlertMsg({
+        type: 'error',
+        text: `Please bind your ${method === 'BANK' ? 'Bank Card' : method === 'USDT' ? 'USDT Wallet' : 'UPI ID'} first.`,
+      })
       setSetupModalOpen(true)
       return
     }
 
-    const numAmount = Number(amount)
-    if (!numAmount || numAmount < 110) {
-      setAlertMsg({ type: 'error', text: 'Minimum withdrawal amount is ₹110.00' })
+    if (!numAmount || numAmount < minAmount) {
+      setAlertMsg({ type: 'error', text: `Minimum withdrawal amount for ${method} is ₹${minAmount.toLocaleString('en-IN')}.00` })
+      return
+    }
+
+    if (numAmount > maxAmount) {
+      setAlertMsg({ type: 'error', text: `Maximum withdrawal amount for ${method} is ₹${maxAmount.toLocaleString('en-IN')}.00` })
       return
     }
 
@@ -112,14 +312,33 @@ export default function WithdrawPage({
     sound.playBet?.()
 
     try {
+      let payloadDetails = {}
+      if (method === 'BANK') {
+        payloadDetails = {
+          bankName: bankAccount.bankName,
+          accountNumber: bankAccount.accountNumber,
+          ifsc: bankAccount.ifsc,
+          holderName: bankAccount.holderName,
+        }
+      } else if (method === 'UPI') {
+        payloadDetails = {
+          upiId: upiAccount.upiId,
+          holderName: upiAccount.holderName,
+        }
+      } else if (method === 'USDT') {
+        payloadDetails = {
+          usdtAddress: usdtAccount.usdtAddress,
+          network: usdtAccount.network || 'TRC20',
+          exchangeRate: USDT_EXCHANGE_RATE,
+          usdtAmount: Number(usdtEquivalent),
+        }
+      }
+
       const payload = {
         userId: currentUser?.id,
         amount: numAmount,
-        payoutMethod: method === 'BANK' ? 'BANK' : method === 'UPI' ? 'UPI' : 'USDT',
-        accountDetails: {
-          ...accountDetails,
-          upiId: accountDetails.upiId || `${accountDetails.accountNumber}@upi`,
-        },
+        payoutMethod: method,
+        payoutDetails: payloadDetails,
       }
 
       const res = await requestWithdrawal(currentUser?.id, payload)
@@ -134,32 +353,22 @@ export default function WithdrawPage({
       }
       if (currentUser?.id) {
         const h = await fetchUserWithdrawals(currentUser.id)
-        if (h.withdrawals) setHistoryList(h.withdrawals.slice(0, 3))
+        if (h?.withdrawals) setHistoryList(h.withdrawals.slice(0, 3))
       }
     } catch (err) {
       sound.playLose?.()
       setAlertMsg({
         type: 'error',
-        text: err.message || 'Failed to submit withdrawal request. Please check details.',
+        text: err.message || 'Failed to submit withdrawal request. Please check your payout details.',
       })
     } finally {
       setSubmitting(false)
     }
   }
 
-  const isAccountBound = Boolean(accountDetails.accountNumber?.trim() || accountDetails.upiId?.trim())
-
-  const maskedAccount = isAccountBound
-    ? (accountDetails.accountNumber?.trim()
-        ? `${accountDetails.bankName ? accountDetails.bankName + ' ' : ''}${accountDetails.accountNumber.trim().slice(0, 4)}****${accountDetails.accountNumber.trim().slice(-3)}`
-        : accountDetails.upiId?.trim())
-    : '+ Add Bank Card / Payout Account'
-
-  const isValidAmount = Number(amount) >= 110 && Number(amount) <= balance
-
   return (
     <div className="withdraw-page-container">
-      {/* 1. Header */}
+      {/* 1. Top Bar */}
       <header className="withdraw-header">
         <button
           className="withdraw-back-btn"
@@ -185,7 +394,7 @@ export default function WithdrawPage({
       </header>
 
       <div className="withdraw-content">
-        {/* 2. Coral Balance Card */}
+        {/* 2. Balance Card (Coral Gradient) */}
         <div className="withdraw-balance-card">
           <div className="withdraw-card-top-row">
             <span>👛</span>
@@ -207,12 +416,18 @@ export default function WithdrawPage({
           <div className="withdraw-card-dots">**** ****</div>
         </div>
 
-        {/* 3. ARPay Notification Banner */}
+        {/* 3. ARPay / Fast Settlement Notification Banner */}
         <div className="arpay-notice-banner">
           <div className="arpay-logo-badge">A</div>
           <div className="arpay-banner-text">
-            <span className="arpay-banner-title">ARPay</span>
-            <span className="arpay-banner-sub">Supports UPI for fast payment</span>
+            <span className="arpay-banner-title">
+              {method === 'USDT' ? 'Crypto Settlement' : 'ARPay Instant Settlement'}
+            </span>
+            <span className="arpay-banner-sub">
+              {method === 'USDT'
+                ? 'Automated TRC20/BEP20 blockchain payouts'
+                : 'Supports fast UPI & Direct IMPS transfers'}
+            </span>
           </div>
         </div>
 
@@ -224,6 +439,7 @@ export default function WithdrawPage({
             onClick={() => {
               sound.playTick?.()
               setMethod('BANK')
+              setAlertMsg(null)
             }}
           >
             <div className="method-icon-wrap">
@@ -238,6 +454,7 @@ export default function WithdrawPage({
             onClick={() => {
               sound.playTick?.()
               setMethod('USDT')
+              setAlertMsg(null)
             }}
           >
             <div className="method-icon-wrap">
@@ -252,6 +469,7 @@ export default function WithdrawPage({
             onClick={() => {
               sound.playTick?.()
               setMethod('UPI')
+              setAlertMsg(null)
             }}
           >
             <div className="method-icon-wrap">
@@ -259,7 +477,16 @@ export default function WithdrawPage({
                 <svg viewBox="0 0 44 24" width="36" height="18" fill="none">
                   <path d="M5 4l9 8-4.5 1.5 4.5 1.5-9 8 2.2-6.5-2.2-6.5z" fill="#097939" />
                   <path d="M8 7l6 5-3 1 3 1-6 5 1.5-4-1.5-4z" fill="#ed5f1e" />
-                  <text x="17" y="16" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fontSize="11" fontWeight="900" fill="#0f172a">UPI</text>
+                  <text
+                    x="17"
+                    y="16"
+                    fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif"
+                    fontSize="11"
+                    fontWeight="900"
+                    fill="#0f172a"
+                  >
+                    UPI
+                  </text>
                 </svg>
               </div>
             </div>
@@ -277,29 +504,45 @@ export default function WithdrawPage({
           style={{ cursor: 'pointer' }}
         >
           <div className="withdraw-account-left">
-            <div className="bank-logo-badge">{isAccountBound ? '🏛️' : '➕'}</div>
+            <div className="bank-logo-badge">
+              {method === 'BANK' ? (isBankBound ? '🏛️' : '➕') : method === 'USDT' ? (isUsdtBound ? '₮' : '➕') : (isUpiBound ? '⚡' : '➕')}
+            </div>
             <div className="account-divider" />
-            <span
-              className="account-number-text"
-              style={{
-                color: isAccountBound ? '#1e293b' : '#ff5e4d',
-                fontWeight: isAccountBound ? 600 : 700,
-              }}
-            >
-              {maskedAccount}
-            </span>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span
+                className="account-number-text"
+                style={{
+                  color: isCurrentMethodBound ? '#1e293b' : '#ff5e4d',
+                  fontWeight: isCurrentMethodBound ? 600 : 700,
+                  fontSize: isCurrentMethodBound ? 13 : 13.5,
+                }}
+              >
+                {currentBoundDisplay}
+              </span>
+              <small style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
+                {isCurrentMethodBound ? 'Tap to edit or change destination' : `Tap to setup your ${method} account`}
+              </small>
+            </div>
           </div>
-          <ChevronRight size={18} color={isAccountBound ? '#94a3b8' : '#ff5e4d'} />
+          <ChevronRight size={18} color={isCurrentMethodBound ? '#94a3b8' : '#ff5e4d'} />
         </div>
 
         {/* 6. Amount Input Card */}
         <div className="withdraw-amount-card">
+          {method === 'USDT' && (
+            <div className="usdt-rate-badge-banner">
+              <span className="usdt-rate-title">Exchange Rate:</span>
+              <strong className="usdt-rate-val">1 USDT ≈ ₹{USDT_EXCHANGE_RATE.toFixed(2)}</strong>
+              <span className="usdt-network-pill">{usdtAccount.network || 'TRC20'}</span>
+            </div>
+          )}
+
           <div className="amount-input-box">
             <span className="currency-symbol-big">₹</span>
             <input
               type="number"
               className="withdraw-native-input"
-              placeholder="Please enter the amount"
+              placeholder={`Enter amount (min ₹${minAmount.toLocaleString('en-IN')})`}
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
             />
@@ -317,7 +560,16 @@ export default function WithdrawPage({
           <div className="received-amount-row">
             <span>Withdrawal amount received</span>
             <span className="received-amount-val">
-              ₹{amount ? Number(amount).toFixed(2) : '0.00'}
+              {method === 'USDT' ? (
+                <span>
+                  ≈ <strong>{numAmount > 0 ? usdtEquivalent : '0.00'}</strong> USDT{' '}
+                  <span style={{ fontSize: 11.5, color: '#94a3b8', fontWeight: 500 }}>
+                    (₹{numAmount > 0 ? numAmount.toFixed(2) : '0.00'})
+                  </span>
+                </span>
+              ) : (
+                `₹${numAmount > 0 ? numAmount.toFixed(2) : '0.00'}`
+              )}
             </span>
           </div>
 
@@ -347,7 +599,15 @@ export default function WithdrawPage({
             disabled={!isValidAmount || submitting}
             onClick={handleSubmitWithdraw}
           >
-            {submitting ? 'Processing Request...' : 'Withdraw'}
+            {submitting
+              ? 'Submitting to Queue...'
+              : !isCurrentMethodBound
+              ? `Bind ${method} Account First`
+              : numAmount < minAmount
+              ? `Min Withdrawal ₹${minAmount.toLocaleString('en-IN')}`
+              : numAmount > balance
+              ? 'Insufficient Balance'
+              : 'Withdraw'}
           </button>
         </div>
 
@@ -356,44 +616,51 @@ export default function WithdrawPage({
           <div className="rule-diamond-row">
             <span className="rule-diamond-marker">◆</span>
             <span>
-              Need to bet <span className="highlight-red-rule">₹0.00</span> to be able to withdraw
+              Withdrawal amount range{' '}
+              <span className="highlight-red-rule">
+                ₹{minAmount.toLocaleString('en-IN')}.00 - ₹{maxAmount.toLocaleString('en-IN')}.00
+              </span>
             </span>
           </div>
 
           <div className="rule-diamond-row">
             <span className="rule-diamond-marker">◆</span>
             <span>
-              Withdraw time <span className="highlight-red-rule">00:00-23:59</span>
+              Withdraw time <span className="highlight-red-rule">00:00 - 23:59</span> (24/7 Available)
             </span>
           </div>
 
           <div className="rule-diamond-row">
             <span className="rule-diamond-marker">◆</span>
             <span>
-              Inday Remaining Withdrawal Times <span className="highlight-red-rule">3</span>
+              Daily remaining withdrawal count <span className="highlight-red-rule">3</span>
             </span>
           </div>
 
-          <div className="rule-diamond-row">
-            <span className="rule-diamond-marker">◆</span>
-            <span>
-              Withdrawal amount range <span className="highlight-red-rule">₹110.00-₹50,000.00</span>
-            </span>
-          </div>
-
-          <div className="rule-diamond-row">
-            <span className="rule-diamond-marker">◆</span>
-            <span>
-              Please check your registered bank information again before making a withdrawal. If your registered bank information is incorrect, our company will not be responsible for any losses you may incur.
-            </span>
-          </div>
-
-          <div className="rule-diamond-row">
-            <span className="rule-diamond-marker">◆</span>
-            <span>
-              If your registered bank information is incorrect, please contact customer service.
-            </span>
-          </div>
+          {method === 'USDT' ? (
+            <>
+              <div className="rule-diamond-row">
+                <span className="rule-diamond-marker">◆</span>
+                <span>
+                  USDT settlements are converted at the fixed exchange rate of{' '}
+                  <span className="highlight-red-rule">1 USDT = ₹{USDT_EXCHANGE_RATE.toFixed(2)}</span>.
+                </span>
+              </div>
+              <div className="rule-diamond-row">
+                <span className="rule-diamond-marker">◆</span>
+                <span>
+                  Please double-check your crypto receiving address and network (TRC20 / BEP20). Assets sent to incorrect addresses cannot be recovered.
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="rule-diamond-row">
+              <span className="rule-diamond-marker">◆</span>
+              <span>
+                Please ensure your registered {method === 'BANK' ? 'Bank Details (A/C & IFSC)' : 'UPI ID'} are 100% correct. If your destination details are incorrect, platform insurance will not cover the payout loss.
+              </span>
+            </div>
+          )}
         </div>
 
         {/* 8. Recent History Section at Bottom */}
@@ -454,7 +721,7 @@ export default function WithdrawPage({
           ) : (
             <div className="empty-history-box">
               <div className="empty-history-art">📜</div>
-              <span className="empty-history-text">No data</span>
+              <span className="empty-history-text">No withdrawal records</span>
             </div>
           )}
 
@@ -471,75 +738,259 @@ export default function WithdrawPage({
         </div>
       </div>
 
-      {/* Account Setup / Edit Modal */}
+      {/* Account Setup Modal (Dynamic for BANK, USDT, and UPI) */}
       {setupModalOpen && (
         <div className="account-config-modal-overlay" onClick={() => setSetupModalOpen(false)}>
           <div className="account-config-card" onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
-                Bank / UPI Payout Details
-              </h3>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                  {method === 'BANK' ? 'Bind Bank Card' : method === 'USDT' ? 'Bind USDT Wallet' : 'Bind UPI ID'}
+                </h3>
+                <small style={{ color: '#64748b', fontSize: 11.5 }}>
+                  {method === 'BANK'
+                    ? 'Funds will be transferred via IMPS / NEFT'
+                    : method === 'USDT'
+                    ? 'Select your network and enter your receiving address'
+                    : 'Instant payout to your UPI Virtual Payment Address'}
+                </small>
+              </div>
               <button
                 type="button"
-                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }}
                 onClick={() => setSetupModalOpen(false)}
               >
-                <X size={18} />
+                <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveAccount}>
-              <div style={{ marginBottom: 10 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  Bank Name (Optional for UPI)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. State Bank of India, HDFC"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
-                  value={accountDetails.bankName || ''}
-                  onChange={(e) => setAccountDetails({ ...accountDetails, bankName: e.target.value })}
-                />
+            {modalError && (
+              <div
+                style={{
+                  background: '#fef2f2',
+                  color: '#dc2626',
+                  border: '1px solid #fecaca',
+                  borderRadius: 8,
+                  padding: '8px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  marginBottom: 12,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <AlertCircle size={15} style={{ flexShrink: 0 }} />
+                <span>{modalError}</span>
               </div>
+            )}
 
-              <div style={{ marginBottom: 10 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  Account Number / Mobile
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter 9 to 18 digit account number"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
-                  value={accountDetails.accountNumber || ''}
-                  onChange={(e) => setAccountDetails({ ...accountDetails, accountNumber: e.target.value.replace(/\s+/g, '') })}
-                />
-              </div>
+            <form onSubmit={handleSaveModal}>
+              {/* === METHOD 1: BANK CARD === */}
+              {method === 'BANK' && (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      list="major-banks-list"
+                      placeholder="Select or enter your Bank Name"
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                      value={tempBank.bankName}
+                      onChange={(e) => setTempBank({ ...tempBank, bankName: e.target.value })}
+                    />
+                    <datalist id="major-banks-list">
+                      {MAJOR_BANKS.map((b) => (
+                        <option key={b} value={b} />
+                      ))}
+                    </datalist>
+                  </div>
 
-              <div style={{ marginBottom: 10 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  IFSC Code (for Bank Transfer)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. SBIN0001234"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box', textTransform: 'uppercase' }}
-                  value={accountDetails.ifsc || ''}
-                  onChange={(e) => setAccountDetails({ ...accountDetails, ifsc: e.target.value.toUpperCase().replace(/\s+/g, '') })}
-                />
-              </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                      Bank Account Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Enter 9 to 18 digit account number"
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                      value={tempBank.accountNumber}
+                      onChange={(e) => setTempBank({ ...tempBank, accountNumber: e.target.value.replace(/\D/g, '') })}
+                    />
+                  </div>
 
-              <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  Destination UPI ID (for Fast UPI Payout)
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 9876543210@upi or name@okaxis"
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
-                  value={accountDetails.upiId || ''}
-                  onChange={(e) => setAccountDetails({ ...accountDetails, upiId: e.target.value.trim() })}
-                />
-              </div>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                      Confirm Account Number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Re-enter your account number"
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                      value={tempBank.confirmAccount}
+                      onChange={(e) => setTempBank({ ...tempBank, confirmAccount: e.target.value.replace(/\D/g, '') })}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={11}
+                      placeholder="e.g. SBIN0001234 or HDFC0000128"
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box', textTransform: 'uppercase' }}
+                      value={tempBank.ifsc}
+                      onChange={(e) => setTempBank({ ...tempBank, ifsc: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') })}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                      Account Holder Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Full name as printed on bank passbook"
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                      value={tempBank.holderName}
+                      onChange={(e) => setTempBank({ ...tempBank, holderName: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* === METHOD 2: USDT === */}
+              {method === 'USDT' && (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+                      Blockchain Network
+                    </label>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <button
+                        type="button"
+                        style={{
+                          flex: 1,
+                          padding: '10px 0',
+                          borderRadius: 10,
+                          border: tempUsdt.network === 'TRC20' ? '2px solid #14b8a6' : '1px solid #cbd5e1',
+                          background: tempUsdt.network === 'TRC20' ? '#f0fdfa' : '#ffffff',
+                          color: tempUsdt.network === 'TRC20' ? '#0f766e' : '#64748b',
+                          fontWeight: 700,
+                          fontSize: 13,
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setTempUsdt({ ...tempUsdt, network: 'TRC20' })}
+                      >
+                        TRC20 (Tron)
+                      </button>
+                      <button
+                        type="button"
+                        style={{
+                          flex: 1,
+                          padding: '10px 0',
+                          borderRadius: 10,
+                          border: tempUsdt.network === 'BEP20' ? '2px solid #14b8a6' : '1px solid #cbd5e1',
+                          background: tempUsdt.network === 'BEP20' ? '#f0fdfa' : '#ffffff',
+                          color: tempUsdt.network === 'BEP20' ? '#0f766e' : '#64748b',
+                          fontWeight: 700,
+                          fontSize: 13,
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setTempUsdt({ ...tempUsdt, network: 'BEP20' })}
+                      >
+                        BEP20 (BNB Chain)
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                      USDT Receiving Wallet Address
+                    </label>
+                    <input
+                      type="text"
+                      placeholder={tempUsdt.network === 'TRC20' ? 'Starts with T... (34 characters)' : 'Starts with 0x... (42 characters)'}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                      value={tempUsdt.usdtAddress}
+                      onChange={(e) => setTempUsdt({ ...tempUsdt, usdtAddress: e.target.value.trim() })}
+                    />
+                  </div>
+
+                  <div
+                    style={{
+                      background: '#f8fafc',
+                      borderRadius: 10,
+                      padding: '10px 12px',
+                      marginBottom: 16,
+                      border: '1px solid #e2e8f0',
+                      fontSize: 11.5,
+                      color: '#64748b',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    ⚠️ <strong>Important:</strong> Only bind your personal wallet address (Binance, Bybit, Trust Wallet, OKX). Payouts are made strictly on the <strong>{tempUsdt.network}</strong> network.
+                  </div>
+                </>
+              )}
+
+              {/* === METHOD 3: UPI === */}
+              {method === 'UPI' && (
+                <>
+                  <div style={{ marginBottom: 12 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                      Destination UPI ID / VPA
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 9876543210@upi or yourname@okhdfcbank"
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                      value={tempUpi.upiId}
+                      onChange={(e) => setTempUpi({ ...tempUpi, upiId: e.target.value.trim().toLowerCase() })}
+                    />
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                      {UPI_HANDLES.map((h) => (
+                        <button
+                          key={h}
+                          type="button"
+                          style={{
+                            border: '1px solid #cbd5e1',
+                            borderRadius: 6,
+                            background: '#f8fafc',
+                            fontSize: 11,
+                            color: '#475569',
+                            padding: '3px 8px',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => {
+                            const base = tempUpi.upiId.split('@')[0] || ''
+                            if (base) setTempUpi({ ...tempUpi, upiId: `${base}${h}` })
+                          }}
+                        >
+                          {h}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: 16 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                      Payee / Account Holder Name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Rahul Sharma"
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                      value={tempUpi.holderName}
+                      onChange={(e) => setTempUpi({ ...tempUpi, holderName: e.target.value })}
+                    />
+                  </div>
+                </>
+              )}
 
               <button
                 type="submit"
@@ -553,9 +1004,10 @@ export default function WithdrawPage({
                   fontWeight: 700,
                   fontSize: 14,
                   cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(248, 69, 69, 0.3)',
                 }}
               >
-                Save Payout Account
+                Save {method === 'BANK' ? 'Bank Card' : method === 'USDT' ? 'USDT Address' : 'UPI ID'}
               </button>
             </form>
           </div>

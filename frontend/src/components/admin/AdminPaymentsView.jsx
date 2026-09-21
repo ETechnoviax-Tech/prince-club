@@ -54,6 +54,15 @@ function PaymentCard({ item, kind, onAction, busyId }) {
   const acNum = item.account_number || item.payout_details?.accountNumber
   const ifscCode = item.ifsc || item.payout_details?.ifsc
   const holderName = item.holder_name || item.payout_details?.holderName
+  const bankName = item.bank_name || item.payout_details?.bankName
+
+  const targetCrypto =
+    item.target_crypto ||
+    item.payout_details?.usdtAddress ||
+    item.payout_details?.cryptoAddress ||
+    (item.payout_method === 'USDT' ? item.payout_details?.accountNumber : null)
+  const cryptoNetwork = item.crypto_network || item.payout_details?.network || 'TRC20'
+  const usdtAmount = item.usdt_amount || item.payout_details?.usdtAmount || (item.amount ? (Number(item.amount) / 92).toFixed(2) : null)
 
   async function copy(value, key) {
     if (!value || value === '—') return
@@ -140,11 +149,48 @@ function PaymentCard({ item, kind, onAction, busyId }) {
             <span className="payout-box-title">SEND WITHDRAWAL TO (TARGET UPI / ACCOUNT):</span>
           </div>
 
-          {item.payout_method === 'UPI' || targetUpi ? (
+          {item.payout_method === 'USDT' || targetCrypto ? (
+            <div className="target-upi-row" style={{ background: '#f0fdf4', borderColor: '#bbf7d0' }}>
+              <div className="target-upi-val-box">
+                <span className="upi-field-tag" style={{ background: '#16a34a' }}>USDT DESTINATION ({cryptoNetwork})</span>
+                <code className="target-upi-val" style={{ color: '#15803d', wordBreak: 'break-all' }}>
+                  {targetCrypto || 'USDT Address Not Provided'}
+                </code>
+                {usdtAmount && (
+                  <small style={{ display: 'block', marginTop: 4, color: '#166534', fontWeight: 600 }}>
+                    Equivalent: ≈ {usdtAmount} USDT (at ₹92/USDT)
+                  </small>
+                )}
+              </div>
+              {targetCrypto && (
+                <button
+                  className={`admin-copy-pill-btn ${copiedKey === `crypto_${item.id}` ? 'copied' : ''}`}
+                  onClick={() => copy(targetCrypto, `crypto_${item.id}`)}
+                  title="Copy USDT Address"
+                  style={{ background: '#16a34a' }}
+                >
+                  {copiedKey === `crypto_${item.id}` ? (
+                    <>
+                      <Check size={13} /> Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} /> Copy USDT
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          ) : item.payout_method === 'UPI' || targetUpi ? (
             <div className="target-upi-row">
               <div className="target-upi-val-box">
                 <span className="upi-field-tag">DESTINATION UPI ID</span>
                 <code className="target-upi-val">{targetUpi || 'UPI Not Provided'}</code>
+                {holderName && (
+                  <small style={{ display: 'block', marginTop: 2, color: '#475569' }}>
+                    Payee: <strong>{holderName}</strong>
+                  </small>
+                )}
               </div>
               {targetUpi && (
                 <button
@@ -166,6 +212,12 @@ function PaymentCard({ item, kind, onAction, busyId }) {
             </div>
           ) : (
             <div className="target-bank-grid">
+              {bankName && (
+                <div className="target-bank-item" style={{ gridColumn: 'span 2' }}>
+                  <span className="bank-sub-label">Bank:</span>
+                  <strong>{bankName}</strong>
+                </div>
+              )}
               <div className="target-bank-item">
                 <span className="bank-sub-label">A/C Number:</span>
                 <code>{acNum || '—'}</code>

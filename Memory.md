@@ -1,5 +1,8 @@
 # Memory
 
+## Very important (yrr jo bhi test account banaya karo usse test ke baad delete kardan karo
+### kyuki db me test data collect ho jaata hai)
+
 ## Feature Index
 - [Live Win Go Provider Synchronization](#feature-live-win-go-provider-synchronization) - done
 - [Authentication & Session Security](#feature-authentication--session-security) - done
@@ -111,13 +114,19 @@
   - Production Email OTP Service: Connected to official Resend REST API using `RESEND_API_KEY` and sender address `EMAIL_OTP_SEND=otp@game.69club1.site` with branded HTML security verification templates.
 - Config / env: `JWT_SECRET`, `RESEND_API_KEY`, `EMAIL_OTP_SEND`, `DATABASE_URL`
 - Known issues / TODO: none
-- Last changed: 2026-09-21 - Added mandatory email OTP verification during registration with duplicate email prevention and atomic OTP consumption.
+- Last changed: 2026-09-21 - Standardized new user signup welcome bonus strictly to ₹50.00 with immutable ledger transaction logging.
 
 ## Feature: Wallet & Payment Gateway
 - Status: done
-- Purpose: Production-grade financial transactions supporting UPI QR deposits, manual/automated withdrawal queues, and ledger tracking.
-- Files: `server/controllers/paymentController.js`, `server/controllers/walletController.js`, `server/config/upiConfig.js`, `server/middleware/idempotency.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/deposit.css`, `frontend/src/components/pages/WithdrawPage.jsx`, `frontend/src/components/pages/withdraw.css`
+- Purpose: Production-grade financial transactions supporting UPI QR deposits, manual/automated withdrawal queues, multi-rail payouts (BANK CARD, USDT, UPI), and ledger tracking.
+- Files: `server/controllers/paymentController.js`, `server/controllers/walletController.js`, `server/middleware/validate.js`, `server/config/upiConfig.js`, `server/middleware/idempotency.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/deposit.css`, `frontend/src/components/pages/WithdrawPage.jsx`, `frontend/src/components/pages/withdraw.css`, `frontend/src/components/admin/AdminPaymentsView.jsx`
 - Behavior / key decisions:
+  - 3-Method Production Withdrawal Engine:
+    - `BANK CARD`: Strict IFSC validation (`^[A-Z]{4}0[A-Z0-9]{6}$`), account number (9-18 digits) with confirmation matching, major bank datalist, payee holder name verification, min ₹110 / max ₹50,000.
+    - `USDT (Crypto)`: TRC20 (starts with `T`, 34 chars) and BEP20 (starts with `0x`, 42 chars) network selector, fixed exchange rate badge (1 USDT = ₹92.00), dual real-time conversion display (`X USDT (₹Y)`), min ₹1,000 / max ₹500,000.
+    - `UPI / ARPay`: Valid VPA validation (`user@bank`), quick handle chip suggestions (`@okhdfcbank`, `@okaxis`, `@paytm`, `@ybl`, `@upi`), min ₹110 / max ₹50,000.
+    - Independent Storage & Modal Binding: LocalStorage keys per method (`withdraw_bank_${userId}`, `withdraw_upi_${userId}`, `withdraw_usdt_${userId}`) prevent field clobbering. Dynamic modal adapts inputs to currently selected rail with immediate validation feedback.
+    - Database & Admin Visibility: Extended `withdrawal_requests` check constraint to include `USDT`. Enriched admin dashboard with target crypto address, network badge, equivalent USDT calculation, and 1-click copy action.
   - Withdrawal UI Overhaul: Pixel-perfect redesign matching mobile reference screenshots: coral gradient balance card with live available balance, 🔄 refresh icon, masked card dots (`**** ****`), ARPay announcement banner (`Supports UPI for fast payment`), 3-method selector (`BANK CARD` active red, `USDT`, `UPI`), bound bank account row with chevron and modal setup, custom amount input with ₹ prefix, `Withdrawable balance` with `All` selection button, live `Withdrawal amount received` calculation, disabled/active `Withdraw` button, diamond-bulleted rule disclaimers, and bottom `Withdrawal history` section with empty state illustration and `All history` pill button.
   - Deposit UI Overhaul: Pixel-perfect redesign matching mobile reference layout: coral gradient balance card with live balance & refresh button, 6-tile payment method grid (UPI-QR, Innate UPI-QR, UPI-QR PAY, PAYTM-QR, USDT +2%, ARPay +2%), channel selector (`Phonepe_QR`), 3x3 quick preset chips (`100`, `200`, `300`, `400`, `500`, `1K`, `2K`, `3K`, `5K`), custom input field with clear action, recharge instruction bullet points with diamond markers, deposit history preview, and sticky bottom bar.
   - Dynamically loads merchant UPI VPAs from environment (`MERCHANT_UPI_VPA`, `MERCHANT_UPI_VPA_1..15`, or `MERCHANT_UPI_POOL`), eliminating all hardcoded UPI addresses.
@@ -126,10 +135,10 @@
   - Idempotency middleware preventing duplicate operations.
   - Per-user mutex lock preventing concurrent balance mutations.
   - First Deposit Bonus Preset Visibility & Security Guarantee: In `DepositPage.jsx`, users with 0 approved deposits see active bonus tags on presets (+₹28 on ₹100, +₹50 on ₹200, +₹71 on ₹300, +₹92 on ₹400, +₹114 on ₹500, +₹166 on ₹1K, +₹288 on ₹2K, +₹388 on ₹3K, +₹481 on ₹5K), inline side bonus badge inside custom amount box (`+₹114 Bonus`), and clean borderless input styling. Endpoint `GET /api/payments/first-deposit-eligibility/:userId` verifies user has 0 approved deposits and 0 claimed bonuses. Function `applyFirstDepositBonusIfEligible` executes upon deposit approval (`autoApprove`, admin verification, or gateway webhook): verifies `COUNT(status = 'APPROVED') === 1` and no prior `%First Deposit Bonus%` exists in `wallet_transactions`. If an earlier deposit was REJECTED, the user remains eligible for their next deposit. Once an approved deposit receives the bonus, all tags and badges disappear immediately across the deposit page.
-  - Production Database Purge: `clean_db_all.js` safely purged all test profiles, test wallets, bets, transactions, deposit/withdrawal requests, feedback, and logs while preserving account `8433125736` (admin) and platform announcements.
+  - Production Database Purge & Test Cleanup Guarantee: Purged all test profiles, test wallets, bets, transactions, deposit/withdrawal requests, feedback, and logs while preserving account `8433125736` (admin) and platform announcements. Automated test suites strictly delete all generated test accounts immediately after execution.
 - Config / env: `MERCHANT_UPI_VPA`, `MERCHANT_NAME`, `MERCHANT_UPI_VPA_1..15`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - Known issues / TODO: none
-- Last changed: 2026-09-21 - Fixed custom amount input CSS, added side bonus tags across all preset tiers, and purged test data keeping account 8433125736.
+- Last changed: 2026-09-21 - Productionized all 3 withdrawal methods (BANK, USDT, UPI) with independent state, exchange conversion, and admin crypto destination view.
 
 ## Feature: In-House Casino & Crash Games
 - Status: done

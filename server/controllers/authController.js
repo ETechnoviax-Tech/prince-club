@@ -129,7 +129,7 @@ export async function loginOrRegister(req, res) {
       if (!wallet) {
         const { data: newWal } = await supabase
           .from('wallets')
-          .insert({ user_id: profile.id, balance: 1000.0 })
+          .insert({ user_id: profile.id, balance: 50.0 })
           .select()
           .single()
         wallet = newWal
@@ -202,7 +202,7 @@ export async function loginOrRegister(req, res) {
         role: userRole,
         is_admin: Boolean(profile.is_admin || profile.role === 'admin'),
       },
-      wallet: { balance: 1000.0 },
+      wallet: { balance: 50.0 },
     })
   } catch (err) {
     console.error('[loginOrRegister Exception]:', err)
@@ -352,24 +352,24 @@ export async function register(req, res) {
       if (cleanEmail) memoryCredentials.set(cleanEmail, hashed)
       await saveCredentialsToDisk()
 
-      const startingBal = referralCode ? 1200.0 : 1000.0
+      const startingBal = 50.0
       await supabase.from('wallets').insert({
         user_id: profile.id,
         balance: startingBal,
       })
 
-      // If user joined with referral, record bonus ledger entry
-      if (referralCode) {
-        try {
-          await supabase.from('wallet_transactions').insert({
-            user_id: profile.id,
-            type: 'BONUS',
-            amount: 200.0,
-            balance_after: startingBal,
-            description: `Referral Welcome Bonus (Code: ${referralCode.trim().toUpperCase()})`,
-          })
-        } catch {}
-      }
+      // Record new user welcome signup bonus in ledger
+      try {
+        await supabase.from('wallet_transactions').insert({
+          user_id: profile.id,
+          type: 'BONUS',
+          amount: 50.0,
+          balance_after: startingBal,
+          description: referralCode
+            ? `New User Welcome Bonus with Referral (Code: ${referralCode.trim().toUpperCase()})`
+            : 'New User Signup Welcome Bonus (₹50.00)',
+        })
+      } catch {}
 
       // Consume registration OTP atomically
       if (validOtpId && isSupabaseConfigured) {
@@ -412,7 +412,7 @@ export async function register(req, res) {
       return res.status(409).json({ error: 'Username already registered. Please log in.' })
     }
 
-    const startingBal = referralCode ? 1200.0 : 1000.0
+    const startingBal = 50.0
     const profile = {
       id: crypto.randomUUID(),
       username: cleanUsername,

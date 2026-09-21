@@ -95,7 +95,7 @@ prince-club/
 | `POST` | `/api/payments/refund` | Admin-initiated atomic refund | Admin `Authorization`, `Idempotency-Key` |
 | `GET` | `/api/payments/refunds/:userId` | Retrieves refund history | `Authorization` |
 | `GET` | `/api/payments/events/:userId` | Audit log of payment events | Admin `Authorization` |
-| `POST` | `/api/wallet/withdraw` | Requests payout (UPI or Bank) | `Authorization`, `Idempotency-Key` |
+| `POST` | `/api/wallet/withdraw` | Requests payout (BANK CARD, USDT TRC20/BEP20, or UPI) | `Authorization`, `Idempotency-Key` |
 
 ---
 

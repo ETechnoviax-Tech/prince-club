@@ -219,8 +219,10 @@ export function validateWithdrawalRequest(req, res, next) {
   const body = req.body || {}
   const amount = body.amount
   const payoutMethod = body.payoutMethod
-  const upiId = body.upiId || body.payoutDetails?.upiId
-  const bankDetails = body.bankDetails || (body.payoutDetails?.accountNumber ? body.payoutDetails : null)
+  const upiId = body.upiId || body.payoutDetails?.upiId || body.accountDetails?.upiId
+  const bankDetails = body.bankDetails || (body.payoutDetails?.accountNumber ? body.payoutDetails : null) || (body.accountDetails?.accountNumber ? body.accountDetails : null)
+  const usdtAddress = body.usdtAddress || body.payoutDetails?.usdtAddress || body.accountDetails?.usdtAddress
+  const network = (body.network || body.payoutDetails?.network || body.accountDetails?.network || 'TRC20').toUpperCase()
   const authUserId = req.user ? req.user.id : body.userId
 
   if (!authUserId || typeof authUserId !== 'string') {
@@ -231,32 +233,74 @@ export function validateWithdrawalRequest(req, res, next) {
     return res.status(403).json({ error: 'Security violation: Cannot request withdrawal for another user' })
   }
 
-  const numAmount = Number(amount)
-  if (!Number.isFinite(numAmount) || numAmount < 100) {
-    return res.status(400).json({ error: 'Minimum withdrawal amount is ₹100' })
-  }
-
-  if (numAmount > 100000) {
-    return res.status(400).json({ error: 'Maximum withdrawal amount per transaction is ₹100,000' })
-  }
-
   const method = String(payoutMethod || 'UPI').trim().toUpperCase()
-  if (method !== 'UPI' && method !== 'BANK') {
-    return res.status(400).json({ error: 'Payout method must be UPI or BANK' })
+  if (method !== 'UPI' && method !== 'BANK' && method !== 'USDT') {
+    return res.status(400).json({ error: 'Payout method must be BANK CARD, UPI, or USDT' })
+  }
+
+  const numAmount = Number(amount)
+  if (!Number.isFinite(numAmount)) {
+    return res.status(400).json({ error: 'Valid withdrawal amount is required' })
+  }
+
+  // Method specific limits
+  if (method === 'USDT') {
+    if (numAmount < 1000) {
+      return res.status(400).json({ error: 'Minimum USDT withdrawal amount is ₹1,000.00 (~10.87 USDT)' })
+    }
+    if (numAmount > 500000) {
+      return res.status(400).json({ error: 'Maximum USDT withdrawal amount per transaction is ₹500,000.00' })
+    }
+  } else {
+    if (numAmount < 110) {
+      return res.status(400).json({ error: 'Minimum withdrawal amount is ₹110.00' })
+    }
+    if (numAmount > 50000) {
+      return res.status(400).json({ error: 'Maximum withdrawal amount per transaction is ₹50,000.00' })
+    }
   }
 
   const cleanDetails = {}
 
   if (method === 'UPI') {
     if (!upiId || typeof upiId !== 'string' || !/^[\w.-]+@[\w.-]+$/.test(upiId.trim())) {
-      return res.status(400).json({ error: 'Valid UPI ID is required (e.g. name@okhdfcbank)' })
+      return res.status(400).json({ error: 'Valid UPI ID is required (e.g. name@okhdfcbank or 9876543210@upi)' })
     }
     cleanDetails.upiId = upiId.trim()
+    const holderName = body.holderName || body.payoutDetails?.holderName || body.accountDetails?.holderName
+    if (holderName && typeof holderName === 'string') {
+      cleanDetails.holderName = holderName.trim()
+    }
+  } else if (method === 'USDT') {
+    if (!usdtAddress || typeof usdtAddress !== 'string') {
+      return res.status(400).json({ error: 'Valid USDT wallet address is required' })
+    }
+    const cleanAddr = usdtAddress.trim()
+    const validNetwork = network === 'BEP20' ? 'BEP20' : 'TRC20'
+
+    if (validNetwork === 'TRC20') {
+      if (!/^T[a-km-zA-HJ-NP-Z1-9]{33}$/.test(cleanAddr)) {
+        return res.status(400).json({ error: 'Invalid TRC20 USDT address (Must start with T and be 34 characters)' })
+      }
+    } else {
+      if (!/^0x[a-fA-F0-9]{40}$/.test(cleanAddr)) {
+        return res.status(400).json({ error: 'Invalid BEP20 USDT address (Must start with 0x and be 42 characters)' })
+      }
+    }
+
+    const EXCHANGE_RATE = 92.0
+    const usdtAmount = Number((numAmount / EXCHANGE_RATE).toFixed(2))
+
+    cleanDetails.usdtAddress = cleanAddr
+    cleanDetails.network = validNetwork
+    cleanDetails.exchangeRate = EXCHANGE_RATE
+    cleanDetails.usdtAmount = usdtAmount
   } else {
+    // BANK CARD
     if (!bankDetails || typeof bankDetails !== 'object') {
       return res.status(400).json({ error: 'Bank details object is required' })
     }
-    const { accountNumber, ifsc, holderName } = bankDetails
+    const { bankName, accountNumber, ifsc, holderName } = bankDetails
     if (!accountNumber || !/^\d{9,18}$/.test(String(accountNumber).trim())) {
       return res.status(400).json({ error: 'Bank account number must be 9-18 digits' })
     }
@@ -266,6 +310,7 @@ export function validateWithdrawalRequest(req, res, next) {
     if (!holderName || typeof holderName !== 'string' || holderName.trim().length < 2) {
       return res.status(400).json({ error: 'Account holder name is required' })
     }
+    cleanDetails.bankName = bankName ? String(bankName).trim() : ''
     cleanDetails.accountNumber = String(accountNumber).trim()
     cleanDetails.ifsc = String(ifsc).trim().toUpperCase()
     cleanDetails.holderName = holderName.trim()
