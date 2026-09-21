@@ -184,6 +184,49 @@ export async function getUserFeedback(req, res) {
 }
 
 /**
+ * GET /api/service/settings/profile
+ * Fetch authoritative user profile directly from database.
+ */
+export async function getProfileSettings(req, res) {
+  try {
+    const authUserId = req.user ? req.user.id : null
+    if (!authUserId) {
+      return res.status(401).json({ error: 'Please log in to fetch settings.' })
+    }
+
+    if (isSupabaseConfigured) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, email, nickname, avatar_url, phone, role, is_admin')
+        .eq('id', authUserId)
+        .maybeSingle()
+
+      if (error || !data) {
+        return res.status(404).json({ error: 'Profile not found' })
+      }
+
+      return res.json({
+        success: true,
+        user: data,
+      })
+    }
+
+    return res.json({
+      success: true,
+      user: {
+        id: authUserId,
+        username: req.user.username || 'User',
+        email: req.user.email || null,
+        phone: req.user.phone || null,
+      },
+    })
+  } catch (err) {
+    console.error('[getProfileSettings Exception]:', err)
+    return res.status(500).json({ error: 'Failed to fetch profile settings' })
+  }
+}
+
+/**
  * POST /api/service/settings/profile
  * Update user nickname, avatar, or contact phone.
  */

@@ -66,7 +66,7 @@ import AccountView from './components/AccountView'
 import { AdminDashboard } from './components/admin/AdminDashboard'
 import GlobalLoadingSpinner from './components/GlobalLoadingSpinner'
 import GameHistoryPage from './components/GameHistoryPage'
-import { abortAllApiRequests } from './api/client.js'
+import { abortAllApiRequests, fetchProfileSettings } from './api/client.js'
 
 import WalletPage from './components/pages/WalletPage'
 import DepositPage from './components/pages/DepositPage'
@@ -369,6 +369,25 @@ export function App() {
     } catch {}
     return null
   })
+
+  // Synchronize profile data from database on page load/refresh (guarantees bound email & profile state are fresh)
+  useEffect(() => {
+    if (getAuthToken() && userId) {
+      fetchProfileSettings()
+        .then((res) => {
+          if (res?.user) {
+            setCurrentUser((prev) => {
+              const merged = { ...prev, ...res.user }
+              try {
+                localStorage.setItem('club69_user_info', JSON.stringify(merged))
+              } catch {}
+              return merged
+            })
+          }
+        })
+        .catch(() => {})
+    }
+  }, [userId])
 
   const handleAuthSuccess = (user, wallet) => {
     setCurrentUser(user)
@@ -1467,7 +1486,13 @@ export function App() {
               sound.playTick()
             }}
             onUpdateUser={(updated) => {
-              setCurrentUser((prev) => ({ ...prev, ...updated }))
+              setCurrentUser((prev) => {
+                const nextUser = { ...prev, ...updated }
+                try {
+                  localStorage.setItem('club69_user_info', JSON.stringify(nextUser))
+                } catch {}
+                return nextUser
+              })
             }}
           />
         )}

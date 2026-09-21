@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { ChevronLeft, User, Shield, Lock, Phone, CheckCircle2, AlertCircle, Volume2, VolumeX, Mail, ShieldCheck } from 'lucide-react'
 import { sound } from '../../utils/audio'
-import { updateProfileSettings, changeSecurityPassword, bindBackupEmail } from '../../api/client'
+import { updateProfileSettings, changeSecurityPassword, bindBackupEmail, fetchProfileSettings } from '../../api/client'
 import './service.css'
 
 export default function SettingsPage({
@@ -23,6 +23,24 @@ export default function SettingsPage({
   const [isEmailBound, setIsEmailBound] = useState(Boolean(currentUser?.email))
   const [savingEmail, setSavingEmail] = useState(false)
   const [emailMsg, setEmailMsg] = useState(null)
+
+  // Fetch authoritative profile directly from database on mount (handles hard refresh)
+  useEffect(() => {
+    fetchProfileSettings()
+      .then((res) => {
+        if (res?.user) {
+          if (res.user.email) {
+            setBackupEmail(res.user.email)
+            setIsEmailBound(true)
+          }
+          if (res.user.nickname) setNickname(res.user.nickname)
+          if (res.user.phone) setPhone(res.user.phone)
+          if (res.user.avatar_url) setAvatarUrl(res.user.avatar_url)
+          if (onUpdateUser) onUpdateUser(res.user)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (currentUser?.email) {

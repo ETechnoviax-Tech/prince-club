@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   ChevronLeft,
   Eye,
@@ -10,8 +10,9 @@ import {
   ShieldCheck,
   Gift,
   Headphones,
+  KeyRound,
 } from 'lucide-react'
-import { signupUser } from '../../api/client.js'
+import { signupUser, sendOTP } from '../../api/client.js'
 import { sound } from '../../utils/audio.js'
 import { SliderCaptchaModal } from './SliderCaptchaModal.jsx'
 
@@ -30,6 +31,42 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
   const [captchaOpen, setCaptchaOpen] = useState(false)
+  const [otpCode, setOtpCode] = useState('')
+  const [sendingOtp, setSendingOtp] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+
+  // 60-second cooldown timer for email OTP
+  useEffect(() => {
+    if (countdown <= 0) return
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [countdown])
+
+  async function handleSendOtp() {
+    if (countdown > 0 || sendingOtp) return
+    const targetEmail = email.trim().toLowerCase()
+    if (!targetEmail || !targetEmail.includes('@') || !targetEmail.includes('.')) {
+      setError('Please enter a valid email address before requesting an OTP.')
+      return
+    }
+
+    setError(null)
+    setSendingOtp(true)
+    sound.playTick?.()
+
+    try {
+      const res = await sendOTP(targetEmail, 'EMAIL', 'REGISTER')
+      setSuccessMsg(res.message || 'Verification code sent to your email address!')
+      setCountdown(60)
+      sound.playWin?.()
+    } catch (err) {
+      setError(err.message || 'Failed to send verification code. Please try again.')
+    } finally {
+      setSendingOtp(false)
+    }
+  }
 
   function handleSubmit(e) {
     e?.preventDefault?.()
@@ -45,6 +82,10 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
     }
     if (loginTab === 'email' && !identifier.includes('@')) {
       setError('Please enter a valid email address.')
+      return
+    }
+    if (loginTab === 'email' && (!otpCode || otpCode.trim().length !== 6)) {
+      setError('Please enter the 6-digit verification code sent to your email.')
       return
     }
     if (password.length < 6) {
@@ -83,7 +124,8 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
         password,
         referralCode.trim() || undefined,
         captcha.captchaToken,
-        captcha.captchaProof
+        captcha.captchaProof,
+        loginTab === 'email' ? otpCode.trim() : undefined
       )
 
       setSuccessMsg('Account registered successfully! Logging you in...')
@@ -211,25 +253,73 @@ export function RegisterPage({ onAuthSuccess, onNavigate, canClose, onClose }) {
               </div>
             </div>
           ) : (
-            <div className="auth-input-group">
-              <label className="auth-field-label">
-                <span className="label-icon-box coral">
-                  <Mail size={15} />
-                </span>
-                <span>Email address</span>
-              </label>
-              <div className="single-input-row">
-                <input
-                  type="email"
-                  className="auth-text-input"
-                  placeholder="Please enter your email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoComplete="email"
-                  required
-                />
+            <>
+              <div className="auth-input-group">
+                <label className="auth-field-label">
+                  <span className="label-icon-box coral">
+                    <Mail size={15} />
+                  </span>
+                  <span>Email address</span>
+                </label>
+                <div className="single-input-row">
+                  <input
+                    type="email"
+                    className="auth-text-input"
+                    placeholder="Please enter your email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    autoComplete="email"
+                    required
+                  />
+                </div>
               </div>
-            </div>
+
+              {/* Email OTP Verification Field */}
+              <div className="auth-input-group">
+                <label className="auth-field-label">
+                  <span className="label-icon-box coral">
+                    <KeyRound size={15} />
+                  </span>
+                  <span>Email Verification Code</span>
+                </label>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    className="auth-text-input"
+                    placeholder="6-digit OTP code"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    maxLength={6}
+                    autoComplete="one-time-code"
+                    required
+                    style={{ flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSendOtp}
+                    disabled={sendingOtp || countdown > 0}
+                    style={{
+                      padding: '0 14px',
+                      height: '42px',
+                      background: countdown > 0 ? '#cbd5e1' : 'linear-gradient(90deg, #ff7a18, #ff5200)',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      fontSize: '0.82rem',
+                      cursor: countdown > 0 || sendingOtp ? 'not-allowed' : 'pointer',
+                      whiteSpace: 'nowrap',
+                      minWidth: '92px',
+                      flexShrink: 0,
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {sendingOtp ? 'Sending...' : countdown > 0 ? `${countdown}s` : 'Send OTP'}
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
           {/* Password Field */}

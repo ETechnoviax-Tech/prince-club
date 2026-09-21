@@ -213,11 +213,12 @@ export async function loginOrRegister(req, res) {
 // 2. Signup / Register
 export async function register(req, res) {
   try {
-    const { username, email, password, referralCode } = req.validatedSignup || {
+    const { username, email, password, referralCode, otpCode } = req.validatedSignup || {
       username: (req.body.username || '').trim().toLowerCase(),
       email: (req.body.email || '').trim().toLowerCase() || null,
       password: req.body.password,
       referralCode: req.body.referralCode,
+      otpCode: (req.body.otpCode || req.body.otp || '').trim() || null,
     }
 
     if (!username || username.length < 3) {
@@ -232,6 +233,39 @@ export async function register(req, res) {
     let cleanUsername = username
     const cleanEmail = email || null
     const hashed = hashPassword(password)
+
+    // Verify OTP for email registration
+    let validOtpId = null
+    if (cleanEmail) {
+      const cleanOtp = String(otpCode || '').trim()
+      if (!cleanOtp) {
+        return res.status(400).json({ error: 'Please enter the 6-digit verification code sent to your email.' })
+      }
+
+      if (isSupabaseConfigured) {
+        const { data: otpRecord } = await supabase
+          .from('password_resets')
+          .select('id')
+          .eq('identity', cleanEmail)
+          .eq('otp_code', cleanOtp)
+          .eq('is_used', false)
+          .gte('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        if (!otpRecord) {
+          return res.status(400).json({ error: 'Invalid or expired verification code. Please request a new OTP.' })
+        }
+        validOtpId = otpRecord.id
+      } else {
+        const cached = resetCodes.get(cleanEmail)
+        if (!cached || cached.code !== cleanOtp || Date.now() > cached.expiresAt) {
+          return res.status(400).json({ error: 'Invalid or expired verification code.' })
+        }
+        resetCodes.delete(cleanEmail)
+      }
+    }
 
     if (isSupabaseConfigured) {
       // Check duplicate
@@ -334,6 +368,16 @@ export async function register(req, res) {
             balance_after: startingBal,
             description: `Referral Welcome Bonus (Code: ${referralCode.trim().toUpperCase()})`,
           })
+        } catch {}
+      }
+
+      // Consume registration OTP atomically
+      if (validOtpId && isSupabaseConfigured) {
+        try {
+          await supabase
+            .from('password_resets')
+            .update({ is_used: true, user_id: profile.id })
+            .eq('id', validOtpId)
         } catch {}
       }
 
@@ -506,13 +550,28 @@ export async function forgotPassword(req, res) {
 // 3b. Standalone Send OTP (for registration verification or security confirmations)
 export async function sendOTP(req, res) {
   try {
-    const { identity, channel = 'AUTO' } = req.body
+    const { identity, channel = 'AUTO', purpose } = req.body
     if (!identity || typeof identity !== 'string' || identity.trim().length < 3) {
       return res.status(400).json({ error: 'Valid phone number or email address required' })
     }
 
     const cleanId = identity.trim().toLowerCase()
     const clientIp = req.realIp || getClientRealIp(req)
+
+    // For registration, verify this identity isn't already taken
+    if (purpose === 'REGISTER' || purpose === 'REGISTRATION') {
+      if (isSupabaseConfigured) {
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('id')
+          .or(`email.eq.${cleanId},username.eq.${cleanId}`)
+          .maybeSingle()
+        if (existing) {
+          return res.status(409).json({ error: 'This email is already registered. Please log in.' })
+        }
+      }
+    }
+
     const code = String(crypto.randomInt(100000, 999999))
     const expiresAtMs = Date.now() + 15 * 60 * 1000
     const expiresAtIso = new Date(expiresAtMs).toISOString()
@@ -528,6 +587,12 @@ export async function sendOTP(req, res) {
 
     if (isSupabaseConfigured) {
       try {
+        await supabase
+          .from('password_resets')
+          .update({ is_used: true })
+          .eq('identity', cleanId)
+          .eq('is_used', false)
+
         await supabase.from('password_resets').insert({
           identity: cleanId,
           otp_code: code,

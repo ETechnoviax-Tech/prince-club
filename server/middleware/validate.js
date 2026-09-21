@@ -80,11 +80,21 @@ export function validateSignup(req, res, next) {
     }
   }
 
+  let cleanOtpCode = null
+  if (cleanEmail) {
+    const rawOtp = req.body.otpCode || req.body.otp || req.body.verificationCode
+    if (!rawOtp || typeof rawOtp !== 'string' || !/^\d{6}$/.test(rawOtp.trim())) {
+      return res.status(400).json({ error: 'Please enter the 6-digit verification code sent to your email.' })
+    }
+    cleanOtpCode = rawOtp.trim()
+  }
+
   req.validatedSignup = {
     username: cleanUsername.toLowerCase(),
     email: cleanEmail,
     password,
     referralCode: cleanReferral,
+    otpCode: cleanOtpCode,
   }
 
   next()

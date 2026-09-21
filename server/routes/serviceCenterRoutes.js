@@ -3,6 +3,7 @@ import {
   getAnnouncements,
   submitFeedback,
   getUserFeedback,
+  getProfileSettings,
   updateProfileSettings,
   changeSecurityPassword,
   bindBackupEmail,
@@ -20,6 +21,7 @@ router.post('/feedback', optionalAuth, idempotencyMiddleware, submitFeedback)
 router.get('/feedback', optionalAuth, getUserFeedback)
 
 // Profile & Security Settings
+router.get('/settings/profile', requireAuth, getProfileSettings)
 router.post('/settings/profile', requireAuth, updateProfileSettings)
 router.post('/settings/password', requireAuth, changeSecurityPassword)
 router.post('/settings/bind-email', requireAuth, bindBackupEmail)

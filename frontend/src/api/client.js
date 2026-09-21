@@ -187,11 +187,11 @@ export async function loginUser(username, password, captchaToken, captchaProof) 
   return json
 }
 
-export async function signupUser(username, email, password, referralCode, captchaToken, captchaProof) {
+export async function signupUser(username, email, password, referralCode, captchaToken, captchaProof, otpCode) {
   const res = await apiFetch(`${API_BASE}/auth/signup`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, email, password, referralCode, captchaToken, captchaProof }),
+    body: JSON.stringify({ username, email, password, referralCode, captchaToken, captchaProof, otpCode }),
   }, 'Creating account...', true)
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -216,11 +216,11 @@ export async function forgotPassword(identity, channel = 'AUTO') {
   return json
 }
 
-export async function sendOTP(identity, channel = 'AUTO') {
+export async function sendOTP(identity, channel = 'AUTO', purpose = undefined) {
   const res = await fetch(`${API_BASE}/auth/send-otp`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ identity, channel }),
+    body: JSON.stringify({ identity, channel, purpose }),
   })
   const json = await res.json().catch(() => ({}))
   if (!res.ok) {
@@ -921,6 +921,18 @@ export async function fetchUserFeedback(userId = null) {
   const json = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(json.error || 'Failed to fetch feedback history')
   return json.tickets || []
+}
+
+export async function fetchProfileSettings() {
+  const res = await apiFetch(`${API_BASE}/service/settings/profile`, {
+    headers: authHeaders(),
+    silent: true,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to fetch profile settings')
+  }
+  return json
 }
 
 export async function updateProfileSettings(data = {}) {

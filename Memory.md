@@ -23,11 +23,12 @@
   - Feedback Ticketing: `POST /api/service/feedback` records user suggestions and bug reports directly into `public.user_feedback` with category tagging, sanitizing user_id against profiles, and tracking status (`PENDING`, `REVIEWED`, `RESOLVED`). `GET /api/service/feedback` retrieves user's ticket history and admin replies in real time.
   - Profile & Security Settings: `POST /api/service/settings/profile` updates nickname, avatar, and phone in `public.profiles`. `POST /api/service/settings/password` verifies and updates credentials using SHA-256 salted vault hashing.
   - Backup Recovery Email Binding: `POST /api/service/settings/bind-email` allows mobile-registered players to bind a unique recovery email. Strictly enforces 1-to-1 uniqueness via PostgreSQL index `uq_profiles_email ON public.profiles(LOWER(TRIM(email))) WHERE email IS NOT NULL AND email <> ''` preventing duplicate email usage across accounts. Players can then use this bound email to receive OTPs via Resend API and reset their forgotten password.
+  - Authoritative Profile Revalidation: `GET /api/service/settings/profile` retrieves live profile fields from `public.profiles`. Synchronized in `App.jsx` and `SettingsPage.jsx` on mount and update, ensuring bound backup email survives hard browser refreshes.
   - Interactive Beginner's Guide: 4 comprehensive learning tabs covering Win Go rules and multipliers, UPI QR deposit workflows, withdrawal limits, and provably fair cryptographic RNG mechanisms.
   - About Us: Platform licensing documentation, 256-bit SSL financial encryption standards, and fair play certification.
 - Config / env: none (uses existing Supabase/PostgreSQL schema)
 - Known issues / TODO: none
-- Last changed: 2026-09-21 - Added unique backup recovery email binding in Settings with PostgreSQL unique index enforcement and account recovery integration.
+- Last changed: 2026-09-21 - Added authoritative profile GET endpoint and client rehydration synchronization for persistent email settings.
 
 
 ## Feature: Activity & Multi-Tier Promotion Engine
@@ -104,12 +105,13 @@
 - Behavior / key decisions:
   - 3-Step Secure Password Recovery: Step 1 (`ForgotPasswordPage`) sends OTP without leaking `resetCode` in response; Step 2 (`VerifyOtpPage`) captures 6-digit OTP with 60s cooldown resend and verifies against database without premature consumption; Step 3 (`ResetPasswordPage`) displays verified status pill and updates credentials while atomically consuming the OTP in `password_resets`.
   - Distributed Real IP Rate Limiting: Backed by `public.ip_rate_limits` table and stored procedure `check_ip_rate_limit`. Resolves true client IP from `CF-Connecting-IP`, `X-Real-IP`, `X-Forwarded-For` (first IP), and `req.ip` (`trust proxy: true`). Enforces strict limits: 5 OTP dispatches per 10 minutes (10m block), 5 verification attempts per 5 minutes, 30 login/signup attempts per minute.
+  - Email Registration OTP Verification: `RegisterPage.jsx` includes dynamic 6-digit OTP verification with 60s cooldown timer for email registrations. `sendOTP` checks email uniqueness against `profiles` (returns HTTP 409 if registered) and dispatches verification code via Resend. `validateSignup` and `register` controllers verify code against `public.password_resets` and consume it atomically upon successful profile creation.
   - Audit Trail: Recorded client IP directly in `public.password_resets.ip_address` for security forensics.
   - Interactive slide-to-verify jigsaw captcha before credential validation.
   - Production Email OTP Service: Connected to official Resend REST API using `RESEND_API_KEY` and sender address `EMAIL_OTP_SEND=otp@game.69club1.site` with branded HTML security verification templates.
 - Config / env: `JWT_SECRET`, `RESEND_API_KEY`, `EMAIL_OTP_SEND`, `DATABASE_URL`
 - Known issues / TODO: none
-- Last changed: 2026-09-21 - Implemented 3-step OTP password reset, eliminated OTP code leak, created public.ip_rate_limits table, and enabled real client IP rate limiting.
+- Last changed: 2026-09-21 - Added mandatory email OTP verification during registration with duplicate email prevention and atomic OTP consumption.
 
 ## Feature: Wallet & Payment Gateway
 - Status: done
