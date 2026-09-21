@@ -80,22 +80,26 @@ function commitmentForSeed(serverSeed) {
 
 // Derive the crash point from a committed server seed. The seed is revealed
 // after the crash so clients can independently verify the completed round.
+// Distribution tuned so extreme multipliers (40x+) appear ~1-2x per day.
 function generateCrashPoint(serverSeed) {
   const digest = crypto.createHmac('sha256', serverSeed).update('aviator-crash-v1').digest()
   const rand = digest.readUInt32BE(0) / 0xffffffff
   const pick = (min, max) => min + (digest.readUInt32BE(4) % (max - min + 1))
-  if (rand < 0.08) {
-    // 8% instant/low crash: 1.01x - 1.15x
-    return +(1.01 + pick(0, 14) / 100).toFixed(2)
-  } else if (rand < 0.60) {
-    // 52% standard flight: 1.16x - 3.20x
-    return +(1.16 + pick(0, 204) / 100).toFixed(2)
-  } else if (rand < 0.90) {
-    // 30% high flight: 3.21x - 10.00x
-    return +(3.21 + pick(0, 679) / 100).toFixed(2)
+  if (rand < 0.10) {
+    // 10% instant/low crash: 1.01x - 1.20x
+    return +(1.01 + pick(0, 19) / 100).toFixed(2)
+  } else if (rand < 0.62) {
+    // 52% standard flight: 1.21x - 3.50x
+    return +(1.21 + pick(0, 229) / 100).toFixed(2)
+  } else if (rand < 0.89) {
+    // 27% high flight: 3.51x - 12.00x
+    return +(3.51 + pick(0, 849) / 100).toFixed(2)
+  } else if (rand < 0.978) {
+    // 8.8% elevated flight: 12.01x - 39.99x
+    return +(12.01 + pick(0, 2798) / 100).toFixed(2)
   } else {
-    // 10% mega flight: 10.01x - 88.00x
-    return +(10.01 + pick(0, 7799) / 100).toFixed(2)
+    // 2.2% mega flight: 40.00x - 88.00x  (~1-2x per day at normal volume)
+    return +(40.00 + pick(0, 4800) / 100).toFixed(2)
   }
 }
 
@@ -170,12 +174,13 @@ async function finalizeRoundRecord() {
   if (error) console.error('[Aviator round settlement error]:', error.message)
 }
 
-// Compute current multiplier from flight elapsed ms
+// Compute current multiplier from flight elapsed ms.
+// Slowed coefficient (0.035 vs old 0.06) so typical flights last ~2x longer.
 export function calculateMultiplier(elapsedMs) {
   if (elapsedMs <= 0) return 1.0
   const seconds = elapsedMs / 1000
-  // Exponential curve: starts slow, accelerates
-  const mult = 1.0 + 0.06 * Math.pow(seconds, 1.45)
+  // Slower exponential curve: feels more natural, gives players time to react
+  const mult = 1.0 + 0.035 * Math.pow(seconds, 1.38)
   return +mult.toFixed(2)
 }
 

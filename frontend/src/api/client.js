@@ -443,8 +443,9 @@ export async function resetWallet(userId) {
   return res.json()
 }
 
-export async function fetchUserBets(userId) {
-  const res = await apiFetch(`${API_BASE}/game/bets/${userId}`, {
+export async function fetchUserBets(userId, { page = 1, limit = 20 } = {}) {
+  const params = new URLSearchParams({ page, limit }).toString()
+  const res = await apiFetch(`${API_BASE}/game/bets/${userId}?${params}`, {
     headers: authHeaders(),
   }, 'Loading game history...', false)
   if (!res.ok) throw new Error('Failed to fetch bets')

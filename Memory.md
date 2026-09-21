@@ -13,6 +13,7 @@
 - [Win Go UI Color Harmonization & Real-Time Bets](#feature-win-go-ui-color-harmonization--real-time-bets) - done
 - [Activity & Multi-Tier Promotion Engine](#feature-activity--multi-tier-promotion-engine) - done
 - [Service Center & Account Management](#feature-service-center--account-management) - done
+- [Game History Pagination & Performance](#feature-game-history-pagination--performance) - done
 
 ---
 
@@ -143,13 +144,16 @@
 ## Feature: In-House Casino & Crash Games
 - Status: done
 - Purpose: Houses native mini-games including Aviator crash, Mines, Dragon vs Tiger, and in-house slots.
-- Files: `frontend/src/components/games/*`, `server/controllers/*`
+- Files: `frontend/src/components/AviatorGame.jsx`, `frontend/src/components/aviator.css`, `server/controllers/aviatorController.js`
 - Behavior / key decisions:
   - Aviator uses HTML5 Canvas 60 FPS animation with provably fair SHA-256 crash points.
-  - Native slots (Crazy 777, Fortune Gems, Super Ace) calculate outcomes server-authoritatively.
+  - **Flight speed tuned** (2026-09-21): `calculateMultiplier` changed from `0.06 * pow(s, 1.45)` → `0.035 * pow(s, 1.38)` — plane moves ~40% slower giving players more time to cash out. Client formula mirrors server.
+  - **Crash distribution tuned** (2026-09-21): 5-tier distribution — 10% low (1.01-1.20x), 52% standard (1.21-3.50x), 27% high (3.51-12x), 8.8% elevated (12-40x), **2.2% mega (40-88x)**. Mega tier appears ~1-2x/day at typical game volume.
+  - **Aviator scroll fixed**: `.spribe-aviator-container` changed to `overflow-y: visible` so parent `.app-main-viewport` can scroll the full game page.
+  - Native slots calculate outcomes server-authoritatively.
 - Config / env: none
 - Known issues / TODO: none
-- Last changed: 2026-09-19 - Added full-screen immersive view and sound controls.
+- Last changed: 2026-09-21 — Slowed plane speed, capped high-multiplier frequency, fixed mobile scroll.
 
 ## Feature: Administrative Risk & User Management
 - Status: done
@@ -163,3 +167,19 @@
 - Config / env: `ADMIN_SECRET`
 - Known issues / TODO: none
 - Last changed: 2026-09-20 - Added prominent target UPI payout destination, user mobile, and deposit VPA/UTR display in Admin Payments.
+
+## Feature: Game History Pagination & Performance
+- Status: done
+- Purpose: Paginated game history loading to avoid fetching all bets on every sync cycle; skeleton loading UI with Load More.
+- Files: `server/controllers/gameController.js`, `frontend/src/api/client.js`, `frontend/src/components/GameHistoryPage.jsx`, `frontend/src/styles.css`, `frontend/src/App.jsx`
+- Behavior / key decisions:
+  - Server `GET /api/game/bets/:userId` now accepts `?page=1&limit=20` (default limit=20, max=100). Returns `{ bets, page, limit, hasMore }`.
+  - Background sync in App.jsx fetches only `limit=20` bets per cycle (sufficient for Wingo round reconciliation).
+  - `GameHistoryPage` is now self-contained: loads its own paginated data independently from App.jsx; no longer receives `bets` prop.
+  - First page shows skeleton loading cards (5 shimmer cards). Subsequent pages show "Loading..." spinner in Load More button.
+  - "Load More" button appears when `hasMore=true`; replaced with "All records loaded (N total)" when exhausted.
+  - Filters (game type + status) apply client-side on already-loaded pages; Load More appends to same list.
+- Config / env: none
+- Known issues / TODO: none
+- Last changed: 2026-09-21 - Initial implementation with pagination, skeleton loader, and self-contained data fetching.
+

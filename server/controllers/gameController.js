@@ -593,6 +593,11 @@ export async function getUserBets(req, res) {
       return res.status(403).json({ error: 'Access denied: You can only view your own bet history' })
     }
 
+    // Pagination: ?page=1&limit=20
+    const page = Math.max(1, parseInt(req.query.page) || 1)
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20))
+    const offset = (page - 1) * limit
+
     if (isSupabaseConfigured) {
       try {
         const { data: dbBets, error: dbErr } = await supabase
@@ -600,7 +605,8 @@ export async function getUserBets(req, res) {
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false })
-          .limit(50)
+          .limit(limit)
+          .range(offset, offset + limit - 1)
 
         if (dbErr) throw dbErr
 
@@ -610,10 +616,11 @@ export async function getUserBets(req, res) {
             .select('*, aviator_rounds(round_number)')
             .eq('user_id', userId)
             .order('placed_at', { ascending: false })
-            .limit(50),
-          supabase.from('slot_spins').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
-          supabase.from('dragon_tiger_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
-          supabase.from('third_party_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
+            .limit(limit)
+            .range(offset, offset + limit - 1),
+          supabase.from('slot_spins').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit).range(offset, offset + limit - 1),
+          supabase.from('dragon_tiger_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit).range(offset, offset + limit - 1),
+          supabase.from('third_party_bets').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(limit).range(offset, offset + limit - 1),
         ])
         const dedicatedBets = [
           ...(aviator.data || []).map((bet) => {
@@ -666,8 +673,8 @@ export async function getUserBets(req, res) {
         ]
         const history = [...(dbBets || []), ...dedicatedBets]
           .sort((a, b) => new Date(b.created_at || b.placed_at || 0) - new Date(a.created_at || a.placed_at || 0))
-          .slice(0, 100)
-        return res.json({ bets: history })
+          .slice(0, limit)
+        return res.json({ bets: history, page, limit, hasMore: history.length >= limit })
       } catch (err) {
         console.warn('[getUserBets Supabase query fallback]:', err.message)
       }
@@ -676,9 +683,9 @@ export async function getUserBets(req, res) {
     const userBets = Array.from(memoryBets.values())
       .filter((b) => b.user_id === userId)
       .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      .slice(0, 30)
+      .slice(offset, offset + limit)
 
-    return res.json({ bets: userBets })
+    return res.json({ bets: userBets, page, limit, hasMore: userBets.length >= limit })
   } catch (err) {
     console.error('[getUserBets Exception]:', err)
     return res.status(500).json({ error: 'Failed to fetch user bets' })

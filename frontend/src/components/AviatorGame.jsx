@@ -4,11 +4,11 @@ import { fetchAviatorState, placeAviatorBet, cashoutAviator, cancelAviatorBet, f
 import { sound } from '../utils/audio'
 import './aviator.css'
 
-// 60 FPS authoritative multiplier calculation matching server formula
+// 60 FPS authoritative multiplier calculation — must match server formula exactly
 function calculateClientMultiplier(elapsedMs) {
   if (elapsedMs <= 0) return 1.0
   const seconds = elapsedMs / 1000
-  const mult = 1.0 + 0.06 * Math.pow(seconds, 1.45)
+  const mult = 1.0 + 0.035 * Math.pow(seconds, 1.38)
   return +mult.toFixed(2)
 }
 

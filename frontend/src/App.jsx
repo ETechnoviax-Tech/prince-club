@@ -792,7 +792,8 @@ export function App() {
       }
 
       try {
-        const betsData = await fetchUserBets(userId)
+        // Background sync: load only 20 most recent bets for Wingo reconciliation
+        const betsData = await fetchUserBets(userId, { page: 1, limit: 20 })
         // Always replace bets from server — even if empty (clears stale seed/local bets)
         if (betsData && Array.isArray(betsData.bets)) {
           const formatted = betsData.bets.map((b) => {
@@ -1249,8 +1250,6 @@ export function App() {
         {currentGame === null && activeNav === 'game-history' && (
           <GameHistoryPage
             currentUser={currentUser}
-            bets={bets}
-            onRefresh={syncWithBackend}
             onBack={() => setActiveNav('account')}
             onLogin={() => {
               setAuthMode('login')

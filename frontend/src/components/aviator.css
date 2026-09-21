@@ -3,6 +3,7 @@
    ========================================================================== */
 
 .spribe-aviator-container {
+  /* grow naturally so the parent .app-main-viewport can scroll */
   min-height: 100%;
   background-color: #0b0d13 !important;
   color: #ffffff;
@@ -11,9 +12,11 @@
   flex-direction: column;
   position: relative;
   overflow-x: hidden;
+  overflow-y: visible;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  padding-bottom: 24px;
+  padding-bottom: env(safe-area-inset-bottom, 24px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
 }
 
 /* 1. TOP HEADER BAR */
