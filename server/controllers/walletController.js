@@ -627,11 +627,14 @@ export async function claimDailyVIPBonus(req, res) {
       })
     }
 
+    const STREAK_REWARDS = [15, 20, 25, 30, 35, 40, 50]
+
     if (isSupabaseConfigured) {
+      let streak = 1
       try {
         const { data: profile } = await supabase
           .from('profiles')
-          .select('id, last_daily_bonus')
+          .select('id, last_daily_bonus, daily_streak')
           .eq('id', authUserId)
           .single()
 
@@ -641,15 +644,20 @@ export async function claimDailyVIPBonus(req, res) {
           if (diff < ONE_DAY_MS) {
             const hoursLeft = Math.ceil((ONE_DAY_MS - diff) / (1000 * 60 * 60))
             return res.status(400).json({
-              error: `Daily VIP bonus already claimed! Next claim available in ${hoursLeft} hours.`,
+              error: `Daily attendance bonus already claimed! Next claim available in ${hoursLeft} hours.`,
               hoursLeft,
             })
+          }
+          // If claimed within 48 hours, advance streak; otherwise reset to 1
+          if (diff < 2 * ONE_DAY_MS) {
+            streak = ((Number(profile.daily_streak) || 0) % 7) + 1
+          } else {
+            streak = 1
           }
         }
       } catch {}
 
-      // Random daily bonus between ₹15 and ₹50
-      const bonusAmount = Math.floor(Math.random() * 36) + 15
+      const bonusAmount = STREAK_REWARDS[streak - 1] || 15
 
       // Credit wallet
       const { data: wal } = await supabase
@@ -665,7 +673,10 @@ export async function claimDailyVIPBonus(req, res) {
       try {
         await supabase
           .from('profiles')
-          .update({ last_daily_bonus: new Date(now).toISOString() })
+          .update({
+            last_daily_bonus: new Date(now).toISOString(),
+            daily_streak: streak,
+          })
           .eq('id', authUserId)
       } catch {}
 
@@ -675,7 +686,7 @@ export async function claimDailyVIPBonus(req, res) {
           type: 'BONUS',
           amount: bonusAmount,
           balance_after: newBalance,
-          description: `VIP Daily Check-In Bonus (₹${bonusAmount})`,
+          description: `7-Day Attendance Bonus (Day ${streak}: ₹${bonusAmount})`,
         })
       } catch {}
 
@@ -683,8 +694,9 @@ export async function claimDailyVIPBonus(req, res) {
 
       return res.json({
         success: true,
-        message: `🎉 Claimed VIP Daily Bonus of ₹${bonusAmount}!`,
+        message: `🎉 Claimed Day ${streak} Attendance Bonus of ₹${bonusAmount}!`,
         bonusAmount,
+        streak,
         newBalance,
       })
     }
@@ -694,12 +706,12 @@ export async function claimDailyVIPBonus(req, res) {
     if (lastClaim && now - lastClaim < ONE_DAY_MS) {
       const hoursLeft = Math.ceil((ONE_DAY_MS - (now - lastClaim)) / (1000 * 60 * 60))
       return res.status(400).json({
-        error: `Daily VIP bonus already claimed! Next claim available in ${hoursLeft} hours.`,
+        error: `Daily attendance bonus already claimed! Next claim available in ${hoursLeft} hours.`,
         hoursLeft,
       })
     }
 
-    const bonusAmount = Math.floor(Math.random() * 36) + 15
+    const bonusAmount = 25
     const curBal = memoryWallets.get(authUserId) || 1000
     const newBal = curBal + bonusAmount
 
@@ -708,8 +720,9 @@ export async function claimDailyVIPBonus(req, res) {
 
     return res.json({
       success: true,
-      message: `🎉 Claimed VIP Daily Bonus of ₹${bonusAmount}!`,
+      message: `🎉 Claimed Attendance Bonus of ₹${bonusAmount}!`,
       bonusAmount,
+      streak: 1,
       newBalance: newBal,
     })
   } catch (err) {

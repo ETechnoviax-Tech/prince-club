@@ -762,3 +762,39 @@ export async function adminDeleteUser(userId) {
   if (!res.ok) throw new Error(json.error || 'Failed to delete user')
   return json
 }
+
+export async function fetchActivityStats(userId = null) {
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+  const res = await apiFetch(`${API_BASE}/activity/stats${query}`, {
+    headers: authHeaders(),
+    silent: true,
+  })
+  if (!res.ok) throw new Error('Failed to fetch activity stats')
+  return res.json()
+}
+
+export async function redeemGiftCode(code, userId = null) {
+  const res = await apiFetch(`${API_BASE}/activity/redeem-gift`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ code, userId }),
+  }, 'Redeeming gift code...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to redeem gift code')
+  }
+  return json
+}
+
+export async function fetchPromotionStats(userId = null) {
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+  const res = await apiFetch(`${API_BASE}/promotion/stats${query}`, {
+    headers: authHeaders(),
+    silent: true,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to fetch promotion stats')
+  }
+  return json
+}

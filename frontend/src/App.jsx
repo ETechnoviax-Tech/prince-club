@@ -1070,6 +1070,9 @@ export function App() {
 
         {currentGame === null && activeNav === 'activity' && (
           <ActivityView
+            currentUser={currentUser}
+            userId={currentUser?.id || userId}
+            onBalanceUpdate={(newBal) => setBalance(newBal)}
             onOpenFortuneWheel={() => setFortuneWheelOpen(true)}
             onClaimVIP={handleClaimVIPBonus}
             vipLoading={vipBonusLoading}
@@ -1083,6 +1086,7 @@ export function App() {
 
         {currentGame === null && activeNav === 'promotion' && (
           <PromotionView
+            currentUser={currentUser}
             userId={currentUser?.id || userId}
             onCopyNotification={(msg) => {
               setToast({

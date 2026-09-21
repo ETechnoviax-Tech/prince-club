@@ -250,6 +250,24 @@ export async function register(req, res) {
         cleanUsername = `${cleanUsername.slice(0, 18)}_${Math.floor(100 + Math.random() * 900)}`
       }
 
+      // Resolve referral code if provided
+      let referredBy = null
+      if (referralCode) {
+        try {
+          const cleanRef = referralCode.trim().toUpperCase()
+          const { data: referrer } = await supabase
+            .from('profiles')
+            .select('id')
+            .or(`referral_code.eq.${cleanRef},username.eq.${referralCode.trim().toLowerCase()}`)
+            .maybeSingle()
+          if (referrer?.id) {
+            referredBy = referrer.id
+          }
+        } catch {}
+      }
+
+      const generatedRefCode = `PC${crypto.randomUUID().replace(/-/g, '').slice(0, 6).toUpperCase()}`
+
       let profile = null
       try {
         const { data, error } = await supabase
@@ -259,6 +277,8 @@ export async function register(req, res) {
             email: cleanEmail,
             role: 'user',
             password_hash: hashed,
+            referral_code: generatedRefCode,
+            referred_by: referredBy,
           })
           .select()
           .single()
@@ -266,26 +286,24 @@ export async function register(req, res) {
         if (error) throw error
         profile = data
       } catch (insertErr) {
-        // Only fallback to no-hash insert if error is specifically about missing column
-        if (!insertErr?.message?.includes('password_hash')) {
-          console.error('[Supabase Error] insert profile:', insertErr)
-          return res.status(500).json({ error: 'Failed to create user account', details: insertErr.message })
+        // Fallback without new columns if schema mismatch
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .insert({
+              username: cleanUsername,
+              email: cleanEmail,
+              role: 'user',
+              password_hash: hashed,
+            })
+            .select()
+            .single()
+          if (error) throw error
+          profile = data
+        } catch (fallbackErr) {
+          console.error('[Supabase Error] insert profile fallback:', fallbackErr)
+          return res.status(500).json({ error: 'Failed to create user account', details: fallbackErr.message })
         }
-        const { data, error } = await supabase
-          .from('profiles')
-          .insert({
-            username: cleanUsername,
-            email: cleanEmail,
-            role: 'user',
-          })
-          .select()
-          .single()
-
-        if (error) {
-          console.error('[Supabase Error] insert profile (fallback):', error)
-          return res.status(500).json({ error: 'Failed to create user account', details: error.message })
-        }
-        profile = data
       }
 
       // Store credentials under all possible lookup keys
@@ -305,6 +323,19 @@ export async function register(req, res) {
         balance: startingBal,
       })
 
+      // If user joined with referral, record bonus ledger entry
+      if (referralCode) {
+        try {
+          await supabase.from('wallet_transactions').insert({
+            user_id: profile.id,
+            type: 'BONUS',
+            amount: 200.0,
+            balance_after: startingBal,
+            description: `Referral Welcome Bonus (Code: ${referralCode.trim().toUpperCase()})`,
+          })
+        } catch {}
+      }
+
       const token = generateToken({
         id: profile.id,
         username: profile.username,
@@ -314,7 +345,13 @@ export async function register(req, res) {
       return res.status(201).json({
         message: 'Account created successfully',
         token,
-        user: { id: profile.id, username: profile.username, email: profile.email, role: profile.role },
+        user: {
+          id: profile.id,
+          username: profile.username,
+          email: profile.email,
+          role: profile.role,
+          referral_code: profile.referral_code || generatedRefCode,
+        },
         wallet: { balance: startingBal },
       })
     }

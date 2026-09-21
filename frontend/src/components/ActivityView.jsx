@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import {
   Sparkles,
   Gift,
@@ -13,15 +13,20 @@ import {
   Award,
   CircleDollarSign,
   Compass,
+  RefreshCw,
 } from 'lucide-react'
 import { sound } from '../utils/audio'
+import { fetchActivityStats, redeemGiftCode } from '../api/client'
 
 export function ActivityView({
+  currentUser,
+  userId,
   onOpenFortuneWheel,
   onClaimVIP,
   vipLoading,
   onOpenDeposit,
   onGoToPromotion,
+  onBalanceUpdate,
 }) {
   // Modal states
   const [bonusModalOpen, setBonusModalOpen] = useState(false)
@@ -36,18 +41,59 @@ export function ActivityView({
   const [giftError, setGiftError] = useState('')
   const [redeeming, setRedeeming] = useState(false)
 
-  // Attendance streak
-  const streakDays = [
-    { day: 'Day 1', reward: '₹15', status: 'today' },
-    { day: 'Day 2', reward: '₹20', status: 'locked' },
-    { day: 'Day 3', reward: '₹25', status: 'locked' },
-    { day: 'Day 4', reward: '₹30', status: 'locked' },
-    { day: 'Day 5', reward: '₹35', status: 'locked' },
-    { day: 'Day 6', reward: '₹40', status: 'locked' },
-    { day: 'Day 7', reward: '₹50', status: 'locked' },
-  ]
+  // Live Activity Stats from server
+  const [stats, setStats] = useState({
+    todayBonus: '0.00',
+    totalBonus: '0.00',
+    streak: 0,
+    canClaimStreak: true,
+    streakDays: [
+      { day: 'Day 1', reward: '₹15', status: 'today' },
+      { day: 'Day 2', reward: '₹20', status: 'locked' },
+      { day: 'Day 3', reward: '₹25', status: 'locked' },
+      { day: 'Day 4', reward: '₹30', status: 'locked' },
+      { day: 'Day 5', reward: '₹35', status: 'locked' },
+      { day: 'Day 6', reward: '₹40', status: 'locked' },
+      { day: 'Day 7', reward: '₹50', status: 'locked' },
+    ],
+    bonusHistory: [],
+    totalTurnover: '0.00',
+    estimatedRebate: '0.00',
+    jackpotPool: '1852400.00',
+  })
+  const [loadingStats, setLoadingStats] = useState(false)
 
-  const handleRedeemGift = (e) => {
+  const activeUserId = currentUser?.id || userId
+
+  const loadStats = useCallback(async () => {
+    try {
+      setLoadingStats(true)
+      const data = await fetchActivityStats(activeUserId)
+      if (data?.success) {
+        setStats({
+          todayBonus: data.todayBonus || '0.00',
+          totalBonus: data.totalBonus || '0.00',
+          streak: data.streak || 0,
+          canClaimStreak: data.canClaimStreak !== false,
+          streakDays: data.streakDays && data.streakDays.length > 0 ? data.streakDays : stats.streakDays,
+          bonusHistory: data.bonusHistory || [],
+          totalTurnover: data.totalTurnover || '0.00',
+          estimatedRebate: data.estimatedRebate || '0.00',
+          jackpotPool: data.jackpotPool || '1852400.00',
+        })
+      }
+    } catch (err) {
+      console.warn('[ActivityView] Could not load live activity stats:', err.message)
+    } finally {
+      setLoadingStats(false)
+    }
+  }, [activeUserId])
+
+  useEffect(() => {
+    loadStats()
+  }, [loadStats])
+
+  const handleRedeemGift = async (e) => {
     e.preventDefault()
     if (!giftCode.trim()) {
       setGiftError('Please enter a valid gift redemption code.')
@@ -58,22 +104,36 @@ export function ActivityView({
     setGiftResult(null)
     sound.playBet?.()
 
-    setTimeout(() => {
-      setRedeeming(false)
-      const codeUpper = giftCode.trim().toUpperCase()
-      if (codeUpper === 'WELCOME69' || codeUpper === '69CLUB') {
-        const bonusWon = 50
-        setGiftResult(`Congratulations! Gift code redeemed. ₹${bonusWon}.00 added to your account!`)
-        sound.playWin?.()
-      } else {
-        setGiftError('Invalid or expired redemption code. Check the official Telegram channel.')
+    try {
+      const res = await redeemGiftCode(giftCode.trim(), activeUserId)
+      sound.playWin?.()
+      setGiftResult(res.message || `Code redeemed! ₹${res.amount}.00 added to your account.`)
+      if (res.newBalance !== undefined && onBalanceUpdate) {
+        onBalanceUpdate(res.newBalance)
       }
-    }, 600)
+      setGiftCode('')
+      // Refresh live stats after redemption
+      loadStats()
+    } catch (err) {
+      sound.playLose?.()
+      setGiftError(err.message || 'Invalid or expired redemption code. Check the official Telegram channel.')
+    } finally {
+      setRedeeming(false)
+    }
+  }
+
+  const handleClaimAttendance = async () => {
+    try {
+      if (onClaimVIP) {
+        await onClaimVIP()
+        await loadStats()
+      }
+    } catch {}
   }
 
   return (
     <div className="activity-view-wrapper">
-      {/* 1. TOP CORAL HEADER (55CLUB BRAND & BONUS STATS) */}
+      {/* 1. TOP CORAL HEADER (69 CLUB BRAND & REAL BONUS STATS) */}
       <div className="activity-coral-header">
         {/* 69 Club Brand Logo */}
         <div className="activity-brand-centered">
@@ -88,14 +148,14 @@ export function ActivityView({
         <div className="activity-bonus-stats-row">
           <div className="bonus-stat-col">
             <span className="bonus-stat-label">Today's bonus</span>
-            <strong className="bonus-stat-value">₹0.00</strong>
+            <strong className="bonus-stat-value">₹{stats.todayBonus}</strong>
           </div>
 
           <div className="bonus-stat-divider" />
 
           <div className="bonus-stat-col">
             <span className="bonus-stat-label">Total bonus</span>
-            <strong className="bonus-stat-value">₹0.00</strong>
+            <strong className="bonus-stat-value">₹{stats.totalBonus}</strong>
           </div>
         </div>
 
@@ -165,7 +225,7 @@ export function ActivityView({
           <div className="feature-card-content">
             <h3 className="feature-card-title">Gifts</h3>
             <p className="feature-card-sub">
-              Enter the redemption code to receive gift rewards
+              Enter the redemption code to receive instant wallet rewards
             </p>
           </div>
         </div>
@@ -186,7 +246,9 @@ export function ActivityView({
           <div className="feature-card-content">
             <h3 className="feature-card-title">Attendance bonus</h3>
             <p className="feature-card-sub">
-              The more consecutive days you sign in, the higher the reward will be.
+              {stats.streak > 0
+                ? `Streak: Day ${stats.streak} active! Check in daily for higher rewards.`
+                : 'Sign in consecutively to claim up to ₹50 daily cash.'}
             </p>
           </div>
         </div>
@@ -198,11 +260,11 @@ export function ActivityView({
         <div className="activity-event-card" onClick={onGoToPromotion}>
           <div className="banner-visual-box banner-arbet-sports">
             <div className="banner-header-row">
-              <span className="arbet-badge">ARBET</span>
+              <span className="arbet-badge">AGENT PROMOTION</span>
             </div>
             <div className="banner-body-text">
               <h2 className="banner-golden-title">Invite Friends, Earn More</h2>
-              <span className="banner-date-pill">Sep 1 - Sep 30</span>
+              <span className="banner-date-pill">Unlimited Lifetime Commission</span>
             </div>
             <div className="banner-athletes-group">
               <span className="athlete-icon">🏏</span>
@@ -211,7 +273,7 @@ export function ActivityView({
             </div>
           </div>
           <div className="banner-footer-caption">
-            <strong>ARBET INVITE FRIENDS</strong>
+            <strong>INVITE FRIENDS & EARN LIFETIME REBATES</strong>
           </div>
         </div>
 
@@ -219,7 +281,7 @@ export function ActivityView({
         <div className="activity-event-card" onClick={onOpenFortuneWheel}>
           <div className="banner-visual-box banner-mega-spin">
             <div className="banner-header-row">
-              <span className="club-domain-tag">69CLUB.COM</span>
+              <span className="club-domain-tag">69CLUB</span>
             </div>
             <div className="banner-body-text">
               <h2 className="banner-spin-title">Mega Spin Wheel</h2>
@@ -235,7 +297,7 @@ export function ActivityView({
         </div>
       </div>
 
-      {/* MODAL 1: BONUS DETAILS */}
+      {/* MODAL 1: BONUS DETAILS (REAL TRANSACTION HISTORY) */}
       {bonusModalOpen && (
         <div className="modal-overlay" onClick={() => setBonusModalOpen(false)}>
           <div className="activity-dialog-card" onClick={(e) => e.stopPropagation()}>
@@ -249,24 +311,57 @@ export function ActivityView({
               <div className="bonus-detail-stat-box">
                 <div className="detail-stat-item">
                   <span>Today's Accumulated</span>
-                  <strong>₹0.00</strong>
+                  <strong className="text-emerald">₹{stats.todayBonus}</strong>
                 </div>
                 <div className="detail-stat-item">
                   <span>Total Bonus Claimed</span>
-                  <strong>₹0.00</strong>
+                  <strong className="text-orange">₹{stats.totalBonus}</strong>
                 </div>
               </div>
-              <div className="bonus-history-list">
-                <div style={{ textAlign: 'center', padding: '16px 0', color: '#64748b', fontSize: 13 }}>
-                  No bonus claims yet. Check into VIP daily or spin the Fortune Wheel to earn rewards!
-                </div>
+
+              <div className="bonus-history-list" style={{ maxHeight: '280px', overflowY: 'auto' }}>
+                {stats.bonusHistory.length > 0 ? (
+                  stats.bonusHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        padding: '10px 0',
+                        borderBottom: '1px solid rgba(0,0,0,0.06)',
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 13, color: '#1e293b' }}>
+                          {item.description}
+                        </div>
+                        <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                          {new Date(item.createdAt).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })}
+                        </div>
+                      </div>
+                      <strong style={{ color: '#10b981', fontSize: 14 }}>
+                        +₹{Number(item.amount).toFixed(2)}
+                      </strong>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '24px 0', color: '#64748b', fontSize: 13 }}>
+                    No bonus claims yet. Check in daily or redeem gift codes to earn rewards!
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL 2: GIFTS REDEMPTION */}
+      {/* MODAL 2: GIFTS REDEMPTION (REAL SERVER API) */}
       {giftModalOpen && (
         <div className="modal-overlay" onClick={() => setGiftModalOpen(false)}>
           <div className="activity-dialog-card" onClick={(e) => e.stopPropagation()}>
@@ -278,16 +373,17 @@ export function ActivityView({
             </div>
             <div className="dialog-body">
               <p className="dialog-note">
-                Please enter the redemption code provided by customer service or channel events.
+                Please enter the redemption code provided in the official 69 Club Telegram channel.
               </p>
               <form onSubmit={handleRedeemGift}>
                 <div className="dialog-input-wrap">
                   <input
                     type="text"
                     className="dialog-text-input"
-                    placeholder="Enter gift code (e.g. 69CLUB500)"
+                    placeholder="Enter gift code (e.g. WELCOME69, 69CLUB)"
                     value={giftCode}
-                    onChange={(e) => setGiftCode(e.target.value)}
+                    onChange={(e) => setGiftCode(e.target.value.toUpperCase())}
+                    autoCapitalize="characters"
                   />
                 </div>
 
@@ -297,7 +393,7 @@ export function ActivityView({
                 <button
                   type="submit"
                   className="dialog-submit-btn"
-                  disabled={redeeming}
+                  disabled={redeeming || !giftCode.trim()}
                 >
                   {redeeming ? 'Redeeming...' : 'Receive Gift Rewards'}
                 </button>
@@ -307,7 +403,7 @@ export function ActivityView({
         </div>
       )}
 
-      {/* MODAL 3: ATTENDANCE BONUS */}
+      {/* MODAL 3: ATTENDANCE BONUS (REAL SERVER PROGRESSION) */}
       {attendanceModalOpen && (
         <div className="modal-overlay" onClick={() => setAttendanceModalOpen(false)}>
           <div className="activity-dialog-card" onClick={(e) => e.stopPropagation()}>
@@ -322,10 +418,12 @@ export function ActivityView({
                 Sign in every 24 hours consecutively to claim increasing daily cash bonuses.
               </p>
               <div className="streak-7days-grid">
-                {streakDays.map((item, idx) => (
+                {stats.streakDays.map((item, idx) => (
                   <div key={idx} className={`streak-day-card ${item.status}`}>
                     <span className="streak-day-title">{item.day}</span>
-                    <div className="streak-coin-art">🪙</div>
+                    <div className="streak-coin-art">
+                      {item.status === 'completed' ? '✅' : '🪙'}
+                    </div>
                     <strong className="streak-reward-val">{item.reward}</strong>
                   </div>
                 ))}
@@ -334,20 +432,21 @@ export function ActivityView({
               <button
                 type="button"
                 className="dialog-submit-btn"
-                disabled={vipLoading}
-                onClick={() => {
-                  onClaimVIP?.()
-                  setAttendanceModalOpen(false)
-                }}
+                disabled={vipLoading || !stats.canClaimStreak}
+                onClick={handleClaimAttendance}
               >
-                {vipLoading ? 'Claiming...' : 'Sign In & Claim Today’s Bonus'}
+                {vipLoading
+                  ? 'Claiming...'
+                  : stats.canClaimStreak
+                  ? 'Sign In & Claim Today’s Bonus'
+                  : 'Already Claimed Today (Come back tomorrow)'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL 4: BETTING REBATE */}
+      {/* MODAL 4: BETTING REBATE (REAL TURNOVER) */}
       {rebateModalOpen && (
         <div className="modal-overlay" onClick={() => setRebateModalOpen(false)}>
           <div className="activity-dialog-card" onClick={(e) => e.stopPropagation()}>
@@ -358,6 +457,17 @@ export function ActivityView({
               </button>
             </div>
             <div className="dialog-body">
+              <div className="bonus-detail-stat-box" style={{ marginBottom: 12 }}>
+                <div className="detail-stat-item">
+                  <span>Your Valid Turnover</span>
+                  <strong className="text-orange">₹{stats.totalTurnover}</strong>
+                </div>
+                <div className="detail-stat-item">
+                  <span>Estimated Rebate</span>
+                  <strong className="text-emerald">₹{stats.estimatedRebate}</strong>
+                </div>
+              </div>
+
               <p className="dialog-note">
                 Automatic cashback returned based on total valid betting turnover across all games.
               </p>
@@ -393,7 +503,7 @@ export function ActivityView({
         </div>
       )}
 
-      {/* MODAL 5: SUPER JACKPOT */}
+      {/* MODAL 5: SUPER JACKPOT (PROGRESSIVE REAL POOL) */}
       {jackpotModalOpen && (
         <div className="modal-overlay" onClick={() => setJackpotModalOpen(false)}>
           <div className="activity-dialog-card" onClick={(e) => e.stopPropagation()}>
@@ -405,11 +515,13 @@ export function ActivityView({
             </div>
             <div className="dialog-body">
               <div className="jackpot-pool-hero">
-                <span>Grand Jackpot Pool</span>
-                <strong className="jackpot-counter">₹1,842,950.00</strong>
+                <span>Grand Community Jackpot Pool</span>
+                <strong className="jackpot-counter">
+                  ₹{Number(stats.jackpotPool).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                </strong>
               </div>
               <p className="dialog-note" style={{ marginTop: '10px' }}>
-                Every real-money bet automatically contributes to the community Grand Jackpot. Any player can trigger the jackpot randomly!
+                Every real-money bet automatically contributes to the community Grand Jackpot. Any player can trigger the jackpot randomly on any game!
               </p>
             </div>
           </div>

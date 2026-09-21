@@ -8,6 +8,23 @@
 - [Administrative Risk & User Management](#feature-administrative-risk--user-management) - done
 - [Mobile Screen Responsiveness & Desktop Centering](#feature-mobile-screen-responsiveness--desktop-centering) - done
 - [Win Go UI Color Harmonization & Real-Time Bets](#feature-win-go-ui-color-harmonization--real-time-bets) - done
+- [Activity & Multi-Tier Promotion Engine](#feature-activity--multi-tier-promotion-engine) - done
+
+---
+
+## Feature: Activity & Multi-Tier Promotion Engine
+- Status: done
+- Purpose: Production-ready real-time Activity & Agent Promotion engines replacing mock and fake data with live database-backed statistics, 7-day attendance streak progression, idempotent gift code redemptions, and multi-tier referral tracking.
+- Files: `server/db/activity_promotion.sql`, `server/controllers/activityController.js`, `server/controllers/promotionController.js`, `server/routes/activityRoutes.js`, `server/routes/promotionRoutes.js`, `server/controllers/walletController.js`, `server/controllers/authController.js`, `frontend/src/components/ActivityView.jsx`, `frontend/src/components/PromotionView.jsx`, `frontend/src/api/client.js`, `frontend/src/App.jsx`
+- Behavior / key decisions:
+  - Activity Stats: Authoritative endpoint `GET /api/activity/stats` aggregates user bonus credits from `wallet_transactions`, computes today's accumulated and total bonus, dynamically calculates 7-day attendance streak progression, tracks user turnover for live betting rebate cashback, and supplies progressive community jackpot pool.
+  - Idempotent Gift Code Redemption: `POST /api/activity/redeem-gift` verifies active codes against `gift_codes` table, checks usage limits, prevents duplicate user redemptions via database constraint `uq_user_gift_code` in `gift_redemptions`, atomically credits wallet balance, and writes to `wallet_transactions` ledger with `type: 'BONUS'`.
+  - 7-Day Attendance Streak: `POST /api/wallet/vip/claim` tracks consecutive 24-hour claims in `profiles.daily_streak` and advances tiered rewards (Day 1 ₹15 up to Day 7 ₹50).
+  - Multi-Tier Agent Promotion: `GET /api/promotion/stats` dynamically calculates direct subordinates (Tier 1) and indirect subordinates (Tier 2), computes live team turnover from subordinate bets, applies tiered commission formulas (0.60% Tier 1, 0.18% Tier 2), and displays masked team member list.
+  - Registration Referral Linkage: `authController.js` resolves incoming `referralCode` to referrer profile ID and saves `referred_by` with unique `referral_code` generation for each player.
+- Config / env: none (uses existing Supabase/PostgreSQL schema)
+- Known issues / TODO: none
+- Last changed: 2026-09-21 - Removed all mock/fake data from Activity and Promotion pages, connected live database APIs, and enabled multi-tier commission engine.
 
 ---
 

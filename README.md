@@ -39,7 +39,12 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - Global protection engine (`antiInspect.js`) blocking right-click context menu, DevTools inspection shortcuts (`F12`, `Ctrl+Shift+I/J/C`), and source view (`Ctrl+U`), paired with CSS text-selection lockout and console sanitization.
 - **Universal Site Loading Spinner & Top Progress Bar**: Automated API interceptor driving a sleek neon gradient top progress bar during network operations and a branded double-ring spinner overlay for high-friction workflows.
 - **Audio Isolation & Sound Shield**: Zero background sounds or countdown ticks for unauthenticated visitors, authentication modals, or non-active game viewports; game audio only initializes for logged-in players inside active game arenas.
-- **Bonus & Activity System**: Daily attendance streak rewards, gift redemption codes, betting rebates, and daily fortune wheel spins.
+- **Activity & Multi-Tier Agent Promotion Engine**:
+  - **Live Bonus Accounting**: Real-time aggregation of daily accumulated and cumulative bonus earnings directly from the wallet transaction ledger.
+  - **7-Day Attendance Progression**: Consecutive daily check-ins tracking account streaks and distributing tiered rewards (Day 1 ₹15 through Day 7 ₹50).
+  - **Idempotent Gift Code Redemption**: Server-authoritative validation for promotional codes (`gift_codes` / `gift_redemptions`), preventing double-claims and crediting balances atomically.
+  - **Multi-Tier Referral Tracking**: Real-time team subordinate hierarchy (Tier 1 Direct & Tier 2 Indirect), live bet turnover calculation across team members, automated tiered commissions (0.60% Tier 1, 0.18% Tier 2), and masked subordinate roster.
+  - **Real-Time Turnover Rebate & Jackpot**: Automated cashback turnover tracking across game categories and a progressive community jackpot pool.
 - **100% Asynchronous & Non-Blocking Architecture**: All HTTP controllers, background routines, and disk persistence use `async/await` and `fs.promises` with zero synchronous event-loop blocking, instrumented with high-precision response timing headers (`X-Response-Time`).
 - **Zero-Leak Production Logging**: Automated build-time stripping of all `console` and `debugger` calls via Vite 8 and Oxc minifier; sandbox verification codes and internal debug routines are strictly isolated behind non-production environment checks.
 - **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, dynamic viewport height (`--app-height`) auto-resizing across mobile browser URL bars, iOS Safe Area insets, touch targets, zero desktop scrollbar gutter, and symmetrically centered desktop luxury canvas.
@@ -147,6 +152,7 @@ VITE_API_URL=http://localhost:5000/api
 ### 3. Database Migration
 1. Run `server/db/schema.sql` in your Supabase SQL editor to create the core tables and game schemas.
 2. Run `server/db/payment.sql` to apply the payment gateway extensions (idempotency, payment locks, webhook events, refund requests, and atomic stored procedures).
+3. Run `server/db/activity_promotion.sql` to apply the Activity and Multi-Tier Agent Promotion schemas (gift codes, single-use redemption constraints, attendance streaks, and referral hierarchy columns).
 
 ---
 
