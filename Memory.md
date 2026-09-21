@@ -14,17 +14,18 @@
 
 ## Feature: Activity & Multi-Tier Promotion Engine
 - Status: done
-- Purpose: Production-ready real-time Activity & Agent Promotion engines replacing mock and fake data with live database-backed statistics, 7-day attendance streak progression, idempotent gift code redemptions, and multi-tier referral tracking.
-- Files: `server/db/activity_promotion.sql`, `server/controllers/activityController.js`, `server/controllers/promotionController.js`, `server/routes/activityRoutes.js`, `server/routes/promotionRoutes.js`, `server/controllers/walletController.js`, `server/controllers/authController.js`, `frontend/src/components/ActivityView.jsx`, `frontend/src/components/PromotionView.jsx`, `frontend/src/api/client.js`, `frontend/src/App.jsx`
+- Purpose: Production-ready real-time Activity & Agent Promotion engines replacing mock and fake data with live database-backed statistics, 7-day attendance streak progression, idempotent gift code redemptions, 30% first deposit compensation gift, and multi-tier referral tracking.
+- Files: `server/db/activity_promotion.sql`, `server/controllers/activityController.js`, `server/controllers/promotionController.js`, `server/routes/activityRoutes.js`, `server/routes/promotionRoutes.js`, `server/controllers/walletController.js`, `server/controllers/authController.js`, `frontend/src/components/ActivityView.jsx`, `frontend/src/components/PromotionView.jsx`, `frontend/src/components/pages/GiftsPage.jsx`, `frontend/src/components/pages/gifts.css`, `frontend/src/api/client.js`, `frontend/src/App.jsx`
 - Behavior / key decisions:
   - Activity Stats: Authoritative endpoint `GET /api/activity/stats` aggregates user bonus credits from `wallet_transactions`, computes today's accumulated and total bonus, dynamically calculates 7-day attendance streak progression, tracks user turnover for live betting rebate cashback, and supplies progressive community jackpot pool.
+  - First Gift (Activity Details): Endpoint `GET /api/activity/first-gift/status` checks user's first approved deposit in `deposit_requests`, computes 30% bonus up to ₹200.00, and verifies prior claims in `wallet_transactions`. Endpoint `POST /api/activity/first-gift/claim` executes idempotent atomic claim, crediting user wallet and logging `BONUS` transaction. UI matches 69 Club reference screenshot with hero sunset gradient, rules bullets, event start ribbon (`2024-06-11 00:00:00`), 3-column condition table, and reactive application status button.
   - Idempotent Gift Code Redemption: `POST /api/activity/redeem-gift` verifies active codes against `gift_codes` table, checks usage limits, prevents duplicate user redemptions via database constraint `uq_user_gift_code` in `gift_redemptions`, atomically credits wallet balance, and writes to `wallet_transactions` ledger with `type: 'BONUS'`.
   - 7-Day Attendance Streak: `POST /api/wallet/vip/claim` tracks consecutive 24-hour claims in `profiles.daily_streak` and advances tiered rewards (Day 1 ₹15 up to Day 7 ₹50).
   - Multi-Tier Agent Promotion: `GET /api/promotion/stats` dynamically calculates direct subordinates (Tier 1) and indirect subordinates (Tier 2), computes live team turnover from subordinate bets, applies tiered commission formulas (0.60% Tier 1, 0.18% Tier 2), and displays masked team member list.
   - Registration Referral Linkage: `authController.js` resolves incoming `referralCode` to referrer profile ID and saves `referred_by` with unique `referral_code` generation for each player.
 - Config / env: none (uses existing Supabase/PostgreSQL schema)
 - Known issues / TODO: none
-- Last changed: 2026-09-21 - Removed all mock/fake data from Activity and Promotion pages, connected live database APIs, and enabled multi-tier commission engine.
+- Last changed: 2026-09-21 - Implemented pixel-perfect First Gift (Activity Details) page with 30% first deposit bonus API, zero mock data, and linked directly from ActivityView First gift shortcut.
 
 ---
 
@@ -56,9 +57,10 @@
   - Made `.home-55-bottom-nav` rigid (`flex: 0 0 auto; z-index: 99; box-sizing: border-box;`) with `env(safe-area-inset-bottom)` support.
   - Global scrollbar suppression (`scrollbar-width: none` and `::-webkit-scrollbar { display: none; }`) eliminates desktop scrollbars.
   - Symmetrical card centering on mobile and centered 450px canvas on desktop.
+  - Bottom Navigation Bar strictly restricted to root tabs (`home`, `activity`, `promotion`, `account`). Automatically unmounted across all inner subpages (`deposit`, `withdraw`, `wallet`, `vip`, `deposit-history`, `withdraw-history`, `game-history`, `notification`, `gifts`, `coupons`, `security`, `customerservice`) and active games, allowing unobstructed viewports and standard top/system back navigation.
 - Config / env: none
 - Known issues / TODO: none
-- Last changed: 2026-09-20 - Fixed submerged bottom navigation bar by binding viewport height to `--app-height` and isolating flex scroll container.
+- Last changed: 2026-09-21 - Restricted bottom navigation bar exclusively to root tabs, hiding it across all inner subpages.
 
 ## Feature: Live Win Go Provider Synchronization
 - Status: done
@@ -88,8 +90,9 @@
 ## Feature: Wallet & Payment Gateway
 - Status: done
 - Purpose: Production-grade financial transactions supporting UPI QR deposits, manual/automated withdrawal queues, and ledger tracking.
-- Files: `server/controllers/paymentController.js`, `server/config/upiConfig.js`, `server/middleware/idempotency.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/WithdrawPage.jsx`
+- Files: `server/controllers/paymentController.js`, `server/config/upiConfig.js`, `server/middleware/idempotency.js`, `frontend/src/components/pages/DepositPage.jsx`, `frontend/src/components/pages/deposit.css`, `frontend/src/components/pages/WithdrawPage.jsx`
 - Behavior / key decisions:
+  - Deposit UI Overhaul: Pixel-perfect redesign matching mobile reference layout: coral gradient balance card with live balance & refresh button, 6-tile payment method grid (UPI-QR, Innate UPI-QR, UPI-QR PAY, PAYTM-QR, USDT +2%, ARPay +2%), channel selector (`Phonepe_QR`), 3x3 quick preset chips (`100`, `200`, `300`, `400`, `500`, `1K`, `2K`, `3K`, `5K`), custom input field with clear action, recharge instruction bullet points with diamond markers, deposit history preview, and sticky bottom bar.
   - Dynamically loads merchant UPI VPAs from environment (`MERCHANT_UPI_VPA`, `MERCHANT_UPI_VPA_1..15`, or `MERCHANT_UPI_POOL`), eliminating all hardcoded UPI addresses.
   - Round-robin / random distribution across active UPI accounts for deposit QR generation.
   - Active credentials configured to `abhimanyu.maurya@pingpay` with template pool variables ready for multi-account load balancing.
@@ -98,7 +101,7 @@
   - Atomic database transactions with stored procedures.
 - Config / env: `MERCHANT_UPI_VPA`, `MERCHANT_NAME`, `MERCHANT_UPI_VPA_1..15`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - Known issues / TODO: none
-- Last changed: 2026-09-20 - Eliminated hardcoded UPI addresses and bound deposit QR generation to dynamic environment-managed UPI pool.
+- Last changed: 2026-09-21 - Redesigned Deposit UI matching screenshot reference with coral card, payment grid, 3x3 preset chips, and sticky footer.
 
 ## Feature: In-House Casino & Crash Games
 - Status: done

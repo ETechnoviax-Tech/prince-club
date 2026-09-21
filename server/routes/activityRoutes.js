@@ -1,5 +1,12 @@
 import { Router } from 'express'
-import { getActivityStats, redeemGiftCode } from '../controllers/activityController.js'
+import {
+  getActivityStats,
+  redeemGiftCode,
+  getRebateStats,
+  claimOneClickRebate,
+  getFirstGiftStatus,
+  claimFirstGift,
+} from '../controllers/activityController.js'
 import { optionalAuth, requireAuth } from '../middleware/auth.js'
 import { idempotencyMiddleware } from '../middleware/idempotency.js'
 
@@ -11,4 +18,13 @@ router.get('/stats', optionalAuth, getActivityStats)
 // Gift code redemption protected by authentication and idempotency
 router.post('/redeem-gift', requireAuth, idempotencyMiddleware, redeemGiftCode)
 
+// Real-time betting rebate routes
+router.get('/rebate/stats', requireAuth, getRebateStats)
+router.post('/rebate/claim', requireAuth, idempotencyMiddleware, claimOneClickRebate)
+
+// First gift activity routes
+router.get('/first-gift/status', optionalAuth, getFirstGiftStatus)
+router.post('/first-gift/claim', requireAuth, idempotencyMiddleware, claimFirstGift)
+
 export default router
+

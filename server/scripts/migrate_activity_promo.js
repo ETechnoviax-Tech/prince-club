@@ -61,6 +61,20 @@ async function runMigration() {
       ALTER TABLE public.gift_codes ENABLE ROW LEVEL SECURITY;
       ALTER TABLE public.gift_redemptions ENABLE ROW LEVEL SECURITY;
 
+      CREATE TABLE IF NOT EXISTS public.rebate_records (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+        category TEXT NOT NULL DEFAULT 'Lottery',
+        turnover NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
+        rebate_rate NUMERIC(6, 4) NOT NULL DEFAULT 0.0050,
+        rebate_amount NUMERIC(12, 2) NOT NULL,
+        status TEXT NOT NULL DEFAULT 'Completed',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_rebate_records_user ON public.rebate_records(user_id);
+      ALTER TABLE public.rebate_records ENABLE ROW LEVEL SECURITY;
+
       DO $$ 
       BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'gift_codes' AND policyname = 'service_role_gift_codes') THEN
@@ -69,9 +83,12 @@ async function runMigration() {
         IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'gift_redemptions' AND policyname = 'service_role_gift_redemptions') THEN
           CREATE POLICY "service_role_gift_redemptions" ON public.gift_redemptions FOR ALL TO service_role USING (true) WITH CHECK (true);
         END IF;
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'rebate_records' AND policyname = 'service_role_rebate_records') THEN
+          CREATE POLICY "service_role_rebate_records" ON public.rebate_records FOR ALL TO service_role USING (true) WITH CHECK (true);
+        END IF;
       END $$;
     `)
-    console.log('Configured RLS policies for gift tables.')
+    console.log('Configured RLS policies for gift tables and created rebate_records.')
 
     // 3. Seed active gift codes
     await client.query(`

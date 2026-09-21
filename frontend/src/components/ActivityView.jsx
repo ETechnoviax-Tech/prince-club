@@ -22,11 +22,13 @@ export function ActivityView({
   currentUser,
   userId,
   onOpenFortuneWheel,
+  onOpenRebate,
   onClaimVIP,
   vipLoading,
   onOpenDeposit,
   onGoToPromotion,
   onBalanceUpdate,
+  onOpenFirstGift,
 }) {
   // Modal states
   const [bonusModalOpen, setBonusModalOpen] = useState(false)
@@ -174,7 +176,10 @@ export function ActivityView({
       {/* 2. 4-ICON QUICK SHORTCUTS ROW */}
       <div className="activity-icons-grid">
         {/* 1. Betting Rebate */}
-        <div className="activity-icon-tile" onClick={() => setRebateModalOpen(true)}>
+        <div
+          className="activity-icon-tile"
+          onClick={onOpenRebate ? onOpenRebate : () => setRebateModalOpen(true)}
+        >
           <div className="icon-badge-box icon-bg-rebate">
             <span className="tile-notif-dot" />
             <div className="tile-inner-icon">💰</div>
@@ -191,7 +196,14 @@ export function ActivityView({
         </div>
 
         {/* 3. First Gift */}
-        <div className="activity-icon-tile" onClick={onOpenDeposit}>
+        <div
+          className="activity-icon-tile"
+          onClick={() => {
+            sound.playTick?.()
+            if (onOpenFirstGift) onOpenFirstGift()
+            else if (onOpenDeposit) onOpenDeposit()
+          }}
+        >
           <div className="icon-badge-box icon-bg-firstgift">
             <div className="tile-inner-icon">🎁</div>
           </div>

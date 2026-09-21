@@ -798,3 +798,56 @@ export async function fetchPromotionStats(userId = null) {
   }
   return json
 }
+
+export async function fetchRebateStats(userId = null, category = 'All') {
+  const params = new URLSearchParams()
+  if (userId) params.set('userId', userId)
+  if (category) params.set('category', category)
+  const query = params.toString() ? `?${params.toString()}` : ''
+
+  const res = await apiFetch(`${API_BASE}/activity/rebate/stats${query}`, {
+    headers: authHeaders(),
+    silent: true,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch rebate stats')
+  return json
+}
+
+export async function claimOneClickRebate(userId = null) {
+  const res = await apiFetch(`${API_BASE}/activity/rebate/claim`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId }),
+  }, 'Claiming rebate...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to claim rebate')
+  }
+  return json
+}
+
+export async function fetchFirstGiftStatus(userId = null) {
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+  const res = await apiFetch(`${API_BASE}/activity/first-gift/status${query}`, {
+    headers: authHeaders(),
+    silent: true,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch first gift status')
+  return json
+}
+
+export async function claimFirstGift(userId = null) {
+  const res = await apiFetch(`${API_BASE}/activity/first-gift/claim`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId }),
+  }, 'Claiming first gift...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to claim first gift')
+  }
+  return json
+}
+

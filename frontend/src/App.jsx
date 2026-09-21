@@ -79,6 +79,7 @@ import SecurityPage from './components/pages/SecurityPage'
 import CustomerServicePage from './components/pages/CustomerServicePage'
 import DepositHistoryPage from './components/pages/DepositHistoryPage'
 import WithdrawalHistoryPage from './components/pages/WithdrawalHistoryPage'
+import RebatePage from './components/pages/RebatePage'
 import { initAntiInspect } from './utils/antiInspect'
 import {
   clearAuthToken,
@@ -1074,11 +1075,19 @@ export function App() {
             userId={currentUser?.id || userId}
             onBalanceUpdate={(newBal) => setBalance(newBal)}
             onOpenFortuneWheel={() => setFortuneWheelOpen(true)}
+            onOpenRebate={() => {
+              setActiveNav('rebate')
+              sound.playTick()
+            }}
             onClaimVIP={handleClaimVIPBonus}
             vipLoading={vipBonusLoading}
             onOpenDeposit={() => setDepositModalOpen(true)}
             onGoToPromotion={() => {
               setActiveNav('promotion')
+              sound.playTick()
+            }}
+            onOpenFirstGift={() => {
+              setActiveNav('gifts')
               sound.playTick()
             }}
           />
@@ -1233,6 +1242,23 @@ export function App() {
           />
         )}
 
+        {/* 2g. Standalone Dedicated Rebate Page */}
+        {currentGame === null && activeNav === 'rebate' && (
+          <RebatePage
+            currentUser={currentUser}
+            userId={currentUser?.id || userId}
+            onBack={() => {
+              setActiveNav('activity')
+              sound.playTick()
+            }}
+            onBalanceUpdated={(newBal) => {
+              setBalance(newBal)
+              syncWithBackend()
+            }}
+            setToast={setToast}
+          />
+        )}
+
         {/* 2g. Standalone Dedicated Withdraw Page */}
         {currentGame === null && activeNav === 'withdraw' && (
           <WithdrawPage
@@ -1289,12 +1315,18 @@ export function App() {
         {currentGame === null && activeNav === 'gifts' && (
           <GiftsPage
             balance={balance}
+            currentUser={currentUser}
+            userId={currentUser?.id || userId}
             onBack={() => {
-              setActiveNav('account')
+              setActiveNav('activity')
               sound.playTick()
             }}
-            onRedeemGift={(amt) => {
-              setBalance((b) => b + amt)
+            onOpenDeposit={() => {
+              setActiveNav('deposit')
+              sound.playTick()
+            }}
+            onBalanceUpdate={(newBal) => {
+              setBalance(newBal)
               syncWithBackend()
             }}
           />
@@ -1392,8 +1424,10 @@ export function App() {
         )}
       </div>
 
-        {/* 69 CLUB BOTTOM NAVIGATION BAR (Hidden whenever any game is active) */}
-        {currentGame === null && !activeThirdPartyGame && (
+        {/* 69 CLUB BOTTOM NAVIGATION BAR (Visible ONLY on root tabs: Home, Activity, Promotion, Account) */}
+        {currentGame === null &&
+          !activeThirdPartyGame &&
+          ['home', 'activity', 'promotion', 'account'].includes(activeNav) && (
           <nav className="home-55-bottom-nav">
             <button
               className={`nav-55-item ${currentGame === null && activeNav === 'home' ? 'active' : ''}`}

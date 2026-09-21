@@ -1,0 +1,390 @@
+/* ============================================================================
+   Rebate Page - Authentic Casino Theme (1:1 with Screenshot)
+   ============================================================================ */
+
+.rebate-page-wrapper {
+  background: #f4f6fa;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  box-sizing: border-box;
+  color: #1e293b;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  padding-bottom: 30px;
+}
+
+/* 1. Header */
+.rebate-top-header {
+  background: #ffffff;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.rebate-header-back {
+  background: none;
+  border: none;
+  color: #334155;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 8px;
+  transition: background 0.15s;
+}
+
+.rebate-header-back:active {
+  background: #f1f5f9;
+}
+
+.rebate-header-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.rebate-header-placeholder {
+  width: 32px;
+}
+
+/* 2. Scrollable Body */
+.rebate-body-content {
+  padding: 12px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* 3. Category Tabs */
+.rebate-categories-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.rebate-category-card {
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 10px 4px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  border: 1px solid #edf2f7;
+  transition: all 0.15s ease;
+  min-height: 64px;
+}
+
+.rebate-category-card:active {
+  transform: scale(0.97);
+}
+
+.rebate-category-card.active {
+  background: #ff5b5b;
+  border-color: #ff5b5b;
+  box-shadow: 0 4px 12px rgba(255, 91, 91, 0.25);
+  color: #ffffff;
+}
+
+.category-icon-wrap {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+.rebate-category-card.active .category-icon-wrap {
+  color: #ffffff;
+}
+
+.category-card-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.rebate-category-card.active .category-card-label {
+  color: #ffffff;
+}
+
+/* 4. Main Rebate Summary Card */
+.rebate-summary-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 16px;
+  border: 1px solid #edf2f7;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.summary-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.summary-main-heading {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.badge-realtime-count {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid #fca5a5;
+  background: #fff1f2;
+  color: #e11d48;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.summary-big-amount-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0;
+}
+
+.summary-coin-art {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.summary-big-amount {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.5px;
+}
+
+.summary-vip-pill {
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  border: 1px solid #edf2f7;
+}
+
+/* 2-Col Metrics */
+.summary-2col-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.metric-box-sub {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.metric-sub-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.metric-sub-val {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f97316;
+}
+
+.summary-settle-note {
+  font-size: 11.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  text-align: left;
+}
+
+.btn-one-click-rebate {
+  background: #cbd5e1;
+  color: #ffffff;
+  border: none;
+  border-radius: 24px;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: not-allowed;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.btn-one-click-rebate.active {
+  background: linear-gradient(90deg, #ff7a18, #ff5200);
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 82, 0, 0.35);
+}
+
+.btn-one-click-rebate.active:active {
+  transform: scale(0.98);
+}
+
+/* 5. Section Header */
+.rebate-history-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.red-vertical-bar {
+  width: 4px;
+  height: 16px;
+  background: #ff5252;
+  border-radius: 2px;
+}
+
+.history-section-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+}
+
+/* 6. History Item Card */
+.rebate-history-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  border: 1px solid #edf2f7;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-card-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.history-category-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.history-status-badge {
+  color: #10b981;
+  font-size: 12.5px;
+  font-weight: 700;
+}
+
+.history-card-date {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: -6px;
+}
+
+/* Stepper Rows */
+.history-stepper-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+  padding-left: 20px;
+}
+
+.history-stepper-wrap::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  bottom: 10px;
+  width: 1px;
+  border-left: 1px dashed #fca5a5;
+}
+
+.stepper-row-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+}
+
+.stepper-target-dot {
+  position: absolute;
+  left: -20px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  border: 2px solid #ff5252;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-target-dot::after {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff5252;
+}
+
+.stepper-label {
+  font-size: 12.5px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.stepper-val {
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.stepper-val.rate {
+  color: #ff5252;
+}
+
+.stepper-val.amount {
+  color: #f97316;
+  font-weight: 800;
+}
+
+/* 7. All History Button */
+.btn-all-history {
+  background: #ffffff;
+  border: 1.5px solid #ff5252;
+  color: #ff5252;
+  border-radius: 24px;
+  padding: 10px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: all 0.15s ease;
+}
+
+.btn-all-history:active {
+  background: #fff5f5;
+  transform: scale(0.98);
+}

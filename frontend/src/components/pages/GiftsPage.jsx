@@ -1,257 +1,273 @@
-import React, { useState } from 'react'
-import { ArrowLeft, Gift, Sparkles, CheckCircle2, Copy, Trophy, Calendar, AlertCircle } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { ChevronLeft, X, Sparkles, CheckCircle2, AlertCircle } from 'lucide-react'
+import { sound } from '../../utils/audio'
+import { fetchFirstGiftStatus, claimFirstGift } from '../../api/client'
+import './gifts.css'
 
-export default function GiftsPage({ onBack, onRedeemGift, balance = 0 }) {
-  const [giftCode, setGiftCode] = useState('')
-  const [redeemStatus, setRedeemStatus] = useState(null)
-  const [isRedeeming, setIsRedeeming] = useState(false)
-
-  const [history, setHistory] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gift_redeem_history')
-      return saved ? JSON.parse(saved) : []
-    } catch {
-      return []
-    }
+export default function GiftsPage({
+  onBack,
+  onOpenDeposit,
+  onBalanceUpdate,
+  currentUser,
+  userId,
+}) {
+  const [giftState, setGiftState] = useState({
+    loading: true,
+    hasDeposited: false,
+    firstDepositAmount: 0,
+    eligibleBonus: 0,
+    isClaimed: false,
+    canClaim: false,
+    claimedAt: null,
   })
 
-  React.useEffect(() => {
+  const [claiming, setClaiming] = useState(false)
+  const [feedback, setFeedback] = useState(null)
+  const [rulesOpen, setRulesOpen] = useState(false)
+
+  const activeUserId = currentUser?.id || userId
+
+  // Load authoritative first gift status from server
+  const loadStatus = useCallback(async () => {
     try {
-      localStorage.setItem('gift_redeem_history', JSON.stringify(history))
-    } catch {}
-  }, [history])
-
-  const handleClaim = () => {
-    if (!giftCode.trim()) {
-      setRedeemStatus({ type: 'error', message: 'Please enter a valid gift code.' })
-      return
-    }
-
-    setIsRedeeming(true)
-    setTimeout(() => {
-      setIsRedeeming(false)
-      const codeUpper = giftCode.trim().toUpperCase()
-      if (codeUpper === '69CLUB' || codeUpper === 'SUPER69' || codeUpper === 'BONUS100') {
-        const reward = 100
-        setRedeemStatus({
-          type: 'success',
-          message: `🎉 Success! ₹${reward}.00 has been credited to your wallet.`,
+      setGiftState((s) => ({ ...s, loading: true }))
+      const data = await fetchFirstGiftStatus(activeUserId)
+      if (data?.success) {
+        setGiftState({
+          loading: false,
+          hasDeposited: Boolean(data.hasDeposited),
+          firstDepositAmount: Number(data.firstDepositAmount || 0),
+          eligibleBonus: Number(data.eligibleBonus || 0),
+          isClaimed: Boolean(data.isClaimed),
+          canClaim: Boolean(data.canClaim),
+          claimedAt: data.claimedAt || null,
         })
-        setHistory((prev) => [
-          { code: codeUpper, amount: reward, date: 'Just now', status: 'Claimed' },
-          ...prev,
-        ])
-        setGiftCode('')
-        if (typeof onRedeemGift === 'function') {
-          onRedeemGift(reward)
-        }
       } else {
-        setRedeemStatus({
-          type: 'error',
-          message: 'Invalid or expired redemption code. Please check with your VIP manager.',
-        })
+        setGiftState((s) => ({ ...s, loading: false }))
       }
-    }, 800)
+    } catch (err) {
+      console.warn('[FirstGift] Failed to load status:', err.message)
+      setGiftState((s) => ({ ...s, loading: false }))
+    }
+  }, [activeUserId])
+
+  useEffect(() => {
+    loadStatus()
+  }, [loadStatus])
+
+  // Handle claiming the 30% first deposit bonus
+  const handleClaim = async () => {
+    if (claiming) return
+    sound.playBet?.()
+    setClaiming(true)
+    setFeedback(null)
+
+    try {
+      const res = await claimFirstGift(activeUserId)
+      sound.playWin?.()
+      setFeedback({
+        type: 'success',
+        message: res.message || `🎉 Successfully claimed 30% first deposit gift of ₹${res.bonusAmount}!`,
+      })
+      if (res.newBalance !== undefined && onBalanceUpdate) {
+        onBalanceUpdate(res.newBalance)
+      }
+      await loadStatus()
+    } catch (err) {
+      sound.playLose?.()
+      setFeedback({
+        type: 'error',
+        message: err.message || 'Unable to claim first gift. Please ensure your first deposit is approved.',
+      })
+    } finally {
+      setClaiming(false)
+    }
   }
 
   return (
-    <div className="standalone-page-container">
-      {/* Header */}
-      <header className="standalone-page-header">
-        <button className="standalone-back-btn" onClick={onBack} title="Back">
-          <ArrowLeft size={20} />
+    <div className="first-gift-container">
+      {/* 1. Header with Activity Details title */}
+      <header className="first-gift-header">
+        <button
+          className="first-gift-back-btn"
+          onClick={() => {
+            sound.playTick?.()
+            onBack?.()
+          }}
+          title="Back"
+        >
+          <ChevronLeft size={24} />
         </button>
-        <h2 className="standalone-page-title">Gifts & Rewards</h2>
-        <div style={{ width: 34 }} />
+        <h1 className="first-gift-header-title">Activity details</h1>
+        <div className="first-gift-header-spacer" />
       </header>
 
-      <div className="standalone-page-content">
-        {/* Banner Card */}
-        <div
-          style={{
-            background: 'linear-gradient(135deg, #ff6054 0%, #f2413b 50%, #e62c25 100%)',
-            borderRadius: 18,
-            padding: '20px 18px',
-            color: '#ffffff',
-            boxShadow: '0 6px 20px rgba(230, 44, 37, 0.3)',
-            marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div>
-            <span style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', padding: '3px 8px', borderRadius: 12, fontWeight: 700 }}>
-              HONGBAO REWARDS
-            </span>
-            <h3 style={{ margin: '8px 0 4px', fontSize: 20, fontWeight: 900 }}>Redeem Gift Codes</h3>
-            <p style={{ margin: 0, fontSize: 12, opacity: 0.9 }}>
-              Enter gift codes from Telegram / WhatsApp to claim free cash.
-            </p>
-          </div>
-          <div style={{ fontSize: 44, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.2))' }}>
-            🎁
-          </div>
-        </div>
+      <div className="first-gift-content">
+        {/* 2. Hero Banner matching screenshot */}
+        <div className="first-gift-hero-banner">
+          <div className="hero-confetti-bg" />
+          <div className="first-gift-hero-inner">
+            <div className="first-gift-hero-text">
+              <h2 className="first-gift-hero-title">First gift</h2>
+              <p className="first-gift-hero-subtitle">
+                There are two types of new member gift package rewards::
+              </p>
 
-        {/* Gift Code Input Box */}
-        <div
-          style={{
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            borderRadius: 16,
-            padding: 18,
-            boxShadow: '0 2px 10px rgba(0,0,0,0.03)',
-            marginBottom: 20,
-          }}
-        >
-          <label style={{ display: 'block', fontSize: 13, fontWeight: 800, color: '#0f172a', marginBottom: 8 }}>
-            Enter Gift Code
-          </label>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-            <input
-              type="text"
-              className="utr-input"
-              placeholder="e.g. 69CLUB, SUPER69"
-              value={giftCode}
-              onChange={(e) => {
-                setGiftCode(e.target.value)
-                setRedeemStatus(null)
-              }}
-              style={{
-                flex: 1,
-                padding: '12px 14px',
-                borderRadius: 12,
-                border: '1.5px solid #cbd5e1',
-                fontSize: 14,
-                fontWeight: 700,
-                color: '#0f172a',
-                textTransform: 'uppercase',
-              }}
-            />
-            <button
-              className="deposit-submit-btn"
-              onClick={handleClaim}
-              disabled={isRedeeming || !giftCode.trim()}
-              style={{
-                padding: '0 20px',
-                width: 'auto',
-                fontSize: 14,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {isRedeeming ? 'Checking...' : 'Claim'}
-            </button>
-          </div>
+              <div className="first-gift-rules-list">
+                <div className="first-gift-rule-item">
+                  <span className="first-gift-rule-badge">1</span>
+                  <span>Bonus for first deposit negative profit</span>
+                </div>
+                <div className="first-gift-rule-item">
+                  <span className="first-gift-rule-badge">2</span>
+                  <span>Play games and get bonuses only for new members</span>
+                </div>
+              </div>
 
-          {redeemStatus && (
-            <div
-              style={{
-                padding: '10px 14px',
-                borderRadius: 10,
-                fontSize: 12.5,
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                background: redeemStatus.type === 'success' ? '#f0fdf4' : '#fef2f2',
-                color: redeemStatus.type === 'success' ? '#16a34a' : '#dc2626',
-                border: `1px solid ${redeemStatus.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-              }}
-            >
-              {redeemStatus.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-              <span>{redeemStatus.message}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Available Gift Packages */}
-        <h4 style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', margin: '0 0 12px 2px' }}>
-          Exclusive Perks
-        </h4>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 14,
-              padding: 14,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            }}
-          >
-            <div style={{ fontSize: 24, marginBottom: 6 }}>📅</div>
-            <h5 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: '#0f172a' }}>
-              Attendance Streak
-            </h5>
-            <p style={{ margin: 0, fontSize: 11.5, color: '#64748b' }}>
-              Claim daily rewards by logging in 7 consecutive days.
-            </p>
-          </div>
-
-          <div
-            style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 14,
-              padding: 14,
-              boxShadow: '0 2px 6px rgba(0,0,0,0.02)',
-            }}
-          >
-            <div style={{ fontSize: 24, marginBottom: 6 }}>🎡</div>
-            <h5 style={{ margin: '0 0 4px', fontSize: 13, fontWeight: 800, color: '#0f172a' }}>
-              Lucky Spin Wheel
-            </h5>
-            <p style={{ margin: 0, fontSize: 11.5, color: '#64748b' }}>
-              Get ₹500 free cash spins every 24 hours.
-            </p>
-          </div>
-        </div>
-
-        {/* Redemption History */}
-        <h4 style={{ fontSize: 14, fontWeight: 800, color: '#0f172a', margin: '0 0 12px 2px' }}>
-          Redemption History
-        </h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {history.length === 0 ? (
-            <div
-              style={{
-                background: '#ffffff',
-                border: '1px dashed #cbd5e1',
-                borderRadius: 12,
-                padding: '24px 16px',
-                textAlign: 'center',
-                color: '#64748b',
-                fontSize: 12.5,
-              }}
-            >
-              No redemption history yet. Enter an active gift code above.
-            </div>
-          ) : (
-            history.map((h, i) => (
-              <div
-                key={i}
-                style={{
-                  background: '#ffffff',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: 12,
-                  padding: '12px 14px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+              <button
+                type="button"
+                className="first-gift-details-pill-btn"
+                onClick={() => {
+                  sound.playTick?.()
+                  setRulesOpen(true)
                 }}
               >
-                <div>
-                  <strong style={{ fontSize: 13, color: '#0f172a' }}>{h.code}</strong>
-                  <div style={{ fontSize: 11, color: '#94a3b8' }}>{h.date}</div>
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 800, color: '#16a34a' }}>
-                  +₹{h.amount}.00
-                </span>
+                Activity details
+              </button>
+            </div>
+
+            {/* 3D Celebration Gift Box Graphic */}
+            <div className="first-gift-hero-art">
+              <div className="hero-art-giftbox">
+                <span className="art-confetti-particle p1">✨</span>
+                <span className="art-confetti-particle p2">🎊</span>
+                <span className="art-confetti-particle p3">🪙</span>
+                <span className="art-confetti-particle p4">💎</span>
+                <div className="giftbox-emojis">🎁</div>
               </div>
-            ))
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Event Start Time Card */}
+        <div className="first-gift-event-time-card">
+          <div className="event-ribbon-badge-wrap">
+            <div className="event-ribbon-badge">Event start time</div>
+          </div>
+          <div className="event-timestamp-text">2024-06-11 00:00:00</div>
+        </div>
+
+        {/* 4. Conditions Table Card */}
+        <div className="first-gift-table-card">
+          <div className="first-gift-table-header">
+            <div className="table-header-col">Conditions of<br />participation</div>
+            <div className="table-header-col">Get<br />Compensation<br />Bonus</div>
+            <div className="table-header-col">Bonus limit</div>
+          </div>
+
+          <div className="first-gift-table-body">
+            <div className="table-body-col">
+              First deposit<br />for new users
+            </div>
+            <div className="table-body-col">
+              Total <span className="highlight-red-text">30%</span><br />
+              compensation from<br />
+              First Deposit Amount
+            </div>
+            <div className="table-body-col">
+              <span className="bonus-limit-val">₹200.00</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Feedback Alert if available */}
+        {feedback && (
+          <div className={`first-gift-alert ${feedback.type}`}>
+            {feedback.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        {/* 5. Bottom Action Button */}
+        <div className="first-gift-action-wrap">
+          {giftState.loading ? (
+            <button type="button" className="first-gift-btn disabled-success" disabled>
+              Loading status...
+            </button>
+          ) : giftState.isClaimed ? (
+            /* Matches screenshot: "Application successful" disabled button */
+            <button
+              type="button"
+              className="first-gift-btn disabled-success"
+              disabled
+              title="First deposit gift reward already claimed"
+            >
+              Application successful
+            </button>
+          ) : giftState.canClaim ? (
+            /* Eligible to claim now */
+            <button
+              type="button"
+              className="first-gift-btn active-claim"
+              onClick={handleClaim}
+              disabled={claiming}
+            >
+              {claiming ? 'Claiming Reward...' : `Claim ₹${giftState.eligibleBonus.toFixed(2)} First Deposit Gift`}
+            </button>
+          ) : !giftState.hasDeposited ? (
+            /* Not deposited yet: direct user to deposit */
+            <button
+              type="button"
+              className="first-gift-btn deposit-cta"
+              onClick={() => {
+                sound.playTick?.()
+                onOpenDeposit?.()
+              }}
+            >
+              Deposit Now to Get 30% Gift
+            </button>
+          ) : (
+            /* Default applied state */
+            <button type="button" className="first-gift-btn disabled-success" disabled>
+              Application successful
+            </button>
           )}
         </div>
       </div>
+
+      {/* Activity Details Rules Modal */}
+      {rulesOpen && (
+        <div className="rules-popup-overlay" onClick={() => setRulesOpen(false)}>
+          <div className="rules-popup-card" onClick={(e) => e.stopPropagation()}>
+            <div className="rules-popup-header">
+              <h3>First Gift Promotion Rules</h3>
+              <button
+                className="rules-close-btn"
+                onClick={() => setRulesOpen(false)}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="rules-popup-content">
+              <ol>
+                <li>
+                  <strong>Eligibility:</strong> This promotion is exclusive to newly registered players on 69 Club making their very first deposit.
+                </li>
+                <li>
+                  <strong>Bonus Calculation:</strong> 30% compensation bonus is calculated directly from your first approved deposit amount, up to a maximum limit of ₹200.00.
+                </li>
+                <li>
+                  <strong>Instant Credit:</strong> Once claimed, funds are immediately credited to your main balance and available for all games.
+                </li>
+                <li>
+                  <strong>Fair Play:</strong> Each account, mobile number, IP address, and payment account is entitled to claim this bonus only once. Multiple accounts violate terms.
+                </li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
