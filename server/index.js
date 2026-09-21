@@ -18,6 +18,7 @@ import walletRoutes from './routes/walletRoutes.js'
 import adminRoutes from './routes/adminRoutes.js'
 import activityRoutes from './routes/activityRoutes.js'
 import promotionRoutes from './routes/promotionRoutes.js'
+import serviceCenterRoutes from './routes/serviceCenterRoutes.js'
 
 const app = express()
 const PORT = process.env.PORT || 5000
@@ -92,6 +93,7 @@ app.use('/api/game', gameRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/activity', activityRoutes)
 app.use('/api/promotion', promotionRoutes)
+app.use('/api/service', serviceCenterRoutes)
 
 // 404 handler
 app.use(async (req, res) => {

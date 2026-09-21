@@ -14,10 +14,41 @@ import {
   BookOpen,
   FileText,
 } from 'lucide-react'
-import { requestDeposit, submitDepositUTR, fetchUserDeposits } from '../../api/client'
+import {
+  requestDeposit,
+  submitDepositUTR,
+  fetchUserDeposits,
+  fetchFirstDepositEligibility,
+} from '../../api/client'
 import QRCode from 'qrcode'
 import { sound } from '../../utils/audio'
 import './deposit.css'
+
+const FIRST_DEPOSIT_BONUSES = {
+  100: 28,
+  200: 50,
+  300: 71,
+  400: 92,
+  500: 114,
+  1000: 166,
+  2000: 288,
+  3000: 388,
+  5000: 481,
+}
+
+export function getFirstDepositBonus(amt) {
+  const n = Number(amt) || 0
+  if (n >= 5000) return 481
+  if (n >= 3000) return 388
+  if (n >= 2000) return 288
+  if (n >= 1000) return 166
+  if (n >= 500) return 114
+  if (n >= 400) return 92
+  if (n >= 300) return 71
+  if (n >= 200) return 50
+  if (n >= 100) return 28
+  return 0
+}
 
 const PRESET_AMOUNTS = [
   { label: '100', value: 100 },
@@ -78,12 +109,13 @@ export default function DepositPage({
   onBack,
   onBalanceUpdated,
   onOpenHistory,
+  initialAmount,
 }) {
   const [step, setStep] = useState(1) // 1: Form, 2: QR & UTR, 3: Success
   const [selectedMethod, setSelectedMethod] = useState('UPI-QR')
   const [selectedChannel, setSelectedChannel] = useState('Phonepe_QR')
-  const [amount, setAmount] = useState(100)
-  const [customAmount, setCustomAmount] = useState('100')
+  const [amount, setAmount] = useState(initialAmount ? Number(initialAmount) : 100)
+  const [customAmount, setCustomAmount] = useState(initialAmount ? String(initialAmount) : '100')
   const [loading, setLoading] = useState(false)
   const [refreshingBal, setRefreshingBal] = useState(false)
   const [error, setError] = useState(null)
@@ -97,6 +129,7 @@ export default function DepositPage({
 
   // Recent deposit history preview
   const [recentDeposits, setRecentDeposits] = useState([])
+  const [isFirstDepositEligible, setIsFirstDepositEligible] = useState(false)
 
   useEffect(() => {
     if (currentUser?.id) {
@@ -104,6 +137,17 @@ export default function DepositPage({
         .then((data) => {
           if (Array.isArray(data)) setRecentDeposits(data.slice(0, 5))
           else if (data?.deposits) setRecentDeposits(data.deposits.slice(0, 5))
+        })
+        .catch(() => {})
+
+      // Check first deposit eligibility (strictly active only if user has 0 approved deposits)
+      fetchFirstDepositEligibility(currentUser.id)
+        .then((res) => {
+          if (res?.isEligible) {
+            setIsFirstDepositEligible(true)
+          } else {
+            setIsFirstDepositEligible(false)
+          }
         })
         .catch(() => {})
     }
@@ -148,6 +192,13 @@ export default function DepositPage({
     try {
       if (onBalanceUpdated) {
         await onBalanceUpdated()
+      }
+      if (currentUser?.id) {
+        fetchFirstDepositEligibility(currentUser.id)
+          .then((elRes) => {
+            setIsFirstDepositEligible(!!elRes?.isEligible)
+          })
+          .catch(() => {})
       }
     } finally {
       setTimeout(() => setRefreshingBal(false), 600)
@@ -196,6 +247,13 @@ export default function DepositPage({
       sound.playWin?.()
       if (res.newBalance !== undefined && onBalanceUpdated) {
         onBalanceUpdated(res.newBalance)
+      }
+      if (currentUser?.id) {
+        fetchFirstDepositEligibility(currentUser.id)
+          .then((elRes) => {
+            setIsFirstDepositEligible(!!elRes?.isEligible)
+          })
+          .catch(() => {})
       }
       setStep(3)
     } catch (err) {
@@ -368,10 +426,21 @@ export default function DepositPage({
               <h3 className="section-main-title">Deposit amount</h3>
             </div>
 
+            {/* First Deposit Promo Strip */}
+            {isFirstDepositEligible && (
+              <div className="deposit-first-bonus-strip">
+                <span className="first-bonus-icon">🎁</span>
+                <div className="first-bonus-text">
+                  <strong>First Deposit Special:</strong> Extra bonus up to +₹481 on your first successful recharge!
+                </div>
+              </div>
+            )}
+
             {/* 3x3 Presets */}
             <div className="deposit-chips-grid">
               {PRESET_AMOUNTS.map((item) => {
                 const isSelected = amount === item.value
+                const bonusTag = isFirstDepositEligible ? FIRST_DEPOSIT_BONUSES[item.value] : null
                 return (
                   <button
                     key={item.value}
@@ -379,6 +448,9 @@ export default function DepositPage({
                     className={`deposit-chip-btn ${isSelected ? 'active' : ''}`}
                     onClick={() => handleSelectPreset(item.value)}
                   >
+                    {bonusTag && (
+                      <span className="chip-first-bonus-tag">+{bonusTag}</span>
+                    )}
                     <span className="chip-currency">₹</span>
                     <span className="chip-number">{item.label}</span>
                   </button>
@@ -397,7 +469,23 @@ export default function DepositPage({
                 placeholder="₹100.00 - ₹50,000.00"
                 value={customAmount}
                 onChange={handleCustomChange}
+                style={{
+                  border: 'none',
+                  outline: 'none',
+                  boxShadow: 'none',
+                  background: 'transparent',
+                }}
               />
+              {/* Side Bonus Pill on Custom Input */}
+              {isFirstDepositEligible && (() => {
+                const bVal = getFirstDepositBonus(amount)
+                if (bVal <= 0) return null
+                return (
+                  <div className="custom-input-side-bonus">
+                    <span className="side-bonus-tag">+₹{bVal} Bonus</span>
+                  </div>
+                )
+              })()}
               {customAmount && (
                 <button
                   type="button"
@@ -409,6 +497,27 @@ export default function DepositPage({
                 </button>
               )}
             </div>
+
+            {/* First Deposit Calculation Summary */}
+            {isFirstDepositEligible && (
+              (() => {
+                const amt = Number(amount || 0)
+                const bonusVal = getFirstDepositBonus(amt)
+                if (bonusVal <= 0) return null
+                return (
+                  <div className="first-deposit-summary-box">
+                    <div className="first-deposit-summary-row">
+                      <span>First deposit bonus (+5% boosted)</span>
+                      <span className="summary-bonus-val">+₹{bonusVal.toFixed(2)}</span>
+                    </div>
+                    <div className="first-deposit-summary-row">
+                      <span>Total credited to wallet</span>
+                      <span className="summary-total-val">₹{(amt + bonusVal).toFixed(2)}</span>
+                    </div>
+                  </div>
+                )
+              })()
+            )}
 
             {error && (
               <div style={{ color: '#ef4444', fontSize: 12, fontWeight: 600, padding: '4px 0' }}>

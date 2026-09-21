@@ -1,345 +1,536 @@
 import React, { useState, useEffect } from 'react'
 import {
-  ArrowLeft,
+  ChevronLeft,
+  RefreshCw,
   CreditCard,
   Building2,
-  Clock,
+  ChevronRight,
   CheckCircle2,
   AlertCircle,
-  History,
-  ShieldCheck,
-  ChevronRight,
-  Zap,
+  FileText,
+  X,
 } from 'lucide-react'
+import { sound } from '../../utils/audio'
 import { requestWithdrawal, fetchUserWithdrawals } from '../../api/client'
-
-const PRESET_WITHDRAWALS = [100, 300, 500, 1000, 2000, 5000]
+import './withdraw.css'
 
 export default function WithdrawPage({
   currentUser,
-  balance,
+  balance = 0,
   onBack,
   onWithdrawSuccess,
   onOpenHistory,
+  onRefreshBalance,
 }) {
-  const [method, setMethod] = useState('UPI') // 'UPI' | 'BANK'
-  const [amount, setAmount] = useState('500')
-  const [upiId, setUpiId] = useState('')
-  const [accountNumber, setAccountNumber] = useState('')
-  const [confirmAccNumber, setConfirmAccNumber] = useState('')
-  const [ifsc, setIfsc] = useState('')
-  const [holderName, setHolderName] = useState('')
+  const [method, setMethod] = useState('BANK') // 'BANK' | 'USDT' | 'UPI'
+  const [amount, setAmount] = useState('')
+  const [accountDetails, setAccountDetails] = useState(() => {
+    try {
+      const saved = localStorage.getItem(`withdraw_account_${currentUser?.id || 'guest'}`)
+      return saved ? JSON.parse(saved) : {
+        bankName: 'AIRTEL PAYMENTS BANK',
+        accountNumber: '84331398289',
+        ifsc: 'AIRP0000001',
+        holderName: currentUser?.username || 'Account Holder',
+        upiId: '84331398289@upi',
+      }
+    } catch {
+      return {
+        bankName: 'AIRTEL PAYMENTS BANK',
+        accountNumber: '84331398289',
+        ifsc: 'AIRP0000001',
+        holderName: currentUser?.username || 'Account Holder',
+        upiId: '84331398289@upi',
+      }
+    }
+  })
 
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [successMsg, setSuccessMsg] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [alertMsg, setAlertMsg] = useState(null)
   const [historyList, setHistoryList] = useState([])
-  const [showHistory, setShowHistory] = useState(false)
+  const [setupModalOpen, setSetupModalOpen] = useState(false)
 
+  // Fetch recent user withdrawals from live server
   useEffect(() => {
     if (currentUser?.id) {
       fetchUserWithdrawals(currentUser.id)
         .then((res) => {
-          if (res.withdrawals) setHistoryList(res.withdrawals)
+          if (res.withdrawals) setHistoryList(res.withdrawals.slice(0, 3))
         })
         .catch(() => {})
     }
   }, [currentUser?.id])
 
-  async function handleSubmit(e) {
+  const handleRefresh = async () => {
+    if (refreshing) return
+    setRefreshing(true)
+    sound.playTick?.()
+    if (onRefreshBalance) {
+      await onRefreshBalance()
+    }
+    setTimeout(() => setRefreshing(false), 800)
+  }
+
+  const handleSelectAll = () => {
+    sound.playTick?.()
+    setAmount(String(Math.floor(balance)))
+  }
+
+  const handleSaveAccount = (e) => {
     e.preventDefault()
-    setError('')
-    setSuccessMsg('')
+    try {
+      localStorage.setItem(`withdraw_account_${currentUser?.id || 'guest'}`, JSON.stringify(accountDetails))
+    } catch {}
+    setSetupModalOpen(false)
+    sound.playTick?.()
+  }
+
+  const handleSubmitWithdraw = async (e) => {
+    e.preventDefault()
+    setAlertMsg(null)
 
     const numAmount = Number(amount)
-    if (!numAmount || numAmount < 100) {
-      setError('Minimum withdrawal amount is ₹100')
-      return
-    }
-
-    const pendingItem = historyList.find((w) => w.status === 'PENDING')
-    if (pendingItem) {
-      setError(`You already have a pending withdrawal of ₹${pendingItem.amount} via ${pendingItem.payout_method}. Please wait until it is processed.`)
+    if (!numAmount || numAmount < 110) {
+      setAlertMsg({ type: 'error', text: 'Minimum withdrawal amount is ₹110.00' })
       return
     }
 
     if (numAmount > balance) {
-      setError('Insufficient wallet balance')
+      setAlertMsg({ type: 'error', text: `Insufficient balance. Available: ₹${balance.toFixed(2)}` })
       return
     }
 
-    if (method === 'UPI') {
-      if (!upiId || !upiId.includes('@')) {
-        setError('Please enter a valid UPI VPA (e.g. mobile@paytm or user@oksbi)')
-        return
-      }
-    } else {
-      if (!accountNumber || accountNumber.length < 8) {
-        setError('Please enter a valid bank account number')
-        return
-      }
-      if (accountNumber !== confirmAccNumber) {
-        setError('Account numbers do not match')
-        return
-      }
-      if (!ifsc || ifsc.length < 4) {
-        setError('Please enter a valid bank IFSC code')
-        return
-      }
-      if (!holderName || holderName.trim().length < 2) {
-        setError('Please enter account holder name')
-        return
-      }
-    }
+    setSubmitting(true)
+    sound.playBet?.()
 
-    setLoading(true)
     try {
       const payload = {
-        userId: currentUser.id,
+        userId: currentUser?.id,
         amount: numAmount,
-        payoutMethod: method,
-        accountDetails:
-          method === 'UPI'
-            ? { upiId: upiId.trim() }
-            : {
-                accountNumber: accountNumber.trim(),
-                ifsc: ifsc.trim().toUpperCase(),
-                holderName: holderName.trim(),
-              },
+        payoutMethod: method === 'BANK' ? 'BANK' : method === 'UPI' ? 'UPI' : 'USDT',
+        accountDetails: {
+          ...accountDetails,
+          upiId: accountDetails.upiId || `${accountDetails.accountNumber}@upi`,
+        },
       }
 
-      const res = await requestWithdrawal(payload)
-      setSuccessMsg(res.message || 'Withdrawal request submitted successfully!')
-
+      const res = await requestWithdrawal(currentUser?.id, payload)
+      sound.playWin?.()
+      setAlertMsg({
+        type: 'success',
+        text: res.message || 'Withdrawal request submitted successfully. Processing in 10-30 minutes.',
+      })
+      setAmount('')
       if (onWithdrawSuccess) {
-        onWithdrawSuccess(res.newBalance, numAmount)
+        onWithdrawSuccess(numAmount)
       }
-
-      // Reload history
-      const updated = await fetchUserWithdrawals(currentUser.id)
-      if (updated.withdrawals) setHistoryList(updated.withdrawals)
+      if (currentUser?.id) {
+        const h = await fetchUserWithdrawals(currentUser.id)
+        if (h.withdrawals) setHistoryList(h.withdrawals.slice(0, 3))
+      }
     } catch (err) {
-      setError(err.message || 'Withdrawal submission failed')
+      sound.playLose?.()
+      setAlertMsg({
+        type: 'error',
+        text: err.message || 'Failed to submit withdrawal request. Please check details.',
+      })
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
+  const maskedAccount = accountDetails.accountNumber
+    ? `${accountDetails.accountNumber.slice(0, 6)}****${accountDetails.accountNumber.slice(-3)}`
+    : 'Add Bank Account'
+
+  const isValidAmount = Number(amount) >= 110 && Number(amount) <= balance
+
   return (
-    <div className="subpage-container">
-      {/* 1. TOP HEADER */}
-      <header className="subpage-header">
-        <button className="subpage-back-btn" onClick={onBack} title="Back">
-          <ArrowLeft size={20} />
+    <div className="withdraw-page-container">
+      {/* 1. Header */}
+      <header className="withdraw-header">
+        <button
+          className="withdraw-back-btn"
+          onClick={() => {
+            sound.playTick?.()
+            onBack?.()
+          }}
+          title="Back"
+        >
+          <ChevronLeft size={24} />
         </button>
-        <h2 className="subpage-title">Withdrawal Center</h2>
-        <button className="subpage-right-action" onClick={() => setShowHistory(!showHistory)} title="History">
-          <History size={18} />
+        <h1 className="withdraw-header-title">Withdraw</h1>
+        <button
+          type="button"
+          className="withdraw-history-link"
+          onClick={() => {
+            sound.playTick?.()
+            onOpenHistory?.()
+          }}
+        >
+          Withdrawal history
         </button>
       </header>
 
-      <div className="subpage-content">
-        {/* Balance Hero Card */}
+      <div className="withdraw-content">
+        {/* 2. Coral Balance Card */}
         <div className="withdraw-balance-card">
-          <div className="wb-col">
-            <span className="wb-label">Total Balance</span>
-            <strong className="wb-amount">₹{Number(balance || 0).toFixed(2)}</strong>
+          <div className="withdraw-card-top-row">
+            <span>👛</span>
+            <span>Available balance</span>
           </div>
-          <div className="wb-divider" />
-          <div className="wb-col">
-            <span className="wb-label">Withdrawable</span>
-            <strong className="wb-amount text-emerald-500">₹{Number(balance || 0).toFixed(2)}</strong>
+
+          <div className="withdraw-card-amount-row">
+            <span>₹{Number(balance).toFixed(2)}</span>
+            <button
+              type="button"
+              className={`withdraw-refresh-icon-btn ${refreshing ? 'spinning' : ''}`}
+              onClick={handleRefresh}
+              title="Refresh Balance"
+            >
+              <RefreshCw size={18} />
+            </button>
+          </div>
+
+          <div className="withdraw-card-dots">**** ****</div>
+        </div>
+
+        {/* 3. ARPay Notification Banner */}
+        <div className="arpay-notice-banner">
+          <div className="arpay-logo-badge">A</div>
+          <div className="arpay-banner-text">
+            <span className="arpay-banner-title">ARPay</span>
+            <span className="arpay-banner-sub">Supports UPI for fast payment</span>
           </div>
         </div>
 
-        {/* METHOD TABS */}
-        <div className="withdraw-method-tabs">
-          <button
-            type="button"
-            className={`w-tab-btn ${method === 'UPI' ? 'active' : ''}`}
-            onClick={() => setMethod('UPI')}
+        {/* 4. Payment Method 3-Tile Selector */}
+        <div className="withdraw-methods-grid">
+          {/* Tile 1: BANK CARD */}
+          <div
+            className={`withdraw-method-card ${method === 'BANK' ? 'active' : ''}`}
+            onClick={() => {
+              sound.playTick?.()
+              setMethod('BANK')
+            }}
           >
-            <Zap size={16} /> Instant UPI
-          </button>
-          <button
-            type="button"
-            className={`w-tab-btn ${method === 'BANK' ? 'active' : ''}`}
-            onClick={() => setMethod('BANK')}
-          >
-            <Building2 size={16} /> Bank Account
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="withdraw-form">
-          {/* Method Fields */}
-          {method === 'UPI' ? (
-            <div className="form-group-box">
-              <label className="field-label">UPI ID / VPA Address</label>
-              <input
-                type="text"
-                className="sub-text-field"
-                placeholder="e.g. 9876543210@paytm or name@oksbi"
-                value={upiId}
-                onChange={(e) => setUpiId(e.target.value)}
-                required
-              />
-              <span className="field-note">Funds arrive directly in your linked UPI bank account.</span>
+            <div className="method-icon-wrap">
+              <CreditCard size={26} />
             </div>
-          ) : (
-            <div className="form-group-box">
-              <label className="field-label">Account Holder Name</label>
-              <input
-                type="text"
-                className="sub-text-field mb-2"
-                placeholder="Name as per bank records"
-                value={holderName}
-                onChange={(e) => setHolderName(e.target.value)}
-                required
-              />
+            <span className="withdraw-method-label">BANK CARD</span>
+          </div>
 
-              <label className="field-label">Bank Account Number</label>
-              <input
-                type="text"
-                className="sub-text-field mb-2"
-                placeholder="Enter account number"
-                value={accountNumber}
-                onChange={(e) => setAccountNumber(e.target.value)}
-                required
-              />
+          {/* Tile 2: USDT */}
+          <div
+            className={`withdraw-method-card ${method === 'USDT' ? 'active' : ''}`}
+            onClick={() => {
+              sound.playTick?.()
+              setMethod('USDT')
+            }}
+          >
+            <div className="method-icon-wrap">
+              <div className="usdt-circle-badge">₮</div>
+            </div>
+            <span className="withdraw-method-label">USDT</span>
+          </div>
 
-              <label className="field-label">Confirm Account Number</label>
-              <input
-                type="text"
-                className="sub-text-field mb-2"
-                placeholder="Re-enter account number"
-                value={confirmAccNumber}
-                onChange={(e) => setConfirmAccNumber(e.target.value)}
-                required
-              />
+          {/* Tile 3: UPI */}
+          <div
+            className={`withdraw-method-card ${method === 'UPI' ? 'active' : ''}`}
+            onClick={() => {
+              sound.playTick?.()
+              setMethod('UPI')
+            }}
+          >
+            <div className="method-icon-wrap">
+              <span className="upi-text-badge">UPI</span>
+            </div>
+            <span className="withdraw-method-label">UPI</span>
+          </div>
+        </div>
 
-              <label className="field-label">IFSC Code</label>
-              <input
-                type="text"
-                className="sub-text-field uppercase"
-                placeholder="e.g. SBIN0001234"
-                value={ifsc}
-                onChange={(e) => setIfsc(e.target.value.toUpperCase())}
-                required
-              />
+        {/* 5. Account Selection Row */}
+        <div
+          className="withdraw-account-row"
+          onClick={() => {
+            sound.playTick?.()
+            setSetupModalOpen(true)
+          }}
+        >
+          <div className="withdraw-account-left">
+            <div className="bank-logo-badge">🏛️</div>
+            <div className="account-divider" />
+            <span className="account-number-text">{maskedAccount}</span>
+          </div>
+          <ChevronRight size={18} color="#94a3b8" />
+        </div>
+
+        {/* 6. Amount Input Card */}
+        <div className="withdraw-amount-card">
+          <div className="amount-input-box">
+            <span className="currency-symbol-big">₹</span>
+            <input
+              type="number"
+              className="withdraw-native-input"
+              placeholder="Please enter the amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+            />
+          </div>
+
+          <div className="withdrawable-balance-row">
+            <span>
+              Withdrawable balance <span className="balance-highlight-orange">₹{Number(balance).toFixed(2)}</span>
+            </span>
+            <button type="button" className="btn-all-pill" onClick={handleSelectAll}>
+              All
+            </button>
+          </div>
+
+          <div className="received-amount-row">
+            <span>Withdrawal amount received</span>
+            <span className="received-amount-val">
+              ₹{amount ? Number(amount).toFixed(2) : '0.00'}
+            </span>
+          </div>
+
+          {alertMsg && (
+            <div
+              style={{
+                padding: '10px 14px',
+                borderRadius: 10,
+                fontSize: 12.5,
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                background: alertMsg.type === 'success' ? '#f0fdf4' : '#fef2f2',
+                color: alertMsg.type === 'success' ? '#16a34a' : '#dc2626',
+                border: `1px solid ${alertMsg.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
+              }}
+            >
+              {alertMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+              <span>{alertMsg.text}</span>
             </div>
           )}
 
-          {/* Amount Stepper & Chips */}
-          <div className="form-group-box">
-            <label className="field-label">Withdrawal Amount (₹)</label>
-            <div className="preset-chips-grid mb-3">
-              {PRESET_WITHDRAWALS.map((amt) => (
-                <button
-                  key={amt}
-                  type="button"
-                  className={`preset-chip ${Number(amount) === amt ? 'active' : ''}`}
-                  onClick={() => setAmount(String(amt))}
-                >
-                  ₹{amt}
-                </button>
-              ))}
-            </div>
+          <button
+            type="button"
+            className={`btn-withdraw-submit ${isValidAmount && !submitting ? 'active' : ''}`}
+            disabled={!isValidAmount || submitting}
+            onClick={handleSubmitWithdraw}
+          >
+            {submitting ? 'Processing Request...' : 'Withdraw'}
+          </button>
+        </div>
 
-            <div className="custom-input-box">
-              <span className="input-prefix">₹</span>
-              <input
-                type="number"
-                className="custom-amount-field"
-                placeholder="Enter amount (min ₹100)"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                min="100"
-                max={balance}
-                required
-              />
-            </div>
+        {/* 7. Instructions / Rules Card */}
+        <div className="withdraw-rules-card">
+          <div className="rule-diamond-row">
+            <span className="rule-diamond-marker">◆</span>
+            <span>
+              Need to bet <span className="highlight-red-rule">₹0.00</span> to be able to withdraw
+            </span>
           </div>
 
-          {error && <div className="deposit-alert error">{error}</div>}
-          {successMsg && <div className="deposit-alert success">{successMsg}</div>}
+          <div className="rule-diamond-row">
+            <span className="rule-diamond-marker">◆</span>
+            <span>
+              Withdraw time <span className="highlight-red-rule">00:00-23:59</span>
+            </span>
+          </div>
 
-          {(() => {
-            const pending = historyList.find((w) => w.status === 'PENDING')
-            if (pending) {
-              return (
+          <div className="rule-diamond-row">
+            <span className="rule-diamond-marker">◆</span>
+            <span>
+              Inday Remaining Withdrawal Times <span className="highlight-red-rule">3</span>
+            </span>
+          </div>
+
+          <div className="rule-diamond-row">
+            <span className="rule-diamond-marker">◆</span>
+            <span>
+              Withdrawal amount range <span className="highlight-red-rule">₹110.00-₹50,000.00</span>
+            </span>
+          </div>
+
+          <div className="rule-diamond-row">
+            <span className="rule-diamond-marker">◆</span>
+            <span>
+              Please check your registered bank information again before making a withdrawal. If your registered bank information is incorrect, our company will not be responsible for any losses you may incur.
+            </span>
+          </div>
+
+          <div className="rule-diamond-row">
+            <span className="rule-diamond-marker">◆</span>
+            <span>
+              If your registered bank information is incorrect, please contact customer service.
+            </span>
+          </div>
+        </div>
+
+        {/* 8. Recent History Section at Bottom */}
+        <div className="withdraw-recent-history-card">
+          <div className="recent-history-header">
+            <FileText size={16} color="#f84545" />
+            <span>Withdrawal history</span>
+          </div>
+
+          {historyList.length > 0 ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {historyList.map((item) => (
                 <div
-                  className="deposit-alert warning"
+                  key={item.id}
                   style={{
-                    background: 'rgba(245, 158, 11, 0.12)',
-                    border: '1px solid rgba(245, 158, 11, 0.35)',
-                    color: '#d97706',
-                    padding: '12px 14px',
-                    borderRadius: '10px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    marginBottom: '14px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 0',
+                    borderBottom: '1px solid #f1f5f9',
                   }}
                 >
-                  ⚠️ Active Pending Request: ₹{pending.amount} via {pending.payout_method}. Double submission is blocked until this payout is processed.
-                </div>
-              )
-            }
-            return null
-          })()}
-
-          {(() => {
-            const pending = historyList.find((w) => w.status === 'PENDING')
-            return (
-              <button
-                type="submit"
-                className="btn-primary-gradient"
-                disabled={loading || !!pending}
-                style={pending ? { opacity: 0.6, cursor: 'not-allowed' } : {}}
-              >
-                {loading ? 'Processing Withdrawal...' : pending ? 'Pending Request in Progress (Locked)' : `Submit Withdrawal Request (₹${amount || 0})`}
-              </button>
-            )
-          })()}
-        </form>
-
-        {/* Withdrawal History Drawer / Table */}
-        {showHistory && (
-          <div className="wallet-section-box mt-4">
-            <div className="section-title-row">
-              <h4>Withdrawal History</h4>
-            </div>
-
-            {historyList.length === 0 ? (
-              <p className="text-gray-400 text-sm py-4 text-center">No withdrawal records found.</p>
-            ) : (
-              <div className="wallet-tx-list">
-                {historyList.map((item) => (
-                  <div key={item.id} className="wallet-tx-row">
-                    <div className="tx-left">
-                      <span className={`status-pill ${item.status.toLowerCase()}`}>{item.status}</span>
-                      <span className="tx-date">{new Date(item.created_at).toLocaleDateString()}</span>
-                    </div>
-                    <div className="tx-right">
-                      <strong className="text-gray-900 font-bold">₹{item.amount}</strong>
-                      <span className="tx-after">{item.payout_method || 'UPI'}</span>
+                  <div>
+                    <strong style={{ fontSize: 13, color: '#0f172a' }}>
+                      {item.payout_method || 'Bank Transfer'}
+                    </strong>
+                    <div style={{ fontSize: 11, color: '#94a3b8' }}>
+                      {new Date(item.created_at).toLocaleDateString('en-IN', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 800, color: '#f84545' }}>
+                      ₹{Number(item.amount).toFixed(2)}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: 10.5,
+                        fontWeight: 700,
+                        color:
+                          item.status === 'APPROVED'
+                            ? '#16a34a'
+                            : item.status === 'REJECTED'
+                            ? '#dc2626'
+                            : '#ea580c',
+                      }}
+                    >
+                      {item.status || 'PENDING'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-history-box">
+              <div className="empty-history-art">📜</div>
+              <span className="empty-history-text">No data</span>
+            </div>
+          )}
 
-        {/* Instructions */}
-        <div className="deposit-instructions-card">
-          <h5>Withdrawal Rules & Guidelines</h5>
-          <ul>
-            <li>Minimum withdrawal is <strong>₹100</strong>. Maximum per request: <strong>₹50,000</strong>.</li>
-            <li>24/7 Automated processing with zero commission or fees.</li>
-            <li>Ensure bank account or UPI VPA matches your registered details.</li>
-          </ul>
+          <button
+            type="button"
+            className="btn-all-history-pill"
+            onClick={() => {
+              sound.playTick?.()
+              onOpenHistory?.()
+            }}
+          >
+            All history
+          </button>
         </div>
       </div>
+
+      {/* Account Setup / Edit Modal */}
+      {setupModalOpen && (
+        <div className="account-config-modal-overlay" onClick={() => setSetupModalOpen(false)}>
+          <div className="account-config-card" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0f172a' }}>
+                Bank / UPI Payout Details
+              </h3>
+              <button
+                type="button"
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}
+                onClick={() => setSetupModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveAccount}>
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                  Bank Name
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                  value={accountDetails.bankName}
+                  onChange={(e) => setAccountDetails({ ...accountDetails, bankName: e.target.value })}
+                />
+              </div>
+
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                  Account Number / Mobile
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                  value={accountDetails.accountNumber}
+                  onChange={(e) => setAccountDetails({ ...accountDetails, accountNumber: e.target.value })}
+                />
+              </div>
+
+              <div style={{ marginBottom: 10 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                  IFSC Code
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box', textTransform: 'uppercase' }}
+                  value={accountDetails.ifsc}
+                  onChange={(e) => setAccountDetails({ ...accountDetails, ifsc: e.target.value.toUpperCase() })}
+                />
+              </div>
+
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
+                  Destination UPI ID
+                </label>
+                <input
+                  type="text"
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
+                  value={accountDetails.upiId}
+                  onChange={(e) => setAccountDetails({ ...accountDetails, upiId: e.target.value })}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  width: '100%',
+                  height: 42,
+                  borderRadius: 999,
+                  border: 'none',
+                  background: 'linear-gradient(90deg, #ff6054 0%, #f84545 100%)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: 'pointer',
+                }}
+              >
+                Save Payout Account
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

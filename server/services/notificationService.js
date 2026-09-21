@@ -147,7 +147,8 @@ export async function sendEmailOTP({ to, otpCode, username = 'Player' }) {
 
   // 1. Resend REST API integration (if RESEND_API_KEY is configured)
   const resendKey = process.env.RESEND_API_KEY
-  const senderEmail = process.env.EMAIL_FROM || '69 Club <noreply@club69.in>'
+  const rawSender = process.env.EMAIL_OTP_SEND || process.env.EMAIL_FROM || 'otp@game.69club1.site'
+  const senderEmail = rawSender.includes('<') ? rawSender : `69 Club <${rawSender}>`
 
   if (resendKey) {
     try {
@@ -167,7 +168,10 @@ export async function sendEmailOTP({ to, otpCode, username = 'Player' }) {
       })
       const data = await res.json().catch(() => ({}))
       if (res.ok) {
+        console.log(`✉️ [Resend] Email OTP dispatched to ${email} (ID: ${data.id})`)
         return { success: true, provider: 'resend', id: data.id }
+      } else {
+        console.error(`❌ [Resend API Error] Status ${res.status}:`, data)
       }
     } catch (resendErr) {
       console.error('[Resend Email Exception]:', resendErr.message)

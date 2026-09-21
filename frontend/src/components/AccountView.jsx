@@ -22,8 +22,12 @@ import {
   LogIn,
   Lock,
   ShieldCheck,
+  BarChart2,
+  Globe,
+  Power,
 } from 'lucide-react'
 import { sound } from '../utils/audio'
+import './pages/service.css'
 
 export function AccountView({
   currentUser,
@@ -49,6 +53,11 @@ export function AccountView({
   onOpenCoupons,
   onOpenSecurity,
   onOpenCustomerService,
+  onOpenSettings,
+  onOpenFeedback,
+  onOpenAnnouncement,
+  onOpenBeginnersGuide,
+  onOpenAboutUs,
   onLogout,
 }) {
   const [copied, setCopied] = useState(false)
@@ -278,7 +287,7 @@ export function AccountView({
         {/* Notification */}
         <div className="menu-list-row" onClick={onOpenNotification || onOpenSupport}>
           <div className="menu-row-left">
-            <div className="menu-icon-box bg-menu-indigo">
+            <div className="menu-icon-box" style={{ background: '#fef2f2', color: '#ef4444' }}>
               <Bell size={16} />
             </div>
             <span className="menu-row-title">Notification</span>
@@ -294,7 +303,7 @@ export function AccountView({
         {/* Gifts */}
         <div className="menu-list-row" onClick={onOpenGifts || onOpenFortuneWheel}>
           <div className="menu-row-left">
-            <div className="menu-icon-box bg-menu-purple">
+            <div className="menu-icon-box" style={{ background: '#fff1f2', color: '#f43f5e' }}>
               <Gift size={16} />
             </div>
             <span className="menu-row-title">Gifts</span>
@@ -307,7 +316,7 @@ export function AccountView({
         {/* My Top-Up Coupons */}
         <div className="menu-list-row" onClick={onOpenCoupons || onOpenDeposit}>
           <div className="menu-row-left">
-            <div className="menu-icon-box bg-menu-lavender">
+            <div className="menu-icon-box" style={{ background: '#fff7ed', color: '#f97316' }}>
               <Ticket size={16} />
             </div>
             <span className="menu-row-title">My Top-Up Coupons</span>
@@ -317,59 +326,122 @@ export function AccountView({
           </div>
         </div>
 
-        {/* Admin Management Console - Strictly visible ONLY for verified admin accounts */}
-        {isAdmin && (
-          <div className="menu-list-row" onClick={onOpenAdmin}>
-            <div className="menu-row-left">
-              <div className="menu-icon-box" style={{ background: '#fef3c7', color: '#b45309' }}>
-                <Shield size={16} />
-              </div>
-              <span className="menu-row-title">Admin Management</span>
-            </div>
-            <div className="menu-row-right">
-              <span className="menu-count-badge" style={{ background: '#0f172a', color: '#ffffff' }}>ADMIN</span>
-              <ChevronRight size={16} className="text-slate-500" />
-            </div>
-          </div>
-        )}
-
-        {/* Security Center */}
-        <div className="menu-list-row" onClick={onOpenSecurity || (() => onOpenAuth && onOpenAuth('forgot'))}>
+        {/* Game statistics */}
+        <div className="menu-list-row" onClick={onOpenBets}>
           <div className="menu-row-left">
-            <div className="menu-icon-box bg-menu-cyan">
-              <Shield size={16} />
+            <div className="menu-icon-box" style={{ background: '#fef2f2', color: '#ef4444' }}>
+              <BarChart2 size={16} />
             </div>
-            <span className="menu-row-title">Security Center</span>
+            <span className="menu-row-title">Game statistics</span>
           </div>
           <div className="menu-row-right">
             <ChevronRight size={16} className="text-slate-500" />
           </div>
         </div>
 
-        {/* Live Support */}
-        <div className="menu-list-row" onClick={onOpenCustomerService || onOpenSupport}>
+        {/* Language */}
+        <div className="menu-list-row" onClick={() => sound.playTick?.()}>
           <div className="menu-row-left">
-            <div className="menu-icon-box bg-menu-amber">
-              <Headphones size={16} />
+            <div className="menu-icon-box" style={{ background: '#fef2f2', color: '#ef4444' }}>
+              <Globe size={16} />
             </div>
-            <span className="menu-row-title">Customer Service</span>
+            <span className="menu-row-title">Language</span>
           </div>
-          <div className="menu-row-right">
+          <div className="menu-row-right" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ fontSize: 13, color: '#64748b' }}>English</span>
             <ChevronRight size={16} className="text-slate-500" />
           </div>
         </div>
       </div>
 
-      {/* 5. AUTH / LOGOUT BUTTON */}
-      <div className="account-footer-actions">
+      {/* 5. SERVICE CENTER CARD (Pixel-Perfect matching user screenshot) */}
+      <div className="account-service-card">
+        <h3 className="account-service-title">Service center</h3>
+        <div className="account-service-grid">
+          {/* 1. Settings */}
+          <div
+            className="account-service-tile"
+            onClick={() => {
+              sound.playTick?.()
+              if (onOpenSettings) onOpenSettings()
+            }}
+          >
+            <div className="account-service-icon-box">⚙️</div>
+            <span className="account-service-label">Settings</span>
+          </div>
+
+          {/* 2. Feedback */}
+          <div
+            className="account-service-tile"
+            onClick={() => {
+              sound.playTick?.()
+              if (onOpenFeedback) onOpenFeedback()
+            }}
+          >
+            <div className="account-service-icon-box">📋</div>
+            <span className="account-service-label">Feedback</span>
+          </div>
+
+          {/* 3. Announcement */}
+          <div
+            className="account-service-tile"
+            onClick={() => {
+              sound.playTick?.()
+              if (onOpenAnnouncement) onOpenAnnouncement()
+            }}
+          >
+            <div className="account-service-icon-box">📢</div>
+            <span className="account-service-label">Announcement</span>
+          </div>
+
+          {/* 4. Customer Service */}
+          <div
+            className="account-service-tile"
+            onClick={() => {
+              sound.playTick?.()
+              if (onOpenCustomerService) onOpenCustomerService()
+            }}
+          >
+            <div className="account-service-icon-box">🎧</div>
+            <span className="account-service-label">Customer Service</span>
+          </div>
+
+          {/* 5. Beginner's Guide */}
+          <div
+            className="account-service-tile"
+            onClick={() => {
+              sound.playTick?.()
+              if (onOpenBeginnersGuide) onOpenBeginnersGuide()
+            }}
+          >
+            <div className="account-service-icon-box">📖</div>
+            <span className="account-service-label">Beginner's Guide</span>
+          </div>
+
+          {/* 6. About us */}
+          <div
+            className="account-service-tile"
+            onClick={() => {
+              sound.playTick?.()
+              if (onOpenAboutUs) onOpenAboutUs()
+            }}
+          >
+            <div className="account-service-icon-box">📦</div>
+            <span className="account-service-label">About us</span>
+          </div>
+        </div>
+      </div>
+
+      {/* 6. LOG OUT PILL BUTTON (Matching user screenshot) */}
+      <div className="service-logout-wrap">
         {currentUser ? (
-          <button className="account-auth-action-btn logout-style" onClick={onLogout}>
-            <LogOut size={16} />
-            <span>Sign Out ({currentUser.username})</span>
+          <button className="service-logout-btn" onClick={onLogout}>
+            <Power size={18} />
+            <span>Log out</span>
           </button>
         ) : (
-          <button className="account-auth-action-btn login-style" onClick={() => onOpenAuth && onOpenAuth('login')}>
-            <LogIn size={16} />
+          <button className="service-logout-btn" onClick={() => onOpenAuth && onOpenAuth('login')}>
+            <LogIn size={18} />
             <span>Log In / Register</span>
           </button>
         )}

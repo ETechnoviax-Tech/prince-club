@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { supabase } from '../config/supabase.js';
+import { applyFirstDepositBonusIfEligible } from './paymentController.js';
 
 // In-memory processed webhook event store (for dev fallback when Supabase table isn't created yet)
 const processedWebhooks = new Set();
@@ -229,6 +230,11 @@ async function processDepositSuccess(payload) {
                 description: `Deposit credited via webhook. UTR: ${utrNumber || 'WEBHOOK'}`
             });
         }
+
+        // Apply first deposit bonus if this is user's first approved deposit
+        try {
+            await applyFirstDepositBonusIfEligible(deposit.user_id, deposit.amount, deposit.order_ref);
+        } catch (_) {}
 
         // Log payment audit event
         try {

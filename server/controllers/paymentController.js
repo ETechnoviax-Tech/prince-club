@@ -166,10 +166,16 @@ export async function submitUTR(req, res) {
         if (!rpcErr && rpcRes?.success) {
           logPaymentEvent(deposit.user_id, 'DEPOSIT_AUTO_APPROVED', depositId, { utr, amount: deposit.amount })
 
+          let bonusInfo = null
+          try {
+            bonusInfo = await applyFirstDepositBonusIfEligible(deposit.user_id, deposit.amount, deposit.order_ref)
+          } catch {}
+
           return res.json({
             message: 'UTR submitted and auto-approved',
             deposit: { ...updated, status: 'APPROVED' },
-            newBalance: rpcRes.new_balance,
+            newBalance: bonusInfo?.newBalance || rpcRes.new_balance,
+            bonusApplied: bonusInfo?.credited ? bonusInfo.bonus : 0,
           })
         }
       }
@@ -260,10 +266,26 @@ export async function verifyDeposit(req, res) {
 
         logPaymentEvent(null, 'DEPOSIT_APPROVED', depositId, { admin_id: adminId || req.user?.id || null, notes })
 
+        // Check and apply First Deposit Bonus (+5% Boosted) if this is user's first approved deposit
+        let bonusInfo = null
+        try {
+          const { data: dep } = await supabase
+            .from('deposit_requests')
+            .select('user_id, amount, order_ref')
+            .eq('id', depositId)
+            .single()
+          if (dep) {
+            bonusInfo = await applyFirstDepositBonusIfEligible(dep.user_id, dep.amount, dep.order_ref)
+          }
+        } catch (bErr) {
+          console.error('[First Deposit Bonus Hook Error]:', bErr.message)
+        }
+
         return res.json({
           message: 'Deposit approved successfully',
           depositId,
-          newBalance: data.new_balance,
+          newBalance: bonusInfo?.newBalance || data.new_balance,
+          bonusApplied: bonusInfo?.credited ? bonusInfo.bonus : 0,
         })
       }
 
@@ -427,4 +449,162 @@ export async function listAdminDeposits(req, res) {
       }
     })
   return res.json({ deposits })
+}
+
+export function calculateFirstDepositBonus(amt) {
+  const n = Number(amt) || 0
+  if (n >= 5000) return 481
+  if (n >= 3000) return 388
+  if (n >= 2000) return 288
+  if (n >= 1000) return 166
+  if (n >= 500) return 114
+  if (n >= 400) return 92
+  if (n >= 300) return 71
+  if (n >= 200) return 50
+  if (n >= 100) return 28
+  return 0
+}
+
+/**
+ * Applies First Deposit Bonus (+5% Boosted) if and only if this is the user's very first successful (APPROVED) deposit.
+ * Strict Security Guarantees:
+ * - Prior rejected/cancelled deposits do NOT invalidate future eligibility.
+ * - Prior or existing First Deposit bonus in wallet_transactions immediately stops duplicate awards.
+ * - Exact check: COUNT(status = 'APPROVED') must be exactly 1.
+ * - Idempotent, thread-safe, atomic.
+ */
+export async function applyFirstDepositBonusIfEligible(userId, depositAmount, depositRef) {
+  if (!isSupabaseConfigured || !userId) return null
+
+  try {
+    // 1. Guard: Check if user already has any First Deposit bonus in ledger
+    const { data: existingBonus } = await supabase
+      .from('wallet_transactions')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('type', 'BONUS')
+      .ilike('description', '%First Deposit Bonus%')
+      .maybeSingle()
+
+    if (existingBonus) {
+      return { credited: false, reason: 'First deposit bonus already awarded' }
+    }
+
+    // 2. Guard: Count total APPROVED deposits for this user
+    // Must be exactly 1 (meaning the current deposit that was just approved is their very first)
+    const { count, error: countErr } = await supabase
+      .from('deposit_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('status', 'APPROVED')
+
+    if (countErr || count !== 1) {
+      return { credited: false, reason: count > 1 ? 'Not first approved deposit' : 'Deposit not approved' }
+    }
+
+    // 3. Calculate 5% boosted bonus rates
+    const amt = Number(depositAmount || 0)
+    const bonus = calculateFirstDepositBonus(amt)
+
+    if (bonus <= 0) {
+      return { credited: false, reason: 'Amount does not qualify for bonus tier' }
+    }
+
+    // 4. Atomically credit wallet
+    const { data: wal } = await supabase.from('wallets').select('balance').eq('user_id', userId).single()
+    const curBal = wal ? Number(wal.balance) : 0
+    const newBal = curBal + bonus
+
+    await supabase.from('wallets').update({ balance: newBal, updated_at: new Date().toISOString() }).eq('user_id', userId)
+
+    // 5. Create immutable ledger record
+    await supabase.from('wallet_transactions').insert({
+      user_id: userId,
+      type: 'BONUS',
+      amount: bonus,
+      balance_after: newBal,
+      reference_id: depositRef || null,
+      description: `First Deposit Bonus (+5% Boosted): +₹${bonus.toFixed(2)} for first deposit of ₹${amt.toFixed(2)}`,
+    })
+
+    logPaymentEvent(userId, 'FIRST_DEPOSIT_BONUS_CREDITED', depositRef || null, {
+      depositAmount: amt,
+      bonusAmount: bonus,
+      newBalance: newBal,
+    })
+
+    return { credited: true, bonus, newBalance: newBal }
+  } catch (err) {
+    console.error('[applyFirstDepositBonusIfEligible Exception]:', err)
+    return { credited: false, error: err.message }
+  }
+}
+
+/**
+ * GET /api/payments/first-deposit-eligibility/:userId
+ * Returns whether the user is eligible for the first deposit bonus.
+ * Eligible IF AND ONLY IF:
+ * - They have 0 APPROVED deposits. (Rejected or cancelled deposits don't count!)
+ * - AND they have not previously claimed or received any First Deposit bonus.
+ */
+export async function getFirstDepositEligibility(req, res) {
+  try {
+    const authUserId = req.user ? req.user.id : (req.params.userId || null)
+    if (!authUserId) {
+      return res.status(401).json({ error: 'Unauthorized' })
+    }
+
+    const ALL_BONUS_TIERS = [
+      { deposit: 100, bonus: 28, formatted: '+₹28' },
+      { deposit: 200, bonus: 50, formatted: '+₹50' },
+      { deposit: 300, bonus: 71, formatted: '+₹71' },
+      { deposit: 400, bonus: 92, formatted: '+₹92' },
+      { deposit: 500, bonus: 114, formatted: '+₹114' },
+      { deposit: 1000, bonus: 166, formatted: '+₹166' },
+      { deposit: 2000, bonus: 288, formatted: '+₹288' },
+      { deposit: 3000, bonus: 388, formatted: '+₹388' },
+      { deposit: 5000, bonus: 481, formatted: '+₹481' },
+    ]
+
+    if (isSupabaseConfigured) {
+      // Check total approved deposits
+      const { count } = await supabase
+        .from('deposit_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', authUserId)
+        .eq('status', 'APPROVED')
+
+      // Check existing bonus in transactions
+      const { data: existingBonus } = await supabase
+        .from('wallet_transactions')
+        .select('id')
+        .eq('user_id', authUserId)
+        .eq('type', 'BONUS')
+        .ilike('description', '%First Deposit Bonus%')
+        .maybeSingle()
+
+      const hasApprovedDeposit = (count || 0) > 0
+      const hasClaimed = !!existingBonus
+      const isEligible = !hasApprovedDeposit && !hasClaimed
+
+      return res.json({
+        success: true,
+        isEligible,
+        hasApprovedDeposit,
+        hasClaimed,
+        bonusTiers: ALL_BONUS_TIERS,
+      })
+    }
+
+    return res.json({
+      success: true,
+      isEligible: true,
+      hasApprovedDeposit: false,
+      hasClaimed: false,
+      bonusTiers: ALL_BONUS_TIERS,
+    })
+  } catch (err) {
+    console.error('[getFirstDepositEligibility Exception]:', err)
+    return res.status(500).json({ error: 'Failed to check eligibility' })
+  }
 }

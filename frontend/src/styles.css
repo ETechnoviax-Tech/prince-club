@@ -83,18 +83,15 @@ button {
   justify-content: center;
   align-items: stretch;
   overflow: hidden;
-  background: #0b0517;
+  background: #818e9d;
 }
 
 /* =========================================================
    CONTAINER & RESPONSIVE DESKTOP FRAME
+   AUTHENTIC 55 CLUB MOBILE VIEW FRAME (400px CANVAS)
    ========================================================= */
 
-/* =========================================================
-   AUTHENTIC MOBILE VIEW FRAME (430px SMARTPHONE CANVAS)
-   ========================================================= */
-
-/* Mobile wrapper - Centers the smartphone frame on desktop */
+/* Mobile wrapper - Centers the smartphone frame on desktop matching 55 Club */
 .mobile-app-wrapper {
   display: flex !important;
   justify-content: center !important;
@@ -103,16 +100,16 @@ button {
   height: 100% !important;
   height: var(--app-height, 100dvh) !important;
   max-height: var(--app-height, 100dvh) !important;
-  background: radial-gradient(circle at 50% 50%, #15092a 0%, #080312 100%) !important;
+  background: #818e9d !important;
   padding: 0 !important;
   margin: 0 !important;
   overflow: hidden !important;
 }
 
-/* Authentic Mobile Phone Frame (standard 450px smartphone canvas) */
+/* Authentic 55 Club Mobile Phone Frame (standard 400px canvas) */
 .mobile-app-container {
   width: 100% !important;
-  max-width: 450px !important;
+  max-width: 400px !important;
   height: 100% !important;
   height: var(--app-height, 100dvh) !important;
   max-height: var(--app-height, 100dvh) !important;
@@ -122,13 +119,14 @@ button {
   flex-direction: column !important;
   overflow: hidden !important;
   margin: 0 auto !important;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(168, 85, 247, 0.25) !important;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.18) !important;
+  border: none !important;
 }
 
 /* Fullscreen edge-to-edge on mobile devices & narrow viewports */
 @media (max-width: 600px) {
   .mobile-app-wrapper {
-    background: #100624 !important;
+    background: #ffffff !important;
     margin: 0 !important;
     padding: 0 !important;
     height: 100% !important;
@@ -1033,7 +1031,7 @@ button {
 
 .bottom-sheet-card {
   width: 100%;
-  max-width: 450px;
+  max-width: 400px;
   margin: 0 auto;
   box-sizing: border-box;
   background: #ffffff; color: #111827;
@@ -12909,7 +12907,7 @@ html, body {
 .wingo-sheet-card-v2 {
   position: relative !important;
   width: 100% !important;
-  max-width: 450px !important;
+  max-width: 400px !important;
   margin: 0 auto !important;
   box-sizing: border-box !important;
   background: #ffffff !important;

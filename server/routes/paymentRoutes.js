@@ -5,6 +5,7 @@ import {
   listUserDeposits,
   submitUTR,
   verifyDeposit,
+  getFirstDepositEligibility,
 } from '../controllers/paymentController.js'
 import { handlePaymentWebhook } from '../controllers/webhookController.js'
 import { initiateRefund, listRefunds, listPaymentEvents } from '../controllers/refundController.js'
@@ -73,5 +74,6 @@ router.get('/events/:userId', requireDualAdminAuth, listPaymentEvents)
 // 7. User deposit tracking
 router.get('/deposit/:id', requireAuth, getDeposit)
 router.get('/user/:userId', requireAuth, listUserDeposits)
+router.get('/first-deposit-eligibility/:userId', requireAuth, getFirstDepositEligibility)
 
 export default router

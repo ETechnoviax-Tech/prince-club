@@ -81,6 +81,13 @@ import DepositHistoryPage from './components/pages/DepositHistoryPage'
 import WithdrawalHistoryPage from './components/pages/WithdrawalHistoryPage'
 import RebatePage from './components/pages/RebatePage'
 import AttendancePage from './components/pages/AttendancePage'
+import SettingsPage from './components/pages/SettingsPage'
+import FeedbackPage from './components/pages/FeedbackPage'
+import AnnouncementPage from './components/pages/AnnouncementPage'
+import BeginnersGuidePage from './components/pages/BeginnersGuidePage'
+import AboutUsPage from './components/pages/AboutUsPage'
+import PartnerRewardsPage from './components/pages/PartnerRewardsPage'
+import FirstDepositBonusModal from './components/modals/FirstDepositBonusModal'
 import { initAntiInspect } from './utils/antiInspect'
 import {
   clearAuthToken,
@@ -235,6 +242,15 @@ export function App() {
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false)
   const [transactionModalOpen, setTransactionModalOpen] = useState(false)
   const [vipBonusLoading, setVipBonusLoading] = useState(false)
+  const [depositInitialAmount, setDepositInitialAmount] = useState(null)
+  const [firstDepositModalOpen, setFirstDepositModalOpen] = useState(() => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      return localStorage.getItem('hide_first_deposit_bonus_date') !== today
+    } catch {
+      return true
+    }
+  })
   const isAdminRoute = window.location.pathname === '/admin'
   const navigationReadyRef = useRef(false)
   const restoringHistoryRef = useRef(false)
@@ -1102,6 +1118,10 @@ export function App() {
           <PromotionView
             currentUser={currentUser}
             userId={currentUser?.id || userId}
+            onNavigate={(nav) => {
+              setActiveNav(nav)
+              sound.playTick()
+            }}
             onCopyNotification={(msg) => {
               setToast({
                 type: 'success',
@@ -1179,6 +1199,26 @@ export function App() {
               setActiveNav('customerservice')
               sound.playTick()
             }}
+            onOpenSettings={() => {
+              setActiveNav('settings')
+              sound.playTick()
+            }}
+            onOpenFeedback={() => {
+              setActiveNav('feedback')
+              sound.playTick()
+            }}
+            onOpenAnnouncement={() => {
+              setActiveNav('announcement')
+              sound.playTick()
+            }}
+            onOpenBeginnersGuide={() => {
+              setActiveNav('guide')
+              sound.playTick()
+            }}
+            onOpenAboutUs={() => {
+              setActiveNav('about')
+              sound.playTick()
+            }}
             onOpenAuth={(mode) => {
               setAuthMode(mode)
               setAuthModalOpen(true)
@@ -1227,7 +1267,9 @@ export function App() {
           <DepositPage
             currentUser={currentUser}
             balance={balance}
+            initialAmount={depositInitialAmount}
             onBack={() => {
+              setDepositInitialAmount(null)
               if (returnGame) {
                 setCurrentGame(returnGame)
                 setReturnGame(null)
@@ -1350,6 +1392,30 @@ export function App() {
               setBalance(newBal)
               syncWithBackend()
             }}
+            onOpenDeposit={() => {
+              setActiveNav('deposit')
+              sound.playTick()
+            }}
+            setToast={setToast}
+          />
+        )}
+
+        {/* 2j-3. Standalone Dedicated Partner Rewards Page */}
+        {currentGame === null && activeNav === 'partner-rewards' && (
+          <PartnerRewardsPage
+            currentUser={currentUser}
+            userId={currentUser?.id || userId}
+            onBack={() => {
+              setActiveNav('promotion')
+              sound.playTick()
+            }}
+            onCopyNotification={(msg) => {
+              setToast({
+                type: 'success',
+                title: 'Partner Rewards',
+                detail: msg,
+              })
+            }}
           />
         )}
 
@@ -1385,6 +1451,62 @@ export function App() {
         {/* 2m. Standalone Dedicated Customer Service Page */}
         {currentGame === null && activeNav === 'customerservice' && (
           <CustomerServicePage
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {/* 2m-1. Standalone Settings Page */}
+        {currentGame === null && activeNav === 'settings' && (
+          <SettingsPage
+            currentUser={currentUser}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+            onUpdateUser={(updated) => {
+              setCurrentUser((prev) => ({ ...prev, ...updated }))
+            }}
+          />
+        )}
+
+        {/* 2m-2. Standalone Feedback Page */}
+        {currentGame === null && activeNav === 'feedback' && (
+          <FeedbackPage
+            currentUser={currentUser}
+            userId={currentUser?.id || userId}
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {/* 2m-3. Standalone Announcement Page */}
+        {currentGame === null && activeNav === 'announcement' && (
+          <AnnouncementPage
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {/* 2m-4. Standalone Beginner's Guide Page */}
+        {currentGame === null && activeNav === 'guide' && (
+          <BeginnersGuidePage
+            onBack={() => {
+              setActiveNav('account')
+              sound.playTick()
+            }}
+          />
+        )}
+
+        {/* 2m-5. Standalone About Us Page */}
+        {currentGame === null && activeNav === 'about' && (
+          <AboutUsPage
             onBack={() => {
               setActiveNav('account')
               sound.playTick()
@@ -1546,6 +1668,21 @@ export function App() {
           onClose={() => setDepositModalOpen(false)}
           userId={currentUser?.id || userId}
           onBalanceUpdated={(newBal) => setBalance(newBal)}
+        />
+
+        {/* EXTRA FIRST DEPOSIT BONUS MODAL (5% Boosted) */}
+        <FirstDepositBonusModal
+          isOpen={firstDepositModalOpen}
+          onClose={() => setFirstDepositModalOpen(false)}
+          onOpenDeposit={(amt) => {
+            setDepositInitialAmount(amt)
+            setActiveNav('deposit')
+            sound.playTick()
+          }}
+          onOpenActivity={() => {
+            setActiveNav('gifts')
+            sound.playTick()
+          }}
         />
 
         {/* WITHDRAW MODAL (UPI & BANK PAYOUTS) */}

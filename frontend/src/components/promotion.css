@@ -1,0 +1,435 @@
+/* Agency / Promotion Page CSS - Pixel-matched to 69 Club Mobile Screenshots 3 & 4 */
+
+.agency-page-container {
+  min-height: 100vh;
+  background-color: #f4f6fa;
+  display: flex;
+  flex-direction: column;
+  color: #1e293b;
+  padding-bottom: 90px;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  user-select: none;
+}
+
+/* 1. Header */
+.agency-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 48px;
+  background: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 0 16px;
+  position: relative;
+}
+
+.agency-header-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  letter-spacing: 0.2px;
+}
+
+.agency-header-right-btn {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #fee2e2;
+  border: none;
+  border-radius: 8px;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #f84545;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.agency-header-right-btn:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+/* 2. Agency Content Layout */
+.agency-content {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* 3. Hero Card with Coral Gradient */
+.agency-hero-card {
+  background: linear-gradient(180deg, #ff6550 0%, #ff4b38 100%);
+  border-radius: 16px;
+  padding: 20px 14px 14px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 6px 18px rgba(255, 75, 56, 0.22);
+}
+
+.agency-hero-stat-large {
+  font-size: 38px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1;
+  margin-bottom: 8px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.agency-hero-pill-badge {
+  background: #ffffff;
+  color: #f84545;
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 4px 16px;
+  border-radius: 20px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  margin-bottom: 8px;
+  display: inline-block;
+}
+
+.agency-hero-subtitle {
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 11.5px;
+  font-weight: 500;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+/* Subordinate Breakdown Table in Hero */
+.agency-subordinate-table {
+  width: 100%;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.subordinate-table-header {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background: #ff5240;
+}
+
+.subordinate-header-col {
+  padding: 10px 8px;
+  text-align: center;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+.subordinate-header-col:first-child {
+  border-right: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.subordinate-table-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.subordinate-table-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.subordinate-table-row:last-child {
+  border-bottom: none;
+}
+
+.subordinate-cell {
+  padding: 10px 8px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.subordinate-cell:first-child {
+  border-right: 1px solid #f1f5f9;
+}
+
+.subordinate-cell-val {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.subordinate-cell-val.green {
+  color: #10b981;
+}
+
+.subordinate-cell-val.orange {
+  color: #f59e0b;
+}
+
+.subordinate-cell-label {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+/* 4. Big Coral Invitation Link Button */
+.btn-invitation-link {
+  width: 100%;
+  height: 46px;
+  border-radius: 23px;
+  background: linear-gradient(90deg, #ff715a 0%, #ff4b38 100%);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(255, 75, 56, 0.35);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-invitation-link:active {
+  transform: scale(0.98);
+  box-shadow: 0 2px 8px rgba(255, 75, 56, 0.25);
+}
+
+/* 5. Menu List Items */
+.agency-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agency-menu-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 13px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  border: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.agency-menu-card:active {
+  transform: scale(0.99);
+  background-color: #fafbfc;
+}
+
+.agency-menu-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.agency-menu-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff1f0;
+  color: #f84545;
+  flex-shrink: 0;
+}
+
+.agency-menu-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.agency-menu-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.agency-code-text {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #475569;
+  letter-spacing: 0.5px;
+}
+
+.agency-copy-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+/* 6. Promotion Data Section */
+.promotion-data-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.promotion-data-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.promotion-data-icon {
+  color: #f84545;
+}
+
+.promotion-data-card {
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #f1f5f9;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+}
+
+.promotion-data-cell {
+  padding: 16px 12px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.promotion-data-cell:nth-child(1) {
+  border-right: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.promotion-data-cell:nth-child(2) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.promotion-data-cell:nth-child(3) {
+  border-right: 1px solid #f1f5f9;
+}
+
+.promotion-data-cell-val {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.promotion-data-cell-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #64748b;
+  line-height: 1.25;
+}
+
+/* Toast Notification for Copy */
+.agency-toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.9);
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 24px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 100;
+  animation: agencyFadeIn 0.2s ease-out;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  white-space: nowrap;
+}
+
+@keyframes agencyFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Modals */
+.agency-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.agency-modal-card {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+}
+
+.agency-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.agency-modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.agency-modal-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agency-modal-body {
+  padding: 20px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #334155;
+}

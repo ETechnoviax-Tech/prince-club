@@ -298,6 +298,19 @@ export async function fetchUserDeposits(userId) {
   return res.json()
 }
 
+export async function fetchFirstDepositEligibility(userId) {
+  try {
+    const res = await apiFetch(`${API_BASE}/payments/first-deposit-eligibility/${userId}`, {
+      headers: authHeaders(),
+      silent: true,
+    })
+    if (!res.ok) return { isEligible: false }
+    return await res.json()
+  } catch {
+    return { isEligible: false }
+  }
+}
+
 export async function fetchCurrentRound(mode = 'PARITY') {
   const query = mode ? `?mode=${encodeURIComponent(mode)}` : ''
   const res = await fetch(`${API_BASE}/game/round/current${query}`, {
@@ -874,5 +887,67 @@ export async function claimAttendanceBonus(userId = null) {
   }
   return json
 }
+
+export async function fetchAnnouncements(category = 'All') {
+  const q = category && category !== 'All' ? `?category=${encodeURIComponent(category)}` : ''
+  const res = await apiFetch(`${API_BASE}/service/announcements${q}`, {
+    headers: authHeaders(),
+    silent: true,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch announcements')
+  return json.announcements || []
+}
+
+export async function submitFeedbackTicket(category, message, contactInfo = '') {
+  const res = await apiFetch(`${API_BASE}/service/feedback`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ category, message, contactInfo }),
+  }, 'Submitting feedback...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to submit feedback')
+  }
+  return json
+}
+
+export async function fetchUserFeedback(userId = null) {
+  const q = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+  const res = await apiFetch(`${API_BASE}/service/feedback${q}`, {
+    headers: authHeaders(),
+    silent: true,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch feedback history')
+  return json.tickets || []
+}
+
+export async function updateProfileSettings(data = {}) {
+  const res = await apiFetch(`${API_BASE}/service/settings/profile`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  }, 'Saving profile...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to update profile')
+  }
+  return json
+}
+
+export async function changeSecurityPassword(currentPassword, newPassword) {
+  const res = await apiFetch(`${API_BASE}/service/settings/password`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ currentPassword, newPassword }),
+  }, 'Updating password...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to change password')
+  }
+  return json
+}
+
 
 
