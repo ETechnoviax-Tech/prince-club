@@ -305,3 +305,76 @@ export async function changeSecurityPassword(req, res) {
     return res.status(500).json({ error: 'Failed to change security password' })
   }
 }
+
+/**
+ * POST /api/service/settings/bind-email
+ * Bind or update backup recovery email address for a mobile user.
+ * Strictly guarantees that one email can only belong to one user account.
+ */
+export async function bindBackupEmail(req, res) {
+  try {
+    const authUserId = req.user ? req.user.id : req.body.userId
+    if (!authUserId) {
+      return res.status(401).json({ error: 'Please log in to bind a recovery email.' })
+    }
+
+    const { email } = req.body
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({ error: 'Valid email address is required.' })
+    }
+
+    const cleanEmail = email.trim().toLowerCase()
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(cleanEmail) || cleanEmail.length > 80) {
+      return res.status(400).json({ error: 'Please enter a valid email address format (e.g. name@domain.com).' })
+    }
+
+    if (isSupabaseConfigured) {
+      // 1. Check if this email is already bound to another account (case-insensitive)
+      const { data: existingUser, error: checkErr } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .ilike('email', cleanEmail)
+        .neq('id', authUserId)
+        .maybeSingle()
+
+      if (existingUser) {
+        return res.status(400).json({
+          error: 'This email address is already bound to another account. Each account must have a unique email.',
+        })
+      }
+
+      // 2. Update profiles table with unique backup email
+      const { data: updatedProfile, error: updateErr } = await supabase
+        .from('profiles')
+        .update({ email: cleanEmail })
+        .eq('id', authUserId)
+        .select('id, username, email, nickname, avatar_url, phone')
+        .single()
+
+      if (updateErr) {
+        if (updateErr.code === '23505') {
+          return res.status(400).json({
+            error: 'This email address is already bound to another account.',
+          })
+        }
+        throw updateErr
+      }
+
+      return res.json({
+        success: true,
+        message: 'Backup recovery email bound successfully! You can now use it for account recovery.',
+        user: updatedProfile,
+      })
+    }
+
+    return res.json({
+      success: true,
+      message: 'Backup recovery email bound successfully.',
+      user: { email: cleanEmail },
+    })
+  } catch (err) {
+    console.error('[bindBackupEmail Exception]:', err)
+    return res.status(500).json({ error: 'Failed to bind backup email address' })
+  }
+}

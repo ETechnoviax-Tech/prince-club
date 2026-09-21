@@ -1,7 +1,7 @@
-import React, { useState } from 'react'
-import { ChevronLeft, User, Shield, Lock, Phone, CheckCircle2, AlertCircle, Volume2, VolumeX } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { ChevronLeft, User, Shield, Lock, Phone, CheckCircle2, AlertCircle, Volume2, VolumeX, Mail, ShieldCheck } from 'lucide-react'
 import { sound } from '../../utils/audio'
-import { updateProfileSettings, changeSecurityPassword } from '../../api/client'
+import { updateProfileSettings, changeSecurityPassword, bindBackupEmail } from '../../api/client'
 import './service.css'
 
 export default function SettingsPage({
@@ -18,12 +18,53 @@ export default function SettingsPage({
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
 
+  // Backup Email state
+  const [backupEmail, setBackupEmail] = useState(currentUser?.email || '')
+  const [isEmailBound, setIsEmailBound] = useState(Boolean(currentUser?.email))
+  const [savingEmail, setSavingEmail] = useState(false)
+  const [emailMsg, setEmailMsg] = useState(null)
+
+  useEffect(() => {
+    if (currentUser?.email) {
+      setBackupEmail(currentUser.email)
+      setIsEmailBound(true)
+    }
+  }, [currentUser?.email])
+
   // UI state
   const [savingProfile, setSavingProfile] = useState(false)
   const [savingPassword, setSavingPassword] = useState(false)
   const [profileMsg, setProfileMsg] = useState(null)
   const [passwordMsg, setPasswordMsg] = useState(null)
   const [soundEnabled, setSoundEnabled] = useState(sound.soundEnabled ?? true)
+
+  const handleBindEmail = async (e) => {
+    e.preventDefault()
+    const targetEmail = backupEmail.trim().toLowerCase()
+    if (!targetEmail || !targetEmail.includes('@') || !targetEmail.includes('.')) {
+      setEmailMsg({ type: 'error', text: 'Please enter a valid email address (e.g. name@domain.com).' })
+      return
+    }
+
+    setSavingEmail(true)
+    setEmailMsg(null)
+    sound.playBet?.()
+
+    try {
+      const res = await bindBackupEmail(targetEmail)
+      sound.playWin?.()
+      setEmailMsg({ type: 'success', text: res.message || 'Backup recovery email bound successfully!' })
+      setIsEmailBound(true)
+      if (onUpdateUser && res.user) {
+        onUpdateUser(res.user)
+      }
+    } catch (err) {
+      sound.playLose?.()
+      setEmailMsg({ type: 'error', text: err.message || 'Failed to bind email address.' })
+    } finally {
+      setSavingEmail(false)
+    }
+  }
 
   const handleSaveProfile = async (e) => {
     e.preventDefault()
@@ -155,6 +196,51 @@ export default function SettingsPage({
 
             <button type="submit" className="service-submit-btn" disabled={savingProfile}>
               {savingProfile ? 'Saving...' : 'Save Profile Changes'}
+            </button>
+          </form>
+        </div>
+
+        {/* Backup Recovery Email Card */}
+        <div className="service-card">
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Mail size={18} color="#f84545" />
+              <h2 className="service-card-title" style={{ margin: 0 }}>Backup Recovery Email</h2>
+            </div>
+            {isEmailBound && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11.5, color: '#10b981', fontWeight: 700, background: 'rgba(16, 185, 129, 0.1)', padding: '2px 8px', borderRadius: 12 }}>
+                <ShieldCheck size={13} /> Bound & Active
+              </span>
+            )}
+          </div>
+
+          <p style={{ fontSize: 12, color: '#64748b', marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
+            Bind a unique recovery email address. If you lose access to your phone number, you can use this verified email to receive OTP codes and safely reset your password.
+          </p>
+
+          <form onSubmit={handleBindEmail}>
+            <div className="service-form-group">
+              <label className="service-form-label">Recovery Email Address</label>
+              <input
+                type="email"
+                className="service-input"
+                placeholder="Enter your backup email (e.g. name@gmail.com)"
+                value={backupEmail}
+                onChange={(e) => setBackupEmail(e.target.value)}
+                autoComplete="email"
+                required
+              />
+            </div>
+
+            {emailMsg && (
+              <div className={`service-alert ${emailMsg.type}`} style={{ marginBottom: 12 }}>
+                {emailMsg.type === 'success' ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                <span>{emailMsg.text}</span>
+              </div>
+            )}
+
+            <button type="submit" className="service-submit-btn" disabled={savingEmail}>
+              {savingEmail ? 'Saving...' : (isEmailBound ? 'Update Backup Email' : 'Bind Backup Email')}
             </button>
           </form>
         </div>

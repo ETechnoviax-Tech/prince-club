@@ -5,6 +5,7 @@ import {
   getUserFeedback,
   updateProfileSettings,
   changeSecurityPassword,
+  bindBackupEmail,
 } from '../controllers/serviceCenterController.js'
 import { optionalAuth, requireAuth } from '../middleware/auth.js'
 import { idempotencyMiddleware } from '../middleware/idempotency.js'
@@ -18,8 +19,9 @@ router.get('/announcements', optionalAuth, getAnnouncements)
 router.post('/feedback', optionalAuth, idempotencyMiddleware, submitFeedback)
 router.get('/feedback', optionalAuth, getUserFeedback)
 
-// Profile Settings
+// Profile & Security Settings
 router.post('/settings/profile', optionalAuth, updateProfileSettings)
 router.post('/settings/password', optionalAuth, idempotencyMiddleware, changeSecurityPassword)
+router.post('/settings/bind-email', optionalAuth, idempotencyMiddleware, bindBackupEmail)
 
 export default router

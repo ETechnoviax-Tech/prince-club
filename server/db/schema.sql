@@ -20,8 +20,9 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL D
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS password_hash TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'user';
 
--- Fast lookup index on is_admin
+-- Fast lookup index on is_admin and unique backup email index
 CREATE INDEX IF NOT EXISTS idx_profiles_is_admin ON public.profiles(is_admin);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_profiles_email ON public.profiles(LOWER(TRIM(email))) WHERE email IS NOT NULL AND email <> '';
 
 -- Optional convenience view so queries to public.users map to public.profiles
 -- Defined with security_invoker = true so it inherits RLS security

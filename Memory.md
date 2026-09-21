@@ -22,11 +22,12 @@
   - Live Announcements: `GET /api/service/announcements` delivers real-time platform notices from `public.announcements` table with category filters (`All`, `Important`, `Activity`, `System`).
   - Feedback Ticketing: `POST /api/service/feedback` records user suggestions and bug reports directly into `public.user_feedback` with category tagging, sanitizing user_id against profiles, and tracking status (`PENDING`, `REVIEWED`, `RESOLVED`). `GET /api/service/feedback` retrieves user's ticket history and admin replies in real time.
   - Profile & Security Settings: `POST /api/service/settings/profile` updates nickname, avatar, and phone in `public.profiles`. `POST /api/service/settings/password` verifies and updates credentials using SHA-256 salted vault hashing.
+  - Backup Recovery Email Binding: `POST /api/service/settings/bind-email` allows mobile-registered players to bind a unique recovery email. Strictly enforces 1-to-1 uniqueness via PostgreSQL index `uq_profiles_email ON public.profiles(LOWER(TRIM(email))) WHERE email IS NOT NULL AND email <> ''` preventing duplicate email usage across accounts. Players can then use this bound email to receive OTPs via Resend API and reset their forgotten password.
   - Interactive Beginner's Guide: 4 comprehensive learning tabs covering Win Go rules and multipliers, UPI QR deposit workflows, withdrawal limits, and provably fair cryptographic RNG mechanisms.
   - About Us: Platform licensing documentation, 256-bit SSL financial encryption standards, and fair play certification.
 - Config / env: none (uses existing Supabase/PostgreSQL schema)
 - Known issues / TODO: none
-- Last changed: 2026-09-21 - Implemented full real-time database-backed Service Center with Settings, Feedback, Announcements, Guide, and About Us pages.
+- Last changed: 2026-09-21 - Added unique backup recovery email binding in Settings with PostgreSQL unique index enforcement and account recovery integration.
 
 
 ## Feature: Activity & Multi-Tier Promotion Engine

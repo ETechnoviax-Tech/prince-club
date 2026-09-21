@@ -949,5 +949,19 @@ export async function changeSecurityPassword(currentPassword, newPassword) {
   return json
 }
 
+export async function bindBackupEmail(email) {
+  const res = await apiFetch(`${API_BASE}/service/settings/bind-email`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ email }),
+  }, 'Binding backup email...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to bind backup email')
+  }
+  return json
+}
+
+
 
 
