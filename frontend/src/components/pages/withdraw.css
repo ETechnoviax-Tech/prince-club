@@ -75,10 +75,10 @@
 /* 2. Balance Card (Coral Gradient) */
 .withdraw-balance-card {
   position: relative;
-  background: linear-gradient(135deg, #ff5e4d 0%, #f84545 100%);
+  background: linear-gradient(135deg, #ff5e4d 0%, #f84545 100%) !important;
   border-radius: 16px;
   padding: 18px 18px 22px 18px;
-  color: #ffffff;
+  color: #ffffff !important;
   box-shadow: 0 8px 20px rgba(248, 69, 69, 0.22);
   overflow: hidden;
 }
@@ -235,13 +235,22 @@
   justify-content: center;
 }
 
-.upi-text-badge {
-  font-size: 14px;
-  font-weight: 900;
-  color: #ea580c;
-  border: 1.5px solid #ea580c;
-  padding: 2px 6px;
-  border-radius: 4px;
+.upi-badge-box {
+  width: 44px;
+  height: 26px;
+  background: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.withdraw-method-card.active .upi-badge-box {
+  border-color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
 /* 5. Account Selection Row */
@@ -303,33 +312,72 @@
 .amount-input-box {
   background: #f8fafc;
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 0 14px;
+  height: 48px;
   display: flex;
   align-items: center;
   gap: 10px;
-  border: 1px solid #edf2f7;
+  border: 1.5px solid #edf2f7;
+  transition: all 0.2s ease;
+}
+
+.amount-input-box:focus-within {
+  border-color: #f84545;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(248, 69, 69, 0.1);
 }
 
 .currency-symbol-big {
   font-size: 20px;
   font-weight: 800;
   color: #f84545;
+  flex-shrink: 0;
 }
 
 .withdraw-native-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  font-size: 15px;
-  font-weight: 600;
-  color: #0f172a;
-  outline: none;
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 100% !important;
+  border: 0 !important;
+  border-width: 0 !important;
+  border-style: none !important;
+  border-color: transparent !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-style: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -webkit-appearance: none !important;
+  -moz-appearance: textfield !important;
+  appearance: none !important;
+  background: transparent !important;
+  background-color: transparent !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  color: #0f172a !important;
+  font-family: inherit !important;
+  line-height: normal !important;
+}
+
+.withdraw-native-input::-webkit-outer-spin-button,
+.withdraw-native-input::-webkit-inner-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+  display: none !important;
+}
+
+.withdraw-native-input[type=number] {
+  -moz-appearance: textfield !important;
+  appearance: none !important;
 }
 
 .withdraw-native-input::placeholder {
-  color: #f87171;
-  font-weight: 400;
-  opacity: 0.8;
+  color: #94a3b8 !important;
+  font-weight: 400 !important;
+  opacity: 0.9 !important;
 }
 
 .withdrawable-balance-row {

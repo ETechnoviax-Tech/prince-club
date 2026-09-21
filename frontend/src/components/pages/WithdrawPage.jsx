@@ -26,22 +26,23 @@ export default function WithdrawPage({
   const [amount, setAmount] = useState('')
   const [accountDetails, setAccountDetails] = useState(() => {
     try {
-      const saved = localStorage.getItem(`withdraw_account_${currentUser?.id || 'guest'}`)
-      return saved ? JSON.parse(saved) : {
-        bankName: 'AIRTEL PAYMENTS BANK',
-        accountNumber: '84331398289',
-        ifsc: 'AIRP0000001',
-        holderName: currentUser?.username || 'Account Holder',
-        upiId: '84331398289@upi',
+      const key = `withdraw_account_${currentUser?.id || 'guest'}`
+      const saved = localStorage.getItem(key)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        // Clean any legacy hardcoded demo accounts
+        if (parsed?.accountNumber && parsed.accountNumber !== '84331398289') {
+          return parsed
+        }
+        localStorage.removeItem(key)
       }
-    } catch {
-      return {
-        bankName: 'AIRTEL PAYMENTS BANK',
-        accountNumber: '84331398289',
-        ifsc: 'AIRP0000001',
-        holderName: currentUser?.username || 'Account Holder',
-        upiId: '84331398289@upi',
-      }
+    } catch {}
+    return {
+      bankName: '',
+      accountNumber: '',
+      ifsc: '',
+      holderName: '',
+      upiId: '',
     }
   })
 
@@ -89,6 +90,12 @@ export default function WithdrawPage({
   const handleSubmitWithdraw = async (e) => {
     e.preventDefault()
     setAlertMsg(null)
+
+    if (!isAccountBound) {
+      setAlertMsg({ type: 'error', text: 'Please bind your bank card or UPI payout account first.' })
+      setSetupModalOpen(true)
+      return
+    }
 
     const numAmount = Number(amount)
     if (!numAmount || numAmount < 110) {
@@ -140,9 +147,13 @@ export default function WithdrawPage({
     }
   }
 
-  const maskedAccount = accountDetails.accountNumber
-    ? `${accountDetails.accountNumber.slice(0, 6)}****${accountDetails.accountNumber.slice(-3)}`
-    : 'Add Bank Account'
+  const isAccountBound = Boolean(accountDetails.accountNumber?.trim() || accountDetails.upiId?.trim())
+
+  const maskedAccount = isAccountBound
+    ? (accountDetails.accountNumber?.trim()
+        ? `${accountDetails.bankName ? accountDetails.bankName + ' ' : ''}${accountDetails.accountNumber.trim().slice(0, 4)}****${accountDetails.accountNumber.trim().slice(-3)}`
+        : accountDetails.upiId?.trim())
+    : '+ Add Bank Card / Payout Account'
 
   const isValidAmount = Number(amount) >= 110 && Number(amount) <= balance
 
@@ -244,7 +255,13 @@ export default function WithdrawPage({
             }}
           >
             <div className="method-icon-wrap">
-              <span className="upi-text-badge">UPI</span>
+              <div className="upi-badge-box">
+                <svg viewBox="0 0 44 24" width="36" height="18" fill="none">
+                  <path d="M5 4l9 8-4.5 1.5 4.5 1.5-9 8 2.2-6.5-2.2-6.5z" fill="#097939" />
+                  <path d="M8 7l6 5-3 1 3 1-6 5 1.5-4-1.5-4z" fill="#ed5f1e" />
+                  <text x="17" y="16" fontFamily="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" fontSize="11" fontWeight="900" fill="#0f172a">UPI</text>
+                </svg>
+              </div>
             </div>
             <span className="withdraw-method-label">UPI</span>
           </div>
@@ -257,13 +274,22 @@ export default function WithdrawPage({
             sound.playTick?.()
             setSetupModalOpen(true)
           }}
+          style={{ cursor: 'pointer' }}
         >
           <div className="withdraw-account-left">
-            <div className="bank-logo-badge">🏛️</div>
+            <div className="bank-logo-badge">{isAccountBound ? '🏛️' : '➕'}</div>
             <div className="account-divider" />
-            <span className="account-number-text">{maskedAccount}</span>
+            <span
+              className="account-number-text"
+              style={{
+                color: isAccountBound ? '#1e293b' : '#ff5e4d',
+                fontWeight: isAccountBound ? 600 : 700,
+              }}
+            >
+              {maskedAccount}
+            </span>
           </div>
-          <ChevronRight size={18} color="#94a3b8" />
+          <ChevronRight size={18} color={isAccountBound ? '#94a3b8' : '#ff5e4d'} />
         </div>
 
         {/* 6. Amount Input Card */}
@@ -465,12 +491,13 @@ export default function WithdrawPage({
             <form onSubmit={handleSaveAccount}>
               <div style={{ marginBottom: 10 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  Bank Name
+                  Bank Name (Optional for UPI)
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g. State Bank of India, HDFC"
                   style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
-                  value={accountDetails.bankName}
+                  value={accountDetails.bankName || ''}
                   onChange={(e) => setAccountDetails({ ...accountDetails, bankName: e.target.value })}
                 />
               </div>
@@ -481,33 +508,36 @@ export default function WithdrawPage({
                 </label>
                 <input
                   type="text"
+                  placeholder="Enter 9 to 18 digit account number"
                   style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
-                  value={accountDetails.accountNumber}
-                  onChange={(e) => setAccountDetails({ ...accountDetails, accountNumber: e.target.value })}
+                  value={accountDetails.accountNumber || ''}
+                  onChange={(e) => setAccountDetails({ ...accountDetails, accountNumber: e.target.value.replace(/\s+/g, '') })}
                 />
               </div>
 
               <div style={{ marginBottom: 10 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  IFSC Code
+                  IFSC Code (for Bank Transfer)
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g. SBIN0001234"
                   style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box', textTransform: 'uppercase' }}
-                  value={accountDetails.ifsc}
-                  onChange={(e) => setAccountDetails({ ...accountDetails, ifsc: e.target.value.toUpperCase() })}
+                  value={accountDetails.ifsc || ''}
+                  onChange={(e) => setAccountDetails({ ...accountDetails, ifsc: e.target.value.toUpperCase().replace(/\s+/g, '') })}
                 />
               </div>
 
               <div style={{ marginBottom: 14 }}>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 4 }}>
-                  Destination UPI ID
+                  Destination UPI ID (for Fast UPI Payout)
                 </label>
                 <input
                   type="text"
+                  placeholder="e.g. 9876543210@upi or name@okaxis"
                   style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #cbd5e1', fontSize: 13, boxSizing: 'border-box' }}
-                  value={accountDetails.upiId}
-                  onChange={(e) => setAccountDetails({ ...accountDetails, upiId: e.target.value })}
+                  value={accountDetails.upiId || ''}
+                  onChange={(e) => setAccountDetails({ ...accountDetails, upiId: e.target.value.trim() })}
                 />
               </div>
 
