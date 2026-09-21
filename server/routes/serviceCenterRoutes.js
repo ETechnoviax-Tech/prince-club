@@ -20,8 +20,8 @@ router.post('/feedback', optionalAuth, idempotencyMiddleware, submitFeedback)
 router.get('/feedback', optionalAuth, getUserFeedback)
 
 // Profile & Security Settings
-router.post('/settings/profile', optionalAuth, updateProfileSettings)
-router.post('/settings/password', optionalAuth, idempotencyMiddleware, changeSecurityPassword)
-router.post('/settings/bind-email', optionalAuth, idempotencyMiddleware, bindBackupEmail)
+router.post('/settings/profile', requireAuth, updateProfileSettings)
+router.post('/settings/password', requireAuth, changeSecurityPassword)
+router.post('/settings/bind-email', requireAuth, bindBackupEmail)
 
 export default router
