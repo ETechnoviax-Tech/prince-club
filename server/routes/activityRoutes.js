@@ -6,6 +6,8 @@ import {
   claimOneClickRebate,
   getFirstGiftStatus,
   claimFirstGift,
+  getAttendanceStats,
+  claimAttendanceBonus,
 } from '../controllers/activityController.js'
 import { optionalAuth, requireAuth } from '../middleware/auth.js'
 import { idempotencyMiddleware } from '../middleware/idempotency.js'
@@ -26,5 +28,10 @@ router.post('/rebate/claim', requireAuth, idempotencyMiddleware, claimOneClickRe
 router.get('/first-gift/status', optionalAuth, getFirstGiftStatus)
 router.post('/first-gift/claim', requireAuth, idempotencyMiddleware, claimFirstGift)
 
+// Daily attendance streak bonus routes
+router.get('/attendance/stats', optionalAuth, getAttendanceStats)
+router.post('/attendance/claim', requireAuth, idempotencyMiddleware, claimAttendanceBonus)
+
 export default router
+
 

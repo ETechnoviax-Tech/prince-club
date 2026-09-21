@@ -579,3 +579,212 @@ export async function claimFirstGift(req, res) {
     return res.status(500).json({ error: 'Failed to claim first deposit gift.' })
   }
 }
+
+export const ATTENDANCE_TIERS = [
+  { day: 1, depositRequired: 200, bonus: 5 },
+  { day: 2, depositRequired: 1000, bonus: 18 },
+  { day: 3, depositRequired: 3000, bonus: 100 },
+  { day: 4, depositRequired: 10000, bonus: 200 },
+  { day: 5, depositRequired: 20000, bonus: 400 },
+  { day: 6, depositRequired: 100000, bonus: 3000 },
+  { day: 7, depositRequired: 200000, bonus: 7000 },
+]
+
+/**
+ * GET /api/activity/attendance/stats
+ * Returns consecutive attendance days, accumulated bonus, eligibility, tiers and claim history.
+ */
+export async function getAttendanceStats(req, res) {
+  try {
+    const authUserId = req.user ? req.user.id : (req.query.userId || null)
+    if (!authUserId) {
+      return res.json({
+        success: true,
+        consecutiveDays: 0,
+        accumulatedBonus: '0.00',
+        canClaim: true,
+        nextDay: 1,
+        nextReward: 5,
+        tiers: ATTENDANCE_TIERS,
+        history: [],
+      })
+    }
+
+    let consecutiveDays = 0
+    let accumulatedBonus = 0
+    let canClaim = true
+    let history = []
+
+    const now = new Date()
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+    if (isSupabaseConfigured) {
+      // 1. Fetch user profile streak
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('daily_streak, last_daily_bonus')
+        .eq('id', authUserId)
+        .maybeSingle()
+
+      if (profile) {
+        const streak = Number(profile.daily_streak || 0)
+        if (profile.last_daily_bonus) {
+          const lastClaim = new Date(profile.last_daily_bonus)
+          const diffMs = now.getTime() - lastClaim.getTime()
+
+          const isSameCalendarDay =
+            lastClaim.getUTCFullYear() === now.getUTCFullYear() &&
+            lastClaim.getUTCMonth() === now.getUTCMonth() &&
+            lastClaim.getUTCDate() === now.getUTCDate()
+
+          if (isSameCalendarDay) {
+            canClaim = false
+            consecutiveDays = streak
+          } else if (diffMs < 2 * ONE_DAY_MS) {
+            // Consecutive next day
+            consecutiveDays = streak
+          } else {
+            // Gap > 48h -> streak resets
+            consecutiveDays = 0
+          }
+        }
+      }
+
+      // 2. Fetch attendance bonus transactions
+      const { data: txs } = await supabase
+        .from('wallet_transactions')
+        .select('id, amount, created_at, description')
+        .eq('user_id', authUserId)
+        .eq('type', 'BONUS')
+        .ilike('description', '%Attendance%')
+        .order('created_at', { ascending: false })
+
+      if (txs && txs.length > 0) {
+        accumulatedBonus = txs.reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
+        history = txs.map((tx) => ({
+          id: tx.id,
+          amount: Number(tx.amount || 0),
+          createdAt: tx.created_at,
+          description: tx.description,
+        }))
+      }
+
+      const nextDay = canClaim ? (consecutiveDays % 7) + 1 : ((consecutiveDays - 1 + 7) % 7) + 1
+      const currentTier = ATTENDANCE_TIERS[nextDay - 1] || ATTENDANCE_TIERS[0]
+
+      return res.json({
+        success: true,
+        consecutiveDays,
+        accumulatedBonus: accumulatedBonus.toFixed(2),
+        canClaim,
+        nextDay,
+        nextReward: currentTier.bonus,
+        tiers: ATTENDANCE_TIERS,
+        history,
+      })
+    }
+
+    return res.json({
+      success: true,
+      consecutiveDays: 0,
+      accumulatedBonus: '0.00',
+      canClaim: true,
+      nextDay: 1,
+      nextReward: 5,
+      tiers: ATTENDANCE_TIERS,
+      history: [],
+    })
+  } catch (err) {
+    console.error('[getAttendanceStats Exception]:', err)
+    return res.status(500).json({ error: 'Failed to retrieve attendance statistics' })
+  }
+}
+
+/**
+ * POST /api/activity/attendance/claim
+ * Atomically claims daily attendance bonus with streak progression.
+ */
+export async function claimAttendanceBonus(req, res) {
+  try {
+    const authUserId = req.user ? req.user.id : req.body.userId
+    if (!authUserId) {
+      return res.status(401).json({ error: 'Please log in to claim your attendance bonus.' })
+    }
+
+    const now = new Date()
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000
+
+    if (isSupabaseConfigured) {
+      // 1. Fetch user profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, daily_streak, last_daily_bonus')
+        .eq('id', authUserId)
+        .single()
+
+      let streak = 1
+      if (profile?.last_daily_bonus) {
+        const lastClaim = new Date(profile.last_daily_bonus)
+        const isSameCalendarDay =
+          lastClaim.getUTCFullYear() === now.getUTCFullYear() &&
+          lastClaim.getUTCMonth() === now.getUTCMonth() &&
+          lastClaim.getUTCDate() === now.getUTCDate()
+
+        if (isSameCalendarDay) {
+          return res.status(400).json({
+            error: 'You have already signed in today! Come back tomorrow to continue your streak.',
+          })
+        }
+
+        const diffMs = now.getTime() - lastClaim.getTime()
+        if (diffMs < 2 * ONE_DAY_MS) {
+          streak = ((Number(profile.daily_streak || 0)) % 7) + 1
+        } else {
+          streak = 1
+        }
+      }
+
+      const tier = ATTENDANCE_TIERS[streak - 1] || ATTENDANCE_TIERS[0]
+      const bonusAmount = tier.bonus
+
+      // 2. Credit wallet atomically
+      const { data: wal } = await supabase.from('wallets').select('balance').eq('user_id', authUserId).single()
+      const currentBalance = wal ? Number(wal.balance) : 0
+      const newBalance = currentBalance + bonusAmount
+
+      await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', authUserId)
+
+      // 3. Update profile streak
+      await supabase
+        .from('profiles')
+        .update({
+          last_daily_bonus: now.toISOString(),
+          daily_streak: streak,
+        })
+        .eq('id', authUserId)
+
+      // 4. Ledger transaction
+      await supabase.from('wallet_transactions').insert({
+        user_id: authUserId,
+        type: 'BONUS',
+        amount: bonusAmount,
+        balance_after: newBalance,
+        description: `Attendance Bonus (Day ${streak}: ₹${bonusAmount})`,
+      })
+
+      return res.json({
+        success: true,
+        message: `🎉 Day ${streak} attendance successful! ₹${bonusAmount.toFixed(2)} added to your wallet.`,
+        bonusAmount,
+        streak,
+        newBalance,
+      })
+    }
+
+    return res.status(400).json({ error: 'Attendance bonus system unavailable.' })
+  } catch (err) {
+    console.error('[claimAttendanceBonus Exception]:', err)
+    return res.status(500).json({ error: 'Failed to process attendance bonus' })
+  }
+}
+

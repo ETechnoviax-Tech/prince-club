@@ -851,3 +851,28 @@ export async function claimFirstGift(userId = null) {
   return json
 }
 
+export async function fetchAttendanceStats(userId = null) {
+  const query = userId ? `?userId=${encodeURIComponent(userId)}` : ''
+  const res = await apiFetch(`${API_BASE}/activity/attendance/stats${query}`, {
+    headers: authHeaders(),
+    silent: true,
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(json.error || 'Failed to fetch attendance stats')
+  return json
+}
+
+export async function claimAttendanceBonus(userId = null) {
+  const res = await apiFetch(`${API_BASE}/activity/attendance/claim`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId }),
+  }, 'Signing attendance...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to claim attendance bonus')
+  }
+  return json
+}
+
+

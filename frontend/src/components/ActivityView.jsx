@@ -29,6 +29,7 @@ export function ActivityView({
   onGoToPromotion,
   onBalanceUpdate,
   onOpenFirstGift,
+  onOpenAttendance,
 }) {
   // Modal states
   const [bonusModalOpen, setBonusModalOpen] = useState(false)
@@ -243,7 +244,14 @@ export function ActivityView({
         </div>
 
         {/* Card 2: Attendance bonus */}
-        <div className="feature-action-card" onClick={() => setAttendanceModalOpen(true)}>
+        <div
+          className="feature-action-card"
+          onClick={() => {
+            sound.playTick?.()
+            if (onOpenAttendance) onOpenAttendance()
+            else setAttendanceModalOpen(true)
+          }}
+        >
           <div className="feature-card-artwork bg-art-attendance">
             <div className="calendar-box-graphic">
               <div className="cal-sheet">

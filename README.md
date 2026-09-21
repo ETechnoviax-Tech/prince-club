@@ -41,8 +41,8 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
 - **Audio Isolation & Sound Shield**: Zero background sounds or countdown ticks for unauthenticated visitors, authentication modals, or non-active game viewports; game audio only initializes for logged-in players inside active game arenas.
 - **Activity & Multi-Tier Agent Promotion Engine**:
   - **Live Bonus Accounting**: Real-time aggregation of daily accumulated and cumulative bonus earnings directly from the wallet transaction ledger.
+  - **7-Day Attendance Bonus System**: Dedicated attendance subpage with consecutive login ribbon, dynamic accumulated bonus display, 7-tier progression (Day 1 ₹5.00 up to Day 7 ₹7,000.00), in-app Game Rules qualification matrix, and claim history.
   - **First Gift Activity Rewards**: Production-ready 30% first deposit compensation promotion page matching 69 Club mobile design, displaying event start timestamps, participation conditions table, and reactive server-backed bonus claims up to ₹200.00.
-  - **7-Day Attendance Progression**: Consecutive daily check-ins tracking account streaks and distributing tiered rewards (Day 1 ₹15 through Day 7 ₹50).
   - **Idempotent Gift Code Redemption**: Server-authoritative validation for promotional codes (`gift_codes` / `gift_redemptions`), preventing double-claims and crediting balances atomically.
   - **Multi-Tier Referral Tracking**: Real-time team subordinate hierarchy (Tier 1 Direct & Tier 2 Indirect), live bet turnover calculation across team members, automated tiered commissions (0.60% Tier 1, 0.18% Tier 2), and masked subordinate roster.
   - **Real-Time Turnover Rebate & Jackpot**: Automated cashback turnover tracking across game categories and a progressive community jackpot pool.

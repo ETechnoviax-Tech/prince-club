@@ -80,6 +80,7 @@ import CustomerServicePage from './components/pages/CustomerServicePage'
 import DepositHistoryPage from './components/pages/DepositHistoryPage'
 import WithdrawalHistoryPage from './components/pages/WithdrawalHistoryPage'
 import RebatePage from './components/pages/RebatePage'
+import AttendancePage from './components/pages/AttendancePage'
 import { initAntiInspect } from './utils/antiInspect'
 import {
   clearAuthToken,
@@ -1090,6 +1091,10 @@ export function App() {
               setActiveNav('gifts')
               sound.playTick()
             }}
+            onOpenAttendance={() => {
+              setActiveNav('attendance')
+              sound.playTick()
+            }}
           />
         )}
 
@@ -1323,6 +1328,22 @@ export function App() {
             }}
             onOpenDeposit={() => {
               setActiveNav('deposit')
+              sound.playTick()
+            }}
+            onBalanceUpdate={(newBal) => {
+              setBalance(newBal)
+              syncWithBackend()
+            }}
+          />
+        )}
+
+        {/* 2j-2. Standalone Dedicated Attendance Page */}
+        {currentGame === null && activeNav === 'attendance' && (
+          <AttendancePage
+            currentUser={currentUser}
+            userId={currentUser?.id || userId}
+            onBack={() => {
+              setActiveNav('activity')
               sound.playTick()
             }}
             onBalanceUpdate={(newBal) => {
