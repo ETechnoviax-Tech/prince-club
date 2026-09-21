@@ -42,10 +42,10 @@ export function ForgotPasswordPage({ onNavigate, onOtpSent }) {
       setTimeout(() => {
         onOtpSent?.({
           identity: target,
-          resetCode: res.resetCode || '',
           channel,
+          destination: res.destination || target,
         })
-        onNavigate('reset')
+        onNavigate('verify-otp')
       }, 1000)
     } catch (err) {
       setError(err.message || 'Could not send verification code. Please check identity.')

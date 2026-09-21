@@ -23,6 +23,9 @@ import serviceCenterRoutes from './routes/serviceCenterRoutes.js'
 const app = express()
 const PORT = process.env.PORT || 5000
 
+// Enable trust proxy for accurate real client IP resolution behind Nginx/Cloudflare
+app.set('trust proxy', true)
+
 // Dynamic CORS: supports localhost in dev & dynamic APP_DOMAIN/API_DOMAIN from .env
 const corsOptions = {
   origin: (origin, callback) => {

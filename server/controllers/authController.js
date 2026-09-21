@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { generateToken } from '../middleware/auth.js'
 import { dispatchOTP } from '../services/notificationService.js'
+import { getClientRealIp } from '../middleware/rateLimit.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -411,6 +412,7 @@ export async function forgotPassword(req, res) {
   try {
     const cleanId = req.cleanIdentity || (req.body.identity || '').trim().toLowerCase()
     const channel = (req.body.channel || 'AUTO').toUpperCase()
+    const clientIp = req.realIp || getClientRealIp(req)
 
     if (!cleanId || cleanId.length < 3) {
       return res.status(400).json({ error: 'Enter your registered username, phone, or email' })
@@ -435,8 +437,26 @@ export async function forgotPassword(req, res) {
       } catch {}
     }
 
-    // Dispatch OTP via WhatsApp, Email, or Auto
-    const targetDestination = profile?.email && channel === 'EMAIL' ? profile.email : cleanId
+    // Resolve target destination based on channel selection and registered profile info
+    let targetDestination = cleanId
+    if (channel === 'EMAIL') {
+      if (profile?.email) {
+        targetDestination = profile.email
+      } else if (cleanId.includes('@')) {
+        targetDestination = cleanId
+      } else {
+        return res.status(400).json({ error: 'No registered email found for this account. Please select WhatsApp OTP.' })
+      }
+    } else if (channel === 'WHATSAPP') {
+      if (profile?.phone) {
+        targetDestination = profile.phone
+      } else if (!cleanId.includes('@')) {
+        targetDestination = cleanId
+      } else {
+        return res.status(400).json({ error: 'Please enter your registered phone number for WhatsApp OTP.' })
+      }
+    }
+
     const dispatchResult = await dispatchOTP({
       identity: targetDestination,
       channel,
@@ -453,13 +473,14 @@ export async function forgotPassword(req, res) {
           .eq('identity', cleanId)
           .eq('is_used', false)
 
-        // Insert new reset OTP record with channel and destination
+        // Insert new reset OTP record with channel, destination, and real client IP
         await supabase.from('password_resets').insert({
           user_id: profile ? profile.id : null,
           identity: cleanId,
           otp_code: code,
           channel: dispatchResult.channel || channel,
           destination: dispatchResult.destination || targetDestination,
+          ip_address: clientIp,
           expires_at: expiresAtIso,
           is_used: false,
         })
@@ -469,11 +490,11 @@ export async function forgotPassword(req, res) {
     }
 
     return res.json({
+      success: true,
       message: dispatchResult.deliveryMessage || 'Reset verification code sent successfully',
       channel: dispatchResult.channel,
       destination: dispatchResult.destination,
       identity: cleanId,
-      resetCode: code, // returned for developer simulation
       expiresInMinutes: 15,
     })
   } catch (err) {
@@ -491,6 +512,7 @@ export async function sendOTP(req, res) {
     }
 
     const cleanId = identity.trim().toLowerCase()
+    const clientIp = req.realIp || getClientRealIp(req)
     const code = String(crypto.randomInt(100000, 999999))
     const expiresAtMs = Date.now() + 15 * 60 * 1000
     const expiresAtIso = new Date(expiresAtMs).toISOString()
@@ -511,6 +533,7 @@ export async function sendOTP(req, res) {
           otp_code: code,
           channel: dispatchResult.channel,
           destination: dispatchResult.destination,
+          ip_address: clientIp,
           expires_at: expiresAtIso,
           is_used: false,
         })
@@ -522,7 +545,6 @@ export async function sendOTP(req, res) {
       message: dispatchResult.deliveryMessage,
       channel: dispatchResult.channel,
       destination: dispatchResult.destination,
-      otpCode: code,
       expiresInMinutes: 15,
     })
   } catch (err) {
@@ -541,15 +563,30 @@ export async function verifyOTP(req, res) {
     const cleanId = String(identity).trim().toLowerCase()
     const cleanCode = String(otpCode).trim()
 
+    let profile = null
+    if (isSupabaseConfigured) {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, username, email')
+          .or(`username.eq.${cleanId},email.eq.${cleanId}`)
+          .maybeSingle()
+        profile = data
+      } catch {}
+    }
+
+    const searchIdentities = [cleanId]
+    if (profile?.username) searchIdentities.push(profile.username.toLowerCase())
+    if (profile?.email) searchIdentities.push(profile.email.toLowerCase())
+
     let verified = false
-    let recordId = null
 
     if (isSupabaseConfigured) {
       try {
         const { data: dbRecord } = await supabase
           .from('password_resets')
-          .select('*')
-          .eq('identity', cleanId)
+          .select('id')
+          .in('identity', searchIdentities)
           .eq('otp_code', cleanCode)
           .eq('is_used', false)
           .gte('expires_at', new Date().toISOString())
@@ -559,15 +596,19 @@ export async function verifyOTP(req, res) {
 
         if (dbRecord) {
           verified = true
-          recordId = dbRecord.id
         }
-      } catch {}
+      } catch (dbErr) {
+        console.warn('[verifyOTP DB Check Notice]:', dbErr.message)
+      }
     }
 
     if (!verified) {
-      const memRecord = resetCodes.get(cleanId)
-      if (memRecord && memRecord.code === cleanCode && Date.now() <= memRecord.expiresAt) {
-        verified = true
+      for (const idToTry of searchIdentities) {
+        const memRecord = resetCodes.get(idToTry)
+        if (memRecord && memRecord.code === cleanCode && Date.now() <= memRecord.expiresAt) {
+          verified = true
+          break
+        }
       }
     }
 
@@ -575,13 +616,7 @@ export async function verifyOTP(req, res) {
       return res.status(400).json({ error: 'Invalid or expired OTP code' })
     }
 
-    if (recordId && isSupabaseConfigured) {
-      try {
-        await supabase.from('password_resets').update({ is_used: true, used_at: new Date().toISOString() }).eq('id', recordId)
-      } catch {}
-    }
-    resetCodes.delete(cleanId)
-
+    // OTP verified successfully; note: OTP is left active until resetPassword consumes it atomically
     return res.json({
       success: true,
       message: 'OTP verified successfully',

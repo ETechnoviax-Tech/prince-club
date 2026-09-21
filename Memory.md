@@ -98,15 +98,17 @@
 
 ## Feature: Authentication & Session Security
 - Status: done
-- Purpose: Multi-method player authentication (phone/email) with captcha verification, JWT enforcement, and multi-channel OTP verification (Resend Email API & WhatsApp).
-- Files: `frontend/src/components/pages/LoginPage.jsx`, `frontend/src/components/pages/RegisterPage.jsx`, `server/middleware/auth.js`, `server/controllers/userController.js`, `server/controllers/authController.js`, `server/services/notificationService.js`
+- Purpose: Multi-method player authentication (phone/email) with captcha verification, JWT enforcement, multi-channel OTP verification (Resend Email API & WhatsApp), PostgreSQL-backed real IP rate limiting, and 3-step secure password recovery flow.
+- Files: `frontend/src/components/auth/LoginPage.jsx`, `frontend/src/components/auth/RegisterPage.jsx`, `frontend/src/components/auth/ForgotPasswordPage.jsx`, `frontend/src/components/auth/VerifyOtpPage.jsx`, `frontend/src/components/auth/ResetPasswordPage.jsx`, `frontend/src/components/AuthModal.jsx`, `server/middleware/rateLimit.js`, `server/controllers/authController.js`, `server/services/notificationService.js`, `server/db/schema.sql`, `server/scripts/migrate_rate_limits.js`
 - Behavior / key decisions:
+  - 3-Step Secure Password Recovery: Step 1 (`ForgotPasswordPage`) sends OTP without leaking `resetCode` in response; Step 2 (`VerifyOtpPage`) captures 6-digit OTP with 60s cooldown resend and verifies against database without premature consumption; Step 3 (`ResetPasswordPage`) displays verified status pill and updates credentials while atomically consuming the OTP in `password_resets`.
+  - Distributed Real IP Rate Limiting: Backed by `public.ip_rate_limits` table and stored procedure `check_ip_rate_limit`. Resolves true client IP from `CF-Connecting-IP`, `X-Real-IP`, `X-Forwarded-For` (first IP), and `req.ip` (`trust proxy: true`). Enforces strict limits: 5 OTP dispatches per 10 minutes (10m block), 5 verification attempts per 5 minutes, 30 login/signup attempts per minute.
+  - Audit Trail: Recorded client IP directly in `public.password_resets.ip_address` for security forensics.
   - Interactive slide-to-verify jigsaw captcha before credential validation.
-  - Password hashing via bcrypt and role-based access control (`admin`, `user`).
   - Production Email OTP Service: Connected to official Resend REST API using `RESEND_API_KEY` and sender address `EMAIL_OTP_SEND=otp@game.69club1.site` with branded HTML security verification templates.
-- Config / env: `JWT_SECRET`, `RESEND_API_KEY`, `EMAIL_OTP_SEND`
+- Config / env: `JWT_SECRET`, `RESEND_API_KEY`, `EMAIL_OTP_SEND`, `DATABASE_URL`
 - Known issues / TODO: none
-- Last changed: 2026-09-21 - Integrated production Resend Email OTP service using otp@game.69club1.site sender.
+- Last changed: 2026-09-21 - Implemented 3-step OTP password reset, eliminated OTP code leak, created public.ip_rate_limits table, and enabled real client IP rate limiting.
 
 ## Feature: Wallet & Payment Gateway
 - Status: done

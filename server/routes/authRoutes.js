@@ -7,7 +7,13 @@ import {
   sendOTP,
   verifyOTP,
 } from '../controllers/authController.js'
-import { authRateLimit } from '../middleware/rateLimit.js'
+import {
+  authRateLimit,
+  forgotPasswordRateLimit,
+  resetPasswordRateLimit,
+  sendOtpRateLimit,
+  verifyOtpRateLimit,
+} from '../middleware/rateLimit.js'
 import { captchaRateLimit } from '../middleware/captchaRateLimit.js'
 import { issueCaptcha, verifyCaptcha } from '../controllers/captchaController.js'
 import {
@@ -21,15 +27,15 @@ const router = Router()
 
 router.get('/captcha', captchaRateLimit, issueCaptcha)
 
-// All auth endpoints have rate limiting and strict validation applied
+// All auth endpoints protected by database-backed real IP rate limits and strict validation
 router.post('/login', authRateLimit, verifyCaptcha, validateLogin, loginOrRegister)
 router.post('/signup', authRateLimit, verifyCaptcha, validateSignup, register)
 router.post('/register', authRateLimit, verifyCaptcha, validateSignup, register)
-router.post('/forgot-password', authRateLimit, validateForgotPassword, forgotPassword)
-router.post('/reset-password', authRateLimit, validateResetPassword, resetPassword)
+router.post('/forgot-password', forgotPasswordRateLimit, validateForgotPassword, forgotPassword)
+router.post('/reset-password', resetPasswordRateLimit, validateResetPassword, resetPassword)
 
-// Multi-Channel (WhatsApp & Email) OTP Verification
-router.post('/send-otp', authRateLimit, sendOTP)
-router.post('/verify-otp', authRateLimit, verifyOTP)
+// Multi-Channel (WhatsApp & Email) OTP Verification with real IP protection
+router.post('/send-otp', sendOtpRateLimit, sendOTP)
+router.post('/verify-otp', verifyOtpRateLimit, verifyOTP)
 
 export default router

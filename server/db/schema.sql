@@ -186,20 +186,42 @@ CREATE TABLE IF NOT EXISTS public.password_resets (
     otp_code VARCHAR(6) NOT NULL,
     channel VARCHAR(20) NOT NULL DEFAULT 'EMAIL' CHECK (channel IN ('EMAIL', 'WHATSAPP', 'SMS', 'AUTO')),
     destination TEXT,
+    ip_address TEXT,
     expires_at TIMESTAMPTZ NOT NULL,
     is_used BOOLEAN NOT NULL DEFAULT FALSE,
     used_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
--- Defensive migration if password_resets existed previously without channel
+-- Defensive migration if password_resets existed previously without channel or ip_address
 ALTER TABLE public.password_resets ADD COLUMN IF NOT EXISTS channel VARCHAR(20) NOT NULL DEFAULT 'EMAIL';
 ALTER TABLE public.password_resets ADD COLUMN IF NOT EXISTS destination TEXT;
+ALTER TABLE public.password_resets ADD COLUMN IF NOT EXISTS ip_address TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_password_resets_identity ON public.password_resets(identity);
 CREATE INDEX IF NOT EXISTS idx_password_resets_code ON public.password_resets(otp_code);
 CREATE INDEX IF NOT EXISTS idx_password_resets_status ON public.password_resets(is_used, expires_at);
 CREATE INDEX IF NOT EXISTS idx_password_resets_channel ON public.password_resets(channel);
+CREATE INDEX IF NOT EXISTS idx_password_resets_ip ON public.password_resets(ip_address);
+
+-- 8b. Real IP Database Rate Limiter (Distributed & Multi-Instance Safe)
+CREATE TABLE IF NOT EXISTS public.ip_rate_limits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ip TEXT NOT NULL,
+    action TEXT NOT NULL,
+    attempts INT NOT NULL DEFAULT 1,
+    window_start TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    expires_at TIMESTAMPTZ NOT NULL,
+    blocked_until TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+    CONSTRAINT uq_ip_rate_limits_ip_action UNIQUE (ip, action)
+);
+
+CREATE INDEX IF NOT EXISTS idx_ip_rate_limits_lookup ON public.ip_rate_limits(ip, action);
+CREATE INDEX IF NOT EXISTS idx_ip_rate_limits_expires ON public.ip_rate_limits(expires_at);
+
+ALTER TABLE public.ip_rate_limits ENABLE ROW LEVEL SECURITY;
 
 -- 9. Withdrawal Requests (UPI / Bank Account Payouts)
 CREATE TABLE IF NOT EXISTS public.withdrawal_requests (

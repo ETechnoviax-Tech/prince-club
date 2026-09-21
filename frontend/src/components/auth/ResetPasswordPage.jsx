@@ -22,6 +22,12 @@ export function ResetPasswordPage({ initialIdentity = '', initialCode = '', onNa
   const [error, setError] = useState(null)
   const [successMsg, setSuccessMsg] = useState(null)
 
+  // Sync props if parent modal updates
+  useState(() => {
+    if (initialIdentity) setIdentity(initialIdentity)
+    if (initialCode) setResetCode(initialCode)
+  })
+
   async function handleSubmit(e) {
     e?.preventDefault?.()
     const targetUser = identity.trim()
@@ -119,26 +125,38 @@ export function ResetPasswordPage({ initialIdentity = '', initialCode = '', onNa
             <span className="reset-identity-val">{identity || 'Registered User'}</span>
           </div>
 
-          {/* Verification Code */}
-          <div className="auth-input-group">
-            <label className="auth-field-label">
-              <span className="label-icon-box coral">
-                <KeyRound size={15} />
+          {/* Verification Code Status */}
+          {resetCode ? (
+            <div className="auth-reset-identity-banner" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '-4px' }}>
+              <div>
+                <span className="reset-identity-label">Code: </span>
+                <span className="reset-identity-val">••••••</span>
+              </div>
+              <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <ShieldCheck size={14} /> OTP Verified
               </span>
-              <span>6-Digit Verification Code</span>
-            </label>
-            <div className="single-input-row">
-              <input
-                type="text"
-                maxLength={6}
-                className="auth-text-input code-input"
-                placeholder="Enter 6-digit OTP code"
-                value={resetCode}
-                onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
-                required
-              />
             </div>
-          </div>
+          ) : (
+            <div className="auth-input-group">
+              <label className="auth-field-label">
+                <span className="label-icon-box coral">
+                  <KeyRound size={15} />
+                </span>
+                <span>6-Digit Verification Code</span>
+              </label>
+              <div className="single-input-row">
+                <input
+                  type="text"
+                  maxLength={6}
+                  className="auth-text-input code-input"
+                  placeholder="Enter 6-digit OTP code"
+                  value={resetCode}
+                  onChange={(e) => setResetCode(e.target.value.replace(/\D/g, ''))}
+                  required
+                />
+              </div>
+            </div>
+          )}
 
           {/* New Password */}
           <div className="auth-input-group">
