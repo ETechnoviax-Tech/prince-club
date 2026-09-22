@@ -11,3 +11,6 @@ dist-ssr/
 scratch_*.py
 .DS_Store
 *.log
+.Memory.md
+./Memory.md
+Memory.md

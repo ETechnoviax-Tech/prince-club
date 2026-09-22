@@ -189,6 +189,9 @@ node tests/test_withdrawal_vip.js
 
 # Run full game modes test
 node tests/test_multi_game_modes.js
+
+# Run Win Go payout & settlement idempotency test
+node tests/test_payout_root_fix.js
 ```
 
 ---

@@ -97,7 +97,21 @@ function calcPayout(selectionRaw, outcome, amount, multiplier) {
 async function creditWallet(userId, payout, refId, description) {
   if (!isSupabaseConfigured || !userId || payout <= 0) return
   try {
-    // Use .gte('balance', 0) + read-after-write pattern to be safe
+    // Idempotency guard: prevent duplicate payout for the same bet reference
+    if (refId) {
+      const { data: existingTx } = await supabase
+        .from('wallet_transactions')
+        .select('id')
+        .eq('reference_id', String(refId))
+        .eq('type', 'BET_PAYOUT')
+        .maybeSingle()
+
+      if (existingTx) {
+        console.warn(`[creditWallet] Payout already credited for bet ${refId}. Skipping duplicate.`)
+        return
+      }
+    }
+
     const { data: wal } = await supabase
       .from('wallets')
       .select('balance')
@@ -148,35 +162,9 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
   settledLocalRounds.add(roundKey)
 
   const outcome = calculateOutcome(roundNumber, mode)
+  const settledBetIds = new Set()
 
-  // 1. Settle in-memory bets
-  const pendingBets = Array.from(memoryBets.values()).filter(
-    (b) =>
-      String(b.round_number) === String(roundNumber) &&
-      (b.game_mode || 'PARITY') === mode &&
-      b.status === 'PENDING'
-  )
-
-  for (const bet of pendingBets) {
-    const { won, payout } = calcPayout(bet.selection, outcome, bet.amount, bet.multiplier)
-
-    bet.status = won ? 'WON' : 'LOST'
-    bet.payout = payout
-    bet.outcome = outcome
-    bet.settled_at = new Date().toISOString()
-    memoryBets.set(bet.id, bet)
-
-    if (won && payout > 0 && isSupabaseConfigured) {
-      await creditWallet(
-        bet.user_id,
-        payout,
-        bet.id,
-        `Won ₹${payout} on ${bet.selection} (${mode} Round ${roundNumber})`
-      )
-    }
-  }
-
-  // 2. Settle Supabase DB bets if configured
+  // 1. Settle Supabase DB bets if configured (single source of truth for persistent bets)
   if (isSupabaseConfigured) {
     try {
       const { data: dbBets } = await supabase
@@ -188,9 +176,19 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
       if (Array.isArray(dbBets)) {
         for (const b of dbBets) {
           if ((b.game_mode || 'PARITY') !== mode) continue
+          settledBetIds.add(b.id)
           const { won, payout } = calcPayout(b.selection, outcome, b.amount, b.multiplier)
           const status = won ? 'WON' : 'LOST'
           await supabase.from('bets').update({ status, payout }).eq('id', b.id)
+
+          // Update wingo_bets if present
+          try {
+            await supabase
+              .from('wingo_bets')
+              .update({ status, payout, settled_at: new Date().toISOString() })
+              .eq('metadata->>legacyBetId', b.id)
+          } catch {}
+
           if (won && payout > 0) {
             await creditWallet(
               b.user_id,
@@ -199,10 +197,53 @@ export async function settleRoundBets(roundNumber, mode = 'PARITY') {
               `Won ₹${payout} on ${b.selection} (${mode} Round ${roundNumber})`
             )
           }
+
+          // Sync in-memory mirror
+          const mem = memoryBets.get(b.id)
+          if (mem) {
+            mem.status = status
+            mem.payout = payout
+            mem.outcome = outcome
+            mem.settled_at = new Date().toISOString()
+            memoryBets.set(b.id, mem)
+          }
         }
       }
     } catch (err) {
       console.error('[settleRoundBets Supabase error]:', err)
+    }
+  }
+
+  // 2. Settle in-memory fallback bets (only bets not already settled by DB)
+  const pendingBets = Array.from(memoryBets.values()).filter(
+    (b) =>
+      String(b.round_number) === String(roundNumber) &&
+      (b.game_mode || 'PARITY') === mode &&
+      b.status === 'PENDING' &&
+      !settledBetIds.has(b.id)
+  )
+
+  for (const bet of pendingBets) {
+    const { won, payout } = calcPayout(bet.selection, outcome, bet.amount, bet.multiplier)
+
+    bet.status = won ? 'WON' : 'LOST'
+    bet.payout = payout
+    bet.outcome = outcome
+    bet.settled_at = new Date().toISOString()
+    memoryBets.set(bet.id, bet)
+
+    if (won && payout > 0) {
+      if (isSupabaseConfigured) {
+        await creditWallet(
+          bet.user_id,
+          payout,
+          bet.id,
+          `Won ₹${payout} on ${bet.selection} (${mode} Round ${roundNumber})`
+        )
+      } else {
+        const curBal = memoryWallets.get(bet.user_id) || 0
+        memoryWallets.set(bet.user_id, curBal + payout)
+      }
     }
   }
 }
@@ -228,35 +269,9 @@ export async function settleVeerRound(outcome, typeId = 30) {
 
   const digit = Number(outcome.digit)
   const outcomeNorm = { ...outcome, digit, size: digit >= 5 ? 'big' : 'small' }
+  const settledBetIds = new Set()
 
-  // 1. Settle in-memory bets matching issueNumber + mode
-  const pendingBets = Array.from(memoryBets.values()).filter(
-    (b) =>
-      String(b.round_number) === issueStr &&
-      b.status === 'PENDING' &&
-      (b.game_mode === modeKey || !b.game_mode)
-  )
-
-  for (const bet of pendingBets) {
-    const { won, payout } = calcPayout(bet.selection, outcomeNorm, bet.amount, bet.multiplier)
-
-    bet.status = won ? 'WON' : 'LOST'
-    bet.payout = payout
-    bet.outcome = outcomeNorm
-    bet.settled_at = new Date().toISOString()
-    memoryBets.set(bet.id, bet)
-
-    if (won && payout > 0 && isSupabaseConfigured) {
-      await creditWallet(
-        bet.user_id,
-        payout,
-        bet.id,
-        `Won ₹${payout} on ${bet.selection} (VeerGame ${issueStr})`
-      )
-    }
-  }
-
-  // 2. Settle Supabase DB bets
+  // 1. Settle Supabase DB bets (single source of truth for persistent bets)
   if (isSupabaseConfigured) {
     try {
       const { data: dbBets } = await supabase
@@ -268,9 +283,19 @@ export async function settleVeerRound(outcome, typeId = 30) {
 
       if (Array.isArray(dbBets)) {
         for (const b of dbBets) {
+          settledBetIds.add(b.id)
           const { won, payout } = calcPayout(b.selection, outcomeNorm, b.amount, b.multiplier)
           const status = won ? 'WON' : 'LOST'
           await supabase.from('bets').update({ status, payout }).eq('id', b.id)
+
+          // Update wingo_bets if present
+          try {
+            await supabase
+              .from('wingo_bets')
+              .update({ status, payout, settled_at: new Date().toISOString() })
+              .eq('metadata->>legacyBetId', b.id)
+          } catch {}
+
           if (won && payout > 0) {
             await creditWallet(
               b.user_id,
@@ -279,10 +304,53 @@ export async function settleVeerRound(outcome, typeId = 30) {
               `Won ₹${payout} on ${b.selection} (VeerGame ${issueStr})`
             )
           }
+
+          // Sync in-memory mirror
+          const mem = memoryBets.get(b.id)
+          if (mem) {
+            mem.status = status
+            mem.payout = payout
+            mem.outcome = outcomeNorm
+            mem.settled_at = new Date().toISOString()
+            memoryBets.set(b.id, mem)
+          }
         }
       }
     } catch (err) {
       console.error('[settleVeerRound Supabase error]:', err)
+    }
+  }
+
+  // 2. Settle in-memory fallback bets (only bets not already settled by DB)
+  const pendingBets = Array.from(memoryBets.values()).filter(
+    (b) =>
+      String(b.round_number) === issueStr &&
+      b.status === 'PENDING' &&
+      (b.game_mode === modeKey || !b.game_mode) &&
+      !settledBetIds.has(b.id)
+  )
+
+  for (const bet of pendingBets) {
+    const { won, payout } = calcPayout(bet.selection, outcomeNorm, bet.amount, bet.multiplier)
+
+    bet.status = won ? 'WON' : 'LOST'
+    bet.payout = payout
+    bet.outcome = outcomeNorm
+    bet.settled_at = new Date().toISOString()
+    memoryBets.set(bet.id, bet)
+
+    if (won && payout > 0) {
+      if (isSupabaseConfigured) {
+        await creditWallet(
+          bet.user_id,
+          payout,
+          bet.id,
+          `Won ₹${payout} on ${bet.selection} (VeerGame ${issueStr})`
+        )
+      } else {
+        const curBal = memoryWallets.get(bet.user_id) || 0
+        memoryWallets.set(bet.user_id, curBal + payout)
+      }
     }
   }
 }
