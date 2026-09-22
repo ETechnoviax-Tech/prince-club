@@ -747,7 +747,8 @@ export function App() {
 
                   if (betWon) {
                     isWon = true
-                    totalPayout += Math.round(Number(b.amount || 0) * mult)
+                    const effStake = Number(b.amount || 0) * (1 - 0.004)
+                    totalPayout += Number((effStake * mult).toFixed(2))
                   }
                 }
               }

@@ -64,33 +64,39 @@ setInterval(() => {
   settledLocalRounds.clear()
 }, 600_000).unref?.()
 
-// ─── Payout calculation helper (shared, normalised) ───────────────────────────
+// ─── Payout calculation helper with 0.4% Platform Tax / Commission ──────────
+export const WINGO_COMMISSION_RATE = 0.004 // 0.4% platform commission / tax
+
 function calcPayout(selectionRaw, outcome, amount, multiplier) {
   const sel = String(selectionRaw).toLowerCase()
   const digit = Number(outcome.digit)
   const color = String(outcome.color).toLowerCase()
   const size = String(outcome.size || (digit >= 5 ? 'big' : 'small')).toLowerCase()
 
+  // 0.4% tax applies to the bet amount (effective stake = amount * (1 - 0.004) = amount * 0.996)
+  const effectiveAmount = amount * (1 - WINGO_COMMISSION_RATE)
+  const commission = Number((amount * WINGO_COMMISSION_RATE).toFixed(2))
+
   let won = false
   let payout = 0
 
   if (sel === 'green') {
-    if ([1, 3, 7, 9].includes(digit)) { won = true; payout = Math.round(amount * 2.0) }
-    else if (digit === 5)             { won = true; payout = Math.round(amount * 1.5) }
+    if ([1, 3, 7, 9].includes(digit)) { won = true; payout = Number((effectiveAmount * 2.0).toFixed(2)) }
+    else if (digit === 5)             { won = true; payout = Number((effectiveAmount * 1.5).toFixed(2)) }
   } else if (sel === 'red') {
-    if ([2, 4, 6, 8].includes(digit)) { won = true; payout = Math.round(amount * 2.0) }
-    else if (digit === 0)              { won = true; payout = Math.round(amount * 1.5) }
+    if ([2, 4, 6, 8].includes(digit)) { won = true; payout = Number((effectiveAmount * 2.0).toFixed(2)) }
+    else if (digit === 0)              { won = true; payout = Number((effectiveAmount * 1.5).toFixed(2)) }
   } else if (sel === 'violet') {
-    if (digit === 0 || digit === 5)   { won = true; payout = Math.round(amount * 4.5) }
+    if (digit === 0 || digit === 5)   { won = true; payout = Number((effectiveAmount * 4.5).toFixed(2)) }
   } else if (sel === 'big') {
-    if (size === 'big')               { won = true; payout = Math.round(amount * 2.0) }
+    if (size === 'big')               { won = true; payout = Number((effectiveAmount * 2.0).toFixed(2)) }
   } else if (sel === 'small') {
-    if (size === 'small')             { won = true; payout = Math.round(amount * 2.0) }
+    if (size === 'small')             { won = true; payout = Number((effectiveAmount * 2.0).toFixed(2)) }
   } else if (sel === String(digit)) {
-    won = true; payout = Math.round(amount * 9.0)
+    won = true; payout = Number((effectiveAmount * 9.0).toFixed(2))
   }
 
-  return { won, payout }
+  return { won, payout, commission, effectiveAmount }
 }
 
 // ─── Atomic wallet credit (safe against concurrent double-credit) ─────────────

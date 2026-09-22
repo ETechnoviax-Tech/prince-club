@@ -323,9 +323,12 @@ export default function WingoGame({
 
   const isLocked = phase === 'locked' || seconds <= activeLevel.lock
 
-  // Total bet & potential return
+  // Total bet & potential return (0.4% platform tax on bet amount)
+  const WINGO_TAX_RATE = 0.004
   const totalBetAmount = balanceUnit * betQuantity * betMultiplier
-  const potentialPayout = Math.round(totalBetAmount * (selectedTarget?.multiplier || 2.0))
+  const taxAmount = Number((totalBetAmount * WINGO_TAX_RATE).toFixed(2))
+  const effectiveBetAmount = totalBetAmount - taxAmount
+  const potentialPayout = Number((effectiveBetAmount * (selectedTarget?.multiplier || 2.0)).toFixed(2))
 
   // Authentic 55Club target color & label mapping for bottom sheet (Orange/White Casino Palette)
   const targetThemeColor = useMemo(() => {
@@ -493,7 +496,8 @@ export default function WingoGame({
 
                   if (betWon) {
                     isWon = true
-                    totalPayout += Math.round(Number(b.amount || 0) * mult)
+                    const effStake = Number(b.amount || 0) * (1 - 0.004)
+                    totalPayout += Number((effStake * mult).toFixed(2))
                   }
                 }
               }
@@ -1308,6 +1312,13 @@ export default function WingoGame({
                     </button>
                   )
                 })}
+              </div>
+
+              {/* Contract & 0.4% Tax Breakdown */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: '#64748b', padding: '6px 4px 2px', borderTop: '1px dashed #e2e8f0' }}>
+                <span>Contract: ₹{totalBetAmount.toFixed(2)}</span>
+                <span style={{ color: '#ea580c', fontWeight: 600 }}>Tax (0.4%): -₹{taxAmount.toFixed(2)}</span>
+                <span>Delivery: ₹{effectiveBetAmount.toFixed(2)}</span>
               </div>
 
               {/* Pre-sale Rules Agreement Row */}

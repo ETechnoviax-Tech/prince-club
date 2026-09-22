@@ -91,10 +91,10 @@ async function run() {
     const finalBal = Number((await postSettleWalRes.json()).wallet.balance)
     console.log(`✓ Balance after settlement: ₹${finalBal}`)
 
-    // Before bug fix: 400 + 200 + 200 = 800 (user got +400 added)
-    // After bug fix: 400 + 200 = 600 (user gets exactly +200 added)
-    assert.strictEqual(finalBal, 600, `BUG DETECTED! Expected balance 600, but got ${finalBal}. User was credited ${finalBal - 400} instead of 200!`)
-    console.log(`✓ EXACT PAYOUT CONFIRMED: ₹${finalBal - postBetBal} was added to wallet (exact 2.0x of ₹100 bet)`)
+    // Before tax: 400 + 200 = 600
+    // With 0.4% tax on ₹100 bet: effective stake = ₹99.60. Payout = 99.60 * 2.0 = ₹199.20. Balance = 400 + 199.20 = 599.20
+    assert.strictEqual(finalBal, 599.20, `Expected balance 599.20 with 0.4% tax, got ${finalBal}`)
+    console.log(`✓ EXACT PAYOUT WITH 0.4% TAX CONFIRMED: ₹${finalBal - postBetBal} was added to wallet (₹99.60 x 2.0)`)
 
     // Check transaction ledger
     if (isSupabaseConfigured) {
@@ -105,11 +105,11 @@ async function run() {
         .eq('type', 'BET_PAYOUT')
 
       assert.strictEqual(txs.length, 1, `Expected exactly 1 BET_PAYOUT transaction, found ${txs.length}`)
-      assert.strictEqual(Number(txs[0].amount), 200, `Transaction amount should be 200, got ${txs[0].amount}`)
+      assert.strictEqual(Number(txs[0].amount), 199.20, `Transaction amount should be 199.20, got ${txs[0].amount}`)
       console.log(`✓ Exactly 1 payout transaction exists in ledger: ₹${txs[0].amount}`)
     }
 
-    console.log('--- ALL TESTS PASSED! DOUBLE PAYOUT BUG IS FULLY RESOLVED ---')
+    console.log('--- ALL TESTS PASSED! 0.4% COMMISSION TAX IS FULLY ACTIVE ---')
   } finally {
     // Clean up test account and data immediately per Memory.md rules
     if (testUserId && isSupabaseConfigured) {
