@@ -4,6 +4,7 @@ import {
   claimDailyVIPBonus,
   getTransactions,
   getUserWithdrawals,
+  getVIPStatus,
   getWallet,
   requestWithdrawal,
   resetWallet,
@@ -35,7 +36,9 @@ router.post(
 router.get('/withdrawals/:userId', requireAuth, getUserWithdrawals)
 router.post('/withdraw/verify', requireDualAdminAuth, adminVerifyWithdrawal)
 
-// VIP Daily Bonus requires verified authentication
+// VIP Daily Bonus & Real-Time Status
 router.post('/vip/claim', requireAuth, claimDailyVIPBonus)
+router.get('/vip/status/:userId', requireAuth, getVIPStatus)
 
 export default router
+

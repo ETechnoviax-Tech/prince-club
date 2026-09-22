@@ -750,3 +750,87 @@ export async function claimDailyVIPBonus(req, res) {
     return res.status(500).json({ error: 'Failed to claim daily VIP bonus' })
   }
 }
+
+// 8. Real-Time VIP Status & Reward History
+export async function getVIPStatus(req, res) {
+  try {
+    const authUserId = req.user ? req.user.id : req.params.userId
+    if (!authUserId) {
+      return res.status(401).json({ error: 'User ID is required' })
+    }
+
+    let totalTurnover = 0
+    let vipHistory = []
+    let currentVipLevel = 0
+
+    if (isSupabaseConfigured) {
+      // 1. Calculate actual valid bet amount (1 INR bet = 1 EXP)
+      const { data: userBets } = await supabase
+        .from('bets')
+        .select('amount')
+        .eq('user_id', authUserId)
+
+      if (userBets && userBets.length > 0) {
+        totalTurnover = userBets.reduce((sum, b) => sum + Number(b.amount || 0), 0)
+      }
+
+      const TIERS = [
+        { level: 10, exp: 300000000 },
+        { level: 9, exp: 100000000 },
+        { level: 8, exp: 30000000 },
+        { level: 7, exp: 10000000 },
+        { level: 6, exp: 3000000 },
+        { level: 5, exp: 1000000 },
+        { level: 4, exp: 300000 },
+        { level: 3, exp: 100000 },
+        { level: 2, exp: 30000 },
+        { level: 1, exp: 3000 },
+      ]
+
+      let calculatedLevel = 0
+      for (const t of TIERS) {
+        if (totalTurnover >= t.exp) {
+          calculatedLevel = t.level
+          break
+        }
+      }
+
+      currentVipLevel = calculatedLevel
+
+
+      // 3. Fetch real VIP bonus / reward transactions
+      const { data: txs } = await supabase
+        .from('wallet_transactions')
+        .select('id, amount, description, created_at')
+        .eq('user_id', authUserId)
+        .or('type.eq.BONUS,description.ilike.%VIP%')
+        .order('created_at', { ascending: false })
+        .limit(50)
+
+      if (txs) {
+        vipHistory = txs.map((t) => ({
+          id: t.id,
+          amount: Number(t.amount || 0),
+          description: t.description || 'VIP Bonus',
+          createdAt: t.created_at,
+        }))
+      }
+    }
+
+    const now = new Date()
+    const firstOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1, 2, 0, 0)
+    const daysUntilPayout = Math.max(1, Math.ceil((firstOfNextMonth.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+
+    return res.json({
+      success: true,
+      experience: Math.floor(totalTurnover),
+      vipLevel: currentVipLevel,
+      daysUntilPayout,
+      history: vipHistory,
+    })
+  } catch (err) {
+    console.error('[getVIPStatus Exception]:', err)
+    return res.status(500).json({ error: 'Failed to retrieve VIP status' })
+  }
+}
+

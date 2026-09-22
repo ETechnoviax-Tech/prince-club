@@ -53,7 +53,13 @@ A mobile-first color trading, lottery, and prediction gaming platform built with
   - **First Gift Activity Rewards**: Production-ready 30% first deposit compensation promotion page matching 69 Club mobile design, displaying event start timestamps, participation conditions table, and reactive server-backed bonus claims up to ₹200.00.
   - **Idempotent Gift Code Redemption**: Server-authoritative validation for promotional codes (`gift_codes` / `gift_redemptions`), preventing double-claims and crediting balances atomically.
   - **Multi-Tier Referral Tracking**: Real-time team subordinate hierarchy (Tier 1 Direct & Tier 2 Indirect), live bet turnover calculation across team members, automated tiered commissions (0.60% Tier 1, 0.18% Tier 2), and masked subordinate roster.
-  - **Real-Time Turnover Rebate & Jackpot**: Automated cashback turnover tracking across game categories and a progressive community jackpot pool.
+  - **VIP Club & Tiered Rewards System**:
+    - Authentic 10-tier VIP progression interface (`VIPPage.jsx` + `vip.css`) styled in the signature coral `#ff5e52` design.
+    - Real-time valid betting turnover integration (`₹1 Bet = 1 EXP`) computed directly from live settled bets—no mock or hardcoded data.
+    - Dynamic payout settlement countdown timer calculating days until 2:00 am on the 1st of every month.
+    - Horizontal scrollable card carousel with 3D laurel wreath medals, unlock indicators, and progress bars.
+    - Detailed 3-benefit card breakdown per tier (`Level up rewards`, `Monthly reward`, and `Rebate rate`).
+    - Dual segmented views: `History` displaying real bonus credit ledger transactions with parchment empty state fallback, and `Rules` documenting the 8 official VIP regulations with curved badge cards.
 - **100% Asynchronous & Non-Blocking Architecture**: All HTTP controllers, background routines, and disk persistence use `async/await` and `fs.promises` with zero synchronous event-loop blocking, instrumented with high-precision response timing headers (`X-Response-Time`).
 - **Zero-Leak Production Logging**: Automated build-time stripping of all `console` and `debugger` calls via Vite 8 and Oxc minifier; sandbox verification codes and internal debug routines are strictly isolated behind non-production environment checks.
 - **Mobile-First UI**: 100% responsive fluid mobile layout optimized for all smartphone aspect ratios, dynamic viewport height (`--app-height`) auto-resizing across mobile browser URL bars, iOS Safe Area insets, touch targets, zero desktop scrollbar gutter, and symmetrically centered desktop luxury canvas.
@@ -85,7 +91,7 @@ prince-club/
 
 ---
 
-## Payment Gateway Endpoints
+## Payment & Wallet Endpoints
 
 | Method | Endpoint | Description | Headers / Auth |
 |---|---|---|---|
@@ -96,8 +102,11 @@ prince-club/
 | `GET` | `/api/payments/refunds/:userId` | Retrieves refund history | `Authorization` |
 | `GET` | `/api/payments/events/:userId` | Audit log of payment events | Admin `Authorization` |
 | `POST` | `/api/wallet/withdraw` | Requests payout (BANK CARD, USDT TRC20/BEP20, or UPI) | `Authorization`, `Idempotency-Key` |
+| `GET` | `/api/wallet/vip/status/:userId` | Live VIP tier, turnover EXP, countdown & history | `Authorization` |
+| `POST` | `/api/wallet/vip/claim` | Claims daily VIP bonus with 24h cooldown | `Authorization` |
 
 ---
+
 
 ## Setup & Installation
 

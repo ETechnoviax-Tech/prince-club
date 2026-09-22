@@ -425,6 +425,18 @@ export async function claimDailyVIPBonus(userId) {
   return json
 }
 
+export async function fetchVIPStatus(userId) {
+  const res = await fetch(`${API_BASE}/wallet/vip/status/${userId}`, {
+    headers: authHeaders(),
+  })
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to fetch VIP status')
+  }
+  return json
+}
+
+
 export async function fetchTransactions(userId) {
   const res = await fetch(`${API_BASE}/wallet/${userId}/transactions`, {
     headers: authHeaders(),

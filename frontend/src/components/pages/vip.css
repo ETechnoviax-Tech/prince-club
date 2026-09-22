@@ -1,0 +1,598 @@
+/* ==========================================================================
+   VIP PAGE - 55 CLUB / 69 CLUB AUTHENTIC CASINO DESIGN
+   ========================================================================== */
+
+.vip-page-wrapper {
+  min-height: 100%;
+  background: #f4f6fa;
+  padding-bottom: 30px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  box-sizing: border-box;
+}
+
+/* 1. TOP HEADER & PROFILE */
+.vip-top-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #ff5e52 0%, #ff6b5e 100%);
+  color: #ffffff;
+}
+
+.vip-back-btn {
+  background: none;
+  border: none;
+  color: #ffffff;
+  padding: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: opacity 0.15s;
+}
+
+.vip-back-btn:active {
+  opacity: 0.7;
+}
+
+.vip-header-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.vip-header-right-placeholder {
+  width: 32px;
+}
+
+/* 2. PROFILE HERO SECTION */
+.vip-profile-section {
+  background: linear-gradient(180deg, #ff6b5e 0%, #ff7668 100%);
+  padding: 8px 16px 36px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.vip-avatar-wrap {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 2.5px solid #ffffff;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+  background: #fbcfe8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vip-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.vip-profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.vip-level-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(90deg, #94a3b8 0%, #cbd5e1 50%, #94a3b8 100%);
+  color: #1e293b;
+  padding: 2px 10px 2px 6px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  width: fit-content;
+}
+
+.vip-profile-username {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+/* 3. DUAL STATS CARDS */
+.vip-stats-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 0 16px;
+  margin-top: -24px;
+  position: relative;
+  z-index: 10;
+}
+
+.vip-stat-box {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px 10px;
+  text-align: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.vip-stat-val-red {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ff5252;
+  margin-bottom: 3px;
+}
+
+.vip-stat-val-dark {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  margin-bottom: 3px;
+}
+
+.vip-stat-label {
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* 4. SETTLEMENT NOTICE BANNER */
+.vip-notice-banner {
+  margin: 12px 16px 0;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 11.5px;
+  color: #475569;
+  text-align: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+}
+
+/* 5. TIER CARDS CAROUSEL */
+.vip-carousel-wrap {
+  margin-top: 14px;
+  padding: 0 16px;
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.vip-carousel-wrap::-webkit-scrollbar {
+  display: none;
+}
+
+.vip-tier-card {
+  flex: 0 0 290px;
+  height: 165px;
+  border-radius: 14px;
+  padding: 14px 16px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  scroll-snap-align: center;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+}
+
+.vip-tier-card.selected {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.2);
+}
+
+/* Tier Card Gradients */
+.vip-tier-card.tier-1 {
+  background: linear-gradient(135deg, #8ba1b8 0%, #6e849c 50%, #566c84 100%);
+}
+.vip-tier-card.tier-2 {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+}
+.vip-tier-card.tier-3 {
+  background: linear-gradient(135deg, #38bdf8 0%, #0284c7 50%, #0369a1 100%);
+}
+.vip-tier-card.tier-4 {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 50%, #6d28d9 100%);
+}
+.vip-tier-card.tier-5 {
+  background: linear-gradient(135deg, #fb7185 0%, #e11d48 50%, #be123c 100%);
+}
+.vip-tier-card.tier-6 {
+  background: linear-gradient(135deg, #34d399 0%, #059669 50%, #047857 100%);
+}
+.vip-tier-card.tier-7 {
+  background: linear-gradient(135deg, #94a3b8 0%, #475569 50%, #334155 100%);
+}
+.vip-tier-card.tier-8 {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+}
+.vip-tier-card.tier-9 {
+  background: linear-gradient(135deg, #22d3ee 0%, #0891b2 50%, #0e7490 100%);
+}
+.vip-tier-card.tier-10 {
+  background: linear-gradient(135deg, #818cf8 0%, #4f46e5 50%, #3730a3 100%);
+}
+
+.vip-card-top-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.vip-card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vip-card-name-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vip-card-name {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.vip-card-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(239, 68, 68, 0.9);
+  color: #ffffff;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.vip-card-status-badge.unlocked {
+  background: rgba(16, 185, 129, 0.9);
+}
+
+.vip-card-upgrade-req {
+  font-size: 11px;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.vip-card-bet-rate-chip {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.22);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+/* Wreath Medal Emblem */
+.vip-card-medal-wrap {
+  width: 72px;
+  height: 72px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.vip-card-bottom-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vip-card-prog-track {
+  height: 6px;
+  background: rgba(15, 23, 42, 0.45);
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+}
+
+.vip-card-prog-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #fef08a 0%, #facc15 100%);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+}
+
+.vip-card-prog-labels {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  opacity: 0.95;
+  font-weight: 600;
+}
+
+.vip-card-watermark {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.8;
+}
+
+/* 6. VIP BENEFITS LEVEL CARD */
+.vip-benefits-card {
+  margin: 14px 16px 0;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.vip-benefits-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.vip-benefits-header .diamond-icon {
+  color: #ef4444;
+  font-size: 16px;
+}
+
+.vip-benefits-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.vip-benefit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.vip-benefit-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vip-benefit-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: #fee2e2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1px #fecaca;
+}
+
+.vip-benefit-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.vip-benefit-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.vip-benefit-subtext {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.vip-benefit-right-badges {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.vip-badge-wallet {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  color: #d97706;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vip-badge-zero {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #ef4444;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vip-badge-rebate {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* 7. SEGMENTED TABS: HISTORY | RULES */
+.vip-tabs-bar {
+  margin: 16px 16px 0;
+  background: #ffffff;
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.vip-tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.15s;
+}
+
+.vip-tab-btn.active {
+  color: #ff5252;
+}
+
+.vip-tab-btn.active::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 20%;
+  width: 60%;
+  height: 2.5px;
+  background: #ff5252;
+  border-radius: 2px;
+}
+
+/* 8. TAB CONTENT: HISTORY */
+.vip-history-content {
+  margin: 14px 16px 0;
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 30px 16px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.vip-empty-scroll-svg {
+  width: 140px;
+  height: 110px;
+  opacity: 0.8;
+  margin-bottom: 12px;
+}
+
+.vip-history-nodata-text {
+  font-size: 13px;
+  color: #94a3b8;
+  font-weight: 500;
+  margin-bottom: 24px;
+}
+
+.vip-view-all-btn {
+  width: 100%;
+  height: 44px;
+  background: linear-gradient(90deg, #ff6b5d 0%, #ff7b6e 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(255, 107, 93, 0.35);
+  transition: transform 0.15s, opacity 0.15s;
+}
+
+.vip-view-all-btn:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* 9. TAB CONTENT: RULES */
+.vip-rules-content {
+  margin-top: 14px;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.vip-rules-header {
+  text-align: center;
+  margin-bottom: 2px;
+}
+
+.vip-rules-main-title {
+  color: #ff5252;
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0 0 2px;
+}
+
+.vip-rules-sub-title {
+  color: #64748b;
+  font-size: 12px;
+  margin: 0;
+}
+
+.vip-rule-card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 24px 16px 16px;
+  position: relative;
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
+}
+
+.vip-rule-pill-badge {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #ff5e52 0%, #ff6b5e 100%);
+  color: #ffffff;
+  padding: 4px 32px;
+  border-radius: 0 0 16px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 3px 8px rgba(255, 94, 82, 0.3);
+}
+
+.vip-rule-body-text {
+  font-size: 12.5px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
