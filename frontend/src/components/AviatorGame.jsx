@@ -8,7 +8,8 @@ import './aviator.css'
 function calculateClientMultiplier(elapsedMs) {
   if (elapsedMs <= 0) return 1.0
   const seconds = elapsedMs / 1000
-  const mult = 1.0 + 0.035 * Math.pow(seconds, 1.38)
+  // Matches server: further slowed for comfortable player reaction window
+  const mult = 1.0 + 0.020 * Math.pow(seconds, 1.30)
   return +mult.toFixed(2)
 }
 

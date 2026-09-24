@@ -175,19 +175,20 @@ async function finalizeRoundRecord() {
 }
 
 // Compute current multiplier from flight elapsed ms.
-// Slowed coefficient (0.035 vs old 0.06) so typical flights last ~2x longer.
+// Further slowed coefficient (0.020) so plane feels much slower — players have more time.
 export function calculateMultiplier(elapsedMs) {
   if (elapsedMs <= 0) return 1.0
   const seconds = elapsedMs / 1000
-  // Slower exponential curve: feels more natural, gives players time to react
-  const mult = 1.0 + 0.035 * Math.pow(seconds, 1.38)
+  // Very slow exponential curve: comfortable react window
+  const mult = 1.0 + 0.020 * Math.pow(seconds, 1.30)
   return +mult.toFixed(2)
 }
 
-// Calculate how many ms it takes to reach a specific crash point
+// Calculate how many ms it takes to reach a specific crash point (tuned to match new formula)
 export function durationForCrashPoint(crashPoint) {
   const diff = Math.max(0.01, crashPoint - 1.0)
-  const seconds = Math.pow(diff / 0.06, 1 / 1.45)
+  // Inverse of: diff = 0.020 * seconds^1.30  →  seconds = (diff/0.020)^(1/1.30)
+  const seconds = Math.pow(diff / 0.020, 1 / 1.30)
   return Math.round(seconds * 1000)
 }
 
@@ -211,7 +212,18 @@ function startAviatorLoop() {
         // Transition to FLYING
         state.phase = 'FLYING'
         state.flyingStartedAt = new Date().toISOString()
-        state.crashPoint = generateCrashPoint(state.serverSeed)
+
+        // If ANY active bet exists → cap crash point at 2.00x max
+        // If NO bets → allow full normal distribution
+        const hasActiveBets = state.bets.size > 0
+        if (hasActiveBets) {
+          // Force crash between 1.01x – 2.00x so bettors cannot win beyond 2x
+          const digest = crypto.createHmac('sha256', state.serverSeed).update('aviator-crash-v1').digest()
+          const pick = (min, max) => min + (digest.readUInt32BE(4) % (max - min + 1))
+          state.crashPoint = +(1.01 + pick(0, 99) / 100).toFixed(2) // 1.01x to 2.00x
+        } else {
+          state.crashPoint = generateCrashPoint(state.serverSeed)
+        }
         state.flightDurationMs = durationForCrashPoint(state.crashPoint)
         state.startTime = Date.now()
 
