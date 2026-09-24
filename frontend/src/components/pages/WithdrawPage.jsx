@@ -12,9 +12,17 @@ import {
   Zap,
   Info,
   ExternalLink,
+  Lock,
+  ShieldCheck,
+  Headphones,
 } from 'lucide-react'
 import { sound } from '../../utils/audio'
-import { requestWithdrawal, fetchUserWithdrawals } from '../../api/client'
+import {
+  requestWithdrawal,
+  fetchUserWithdrawals,
+  fetchUserPayoutMethods,
+  bindUserPayoutMethod,
+} from '../../api/client'
 import './withdraw.css'
 
 const USDT_EXCHANGE_RATE = 92.0
@@ -41,6 +49,7 @@ export default function WithdrawPage({
   onWithdrawSuccess,
   onOpenHistory,
   onRefreshBalance,
+  onOpenCustomerService,
 }) {
   const userId = currentUser?.id || 'guest'
 
@@ -52,6 +61,8 @@ export default function WithdrawPage({
   const [alertMsg, setAlertMsg] = useState(null)
   const [historyList, setHistoryList] = useState([])
   const [setupModalOpen, setSetupModalOpen] = useState(false)
+  const [lockedModalOpen, setLockedModalOpen] = useState(false)
+  const [savingModal, setSavingModal] = useState(false)
   const [modalError, setModalError] = useState(null)
 
   // 1. Independent account states per method
@@ -128,7 +139,7 @@ export default function WithdrawPage({
     }
   }, [setupModalOpen, bankAccount, upiAccount, usdtAccount])
 
-  // Fetch recent user withdrawals from live backend
+  // Fetch recent user withdrawals & bound payout methods from live backend
   useEffect(() => {
     if (currentUser?.id) {
       fetchUserWithdrawals(currentUser.id)
@@ -136,8 +147,27 @@ export default function WithdrawPage({
           if (res?.withdrawals) setHistoryList(res.withdrawals.slice(0, 3))
         })
         .catch(() => {})
+
+      fetchUserPayoutMethods(currentUser.id)
+        .then((res) => {
+          if (res?.methods) {
+            if (res.methods.BANK?.accountNumber) {
+              setBankAccount(res.methods.BANK)
+              try { localStorage.setItem(`withdraw_bank_${userId}`, JSON.stringify(res.methods.BANK)) } catch {}
+            }
+            if (res.methods.UPI?.upiId) {
+              setUpiAccount(res.methods.UPI)
+              try { localStorage.setItem(`withdraw_upi_${userId}`, JSON.stringify(res.methods.UPI)) } catch {}
+            }
+            if (res.methods.USDT?.usdtAddress) {
+              setUsdtAccount(res.methods.USDT)
+              try { localStorage.setItem(`withdraw_usdt_${userId}`, JSON.stringify(res.methods.USDT)) } catch {}
+            }
+          }
+        })
+        .catch(() => {})
     }
-  }, [currentUser?.id])
+  }, [currentUser?.id, userId])
 
   const handleRefresh = async () => {
     if (refreshing) return
@@ -199,8 +229,8 @@ export default function WithdrawPage({
   const usdtEquivalent = (numAmount / USDT_EXCHANGE_RATE).toFixed(2)
   const isValidAmount = numAmount >= minAmount && numAmount <= maxAmount && numAmount <= balance
 
-  // Modal save handler with comprehensive validation
-  const handleSaveModal = (e) => {
+  // Modal save handler with comprehensive validation and backend lock
+  const handleSaveModal = async (e) => {
     e.preventDefault()
     setModalError(null)
 
@@ -233,10 +263,23 @@ export default function WithdrawPage({
         ifsc: ifsc.trim().toUpperCase(),
         holderName: holderName.trim(),
       }
-      setBankAccount(cleanBank)
+
+      setSavingModal(true)
       try {
-        localStorage.setItem(`withdraw_bank_${userId}`, JSON.stringify(cleanBank))
-      } catch {}
+        await bindUserPayoutMethod('BANK', cleanBank)
+        setBankAccount(cleanBank)
+        try {
+          localStorage.setItem(`withdraw_bank_${userId}`, JSON.stringify(cleanBank))
+        } catch {}
+        sound.playWin?.()
+        setSetupModalOpen(false)
+        setAlertMsg({ type: 'success', text: 'Bank Card bound and locked successfully for your security.' })
+      } catch (err) {
+        sound.playLose?.()
+        setModalError(err.message || 'Failed to bind Bank Card. Please try again.')
+      } finally {
+        setSavingModal(false)
+      }
     } else if (method === 'UPI') {
       const { upiId, holderName } = tempUpi
       if (!upiId.trim() || !/^[\w.-]+@[\w.-]+$/.test(upiId.trim())) {
@@ -247,10 +290,23 @@ export default function WithdrawPage({
         upiId: upiId.trim().toLowerCase(),
         holderName: holderName.trim(),
       }
-      setUpiAccount(cleanUpi)
+
+      setSavingModal(true)
       try {
-        localStorage.setItem(`withdraw_upi_${userId}`, JSON.stringify(cleanUpi))
-      } catch {}
+        await bindUserPayoutMethod('UPI', cleanUpi)
+        setUpiAccount(cleanUpi)
+        try {
+          localStorage.setItem(`withdraw_upi_${userId}`, JSON.stringify(cleanUpi))
+        } catch {}
+        sound.playWin?.()
+        setSetupModalOpen(false)
+        setAlertMsg({ type: 'success', text: 'UPI ID bound and locked successfully for your security.' })
+      } catch (err) {
+        sound.playLose?.()
+        setModalError(err.message || 'Failed to bind UPI ID. Please try again.')
+      } finally {
+        setSavingModal(false)
+      }
     } else if (method === 'USDT') {
       const { usdtAddress, network } = tempUsdt
       const cleanAddr = usdtAddress.trim()
@@ -269,14 +325,23 @@ export default function WithdrawPage({
       }
 
       const cleanUsdt = { usdtAddress: cleanAddr, network: net }
-      setUsdtAccount(cleanUsdt)
+      setSavingModal(true)
       try {
-        localStorage.setItem(`withdraw_usdt_${userId}`, JSON.stringify(cleanUsdt))
-      } catch {}
+        await bindUserPayoutMethod('USDT', cleanUsdt)
+        setUsdtAccount(cleanUsdt)
+        try {
+          localStorage.setItem(`withdraw_usdt_${userId}`, JSON.stringify(cleanUsdt))
+        } catch {}
+        sound.playWin?.()
+        setSetupModalOpen(false)
+        setAlertMsg({ type: 'success', text: 'USDT address bound and locked successfully for your security.' })
+      } catch (err) {
+        sound.playLose?.()
+        setModalError(err.message || 'Failed to bind USDT address. Please try again.')
+      } finally {
+        setSavingModal(false)
+      }
     }
-
-    sound.playWin?.()
-    setSetupModalOpen(false)
   }
 
   // Submit withdrawal request to backend
@@ -499,32 +564,82 @@ export default function WithdrawPage({
           className="withdraw-account-row"
           onClick={() => {
             sound.playTick?.()
-            setSetupModalOpen(true)
+            if (isCurrentMethodBound) {
+              setLockedModalOpen(true)
+            } else {
+              setSetupModalOpen(true)
+            }
           }}
           style={{ cursor: 'pointer' }}
         >
           <div className="withdraw-account-left">
-            <div className="bank-logo-badge">
-              {method === 'BANK' ? (isBankBound ? '🏛️' : '➕') : method === 'USDT' ? (isUsdtBound ? '₮' : '➕') : (isUpiBound ? '⚡' : '➕')}
+            <div
+              className="bank-logo-badge"
+              style={{
+                background: isCurrentMethodBound ? '#f0fdf4' : '#fff1f2',
+                border: isCurrentMethodBound ? '1px solid #bbf7d0' : '1px solid #fecaca',
+                color: isCurrentMethodBound ? '#16a34a' : '#ff5e4d',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              {isCurrentMethodBound ? (
+                <Lock size={16} color="#16a34a" />
+              ) : method === 'BANK' ? (
+                '🏛️'
+              ) : method === 'USDT' ? (
+                '₮'
+              ) : (
+                '⚡'
+              )}
             </div>
             <div className="account-divider" />
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span
-                className="account-number-text"
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span
+                  className="account-number-text"
+                  style={{
+                    color: isCurrentMethodBound ? '#0f172a' : '#ff5e4d',
+                    fontWeight: 700,
+                    fontSize: 13.5,
+                  }}
+                >
+                  {currentBoundDisplay}
+                </span>
+                {isCurrentMethodBound && (
+                  <span
+                    style={{
+                      background: '#dcfce7',
+                      color: '#15803d',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '1px 6px',
+                      borderRadius: 999,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3,
+                    }}
+                  >
+                    <Lock size={9} /> Locked
+                  </span>
+                )}
+              </div>
+              <small
                 style={{
-                  color: isCurrentMethodBound ? '#1e293b' : '#ff5e4d',
-                  fontWeight: isCurrentMethodBound ? 600 : 700,
-                  fontSize: isCurrentMethodBound ? 13 : 13.5,
+                  fontSize: 11,
+                  color: isCurrentMethodBound ? '#15803d' : '#94a3b8',
+                  marginTop: 1,
+                  fontWeight: 500,
                 }}
               >
-                {currentBoundDisplay}
-              </span>
-              <small style={{ fontSize: 11, color: '#94a3b8', marginTop: 1 }}>
-                {isCurrentMethodBound ? 'Tap to edit or change destination' : `Tap to setup your ${method} account`}
+                {isCurrentMethodBound
+                  ? '🔒 Bound & locked. Tap to view or contact support to change'
+                  : `Tap to bind your ${method === 'BANK' ? 'Bank Card' : method} account (Locked once saved)`}
               </small>
             </div>
           </div>
-          <ChevronRight size={18} color={isCurrentMethodBound ? '#94a3b8' : '#ff5e4d'} />
+          <ChevronRight size={18} color={isCurrentMethodBound ? '#15803d' : '#ff5e4d'} />
         </div>
 
         {/* 6. Amount Input Card */}
@@ -764,6 +879,27 @@ export default function WithdrawPage({
               </button>
             </div>
 
+            <div
+              style={{
+                background: '#fffbeb',
+                border: '1px solid #fef3c7',
+                color: '#b45309',
+                borderRadius: 8,
+                padding: '8px 10px',
+                fontSize: 11.5,
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                lineHeight: 1.4,
+              }}
+            >
+              <ShieldCheck size={16} color="#d97706" style={{ flexShrink: 0 }} />
+              <span>
+                <strong>Anti-Fraud Notice:</strong> Once bound, this account is <strong>permanently locked</strong> to your profile for security. You cannot modify it yourself. Contact Customer Support if you ever need to change it.
+              </span>
+            </div>
+
             {modalError && (
               <div
                 style={{
@@ -994,6 +1130,166 @@ export default function WithdrawPage({
 
               <button
                 type="submit"
+                disabled={savingModal}
+                style={{
+                  width: '100%',
+                  height: 42,
+                  borderRadius: 999,
+                  border: 'none',
+                  background: savingModal
+                    ? '#94a3b8'
+                    : 'linear-gradient(90deg, #ff6054 0%, #f84545 100%)',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: savingModal ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 12px rgba(248, 69, 69, 0.3)',
+                }}
+              >
+                {savingModal
+                  ? 'Binding & Locking Account...'
+                  : `Bind & Lock ${method === 'BANK' ? 'Bank Card' : method === 'USDT' ? 'USDT Address' : 'UPI ID'}`}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Account Bound & Locked Modal (Permanently locked; directs user to Customer Support) */}
+      {lockedModalOpen && (
+        <div className="account-config-modal-overlay" onClick={() => setLockedModalOpen(false)}>
+          <div className="account-config-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 390 }}>
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: '50%',
+                    background: '#f0fdf4',
+                    border: '1px solid #bbf7d0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#16a34a',
+                  }}
+                >
+                  <ShieldCheck size={20} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: 15.5, fontWeight: 700, color: '#0f172a' }}>
+                    Bound Payout Account
+                  </h3>
+                  <small style={{ color: '#16a34a', fontSize: 11, fontWeight: 600 }}>
+                    🔒 Verified & Permanently Locked
+                  </small>
+                </div>
+              </div>
+              <button
+                type="button"
+                style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4 }}
+                onClick={() => setLockedModalOpen(false)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Current Details Card */}
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 12,
+                padding: '12px 14px',
+                marginBottom: 14,
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+              }}
+            >
+              {method === 'BANK' && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                    <span style={{ color: '#64748b' }}>Bank Name:</span>
+                    <strong style={{ color: '#0f172a' }}>{bankAccount.bankName || 'Bank Card'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                    <span style={{ color: '#64748b' }}>Account Number:</span>
+                    <strong style={{ color: '#0f172a', letterSpacing: 0.5 }}>{bankAccount.accountNumber}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                    <span style={{ color: '#64748b' }}>IFSC Code:</span>
+                    <strong style={{ color: '#0f172a' }}>{bankAccount.ifsc}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                    <span style={{ color: '#64748b' }}>Holder Name:</span>
+                    <strong style={{ color: '#0f172a' }}>{bankAccount.holderName}</strong>
+                  </div>
+                </>
+              )}
+
+              {method === 'UPI' && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                    <span style={{ color: '#64748b' }}>UPI ID / VPA:</span>
+                    <strong style={{ color: '#0f172a', letterSpacing: 0.3 }}>{upiAccount.upiId}</strong>
+                  </div>
+                  {upiAccount.holderName && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                      <span style={{ color: '#64748b' }}>Beneficiary Name:</span>
+                      <strong style={{ color: '#0f172a' }}>{upiAccount.holderName}</strong>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                    <span style={{ color: '#64748b' }}>Payout Rail:</span>
+                    <strong style={{ color: '#16a34a' }}>ARPay Instant Settlement</strong>
+                  </div>
+                </>
+              )}
+
+              {method === 'USDT' && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5 }}>
+                    <span style={{ color: '#64748b' }}>Network:</span>
+                    <strong style={{ color: '#0f172a' }}>{usdtAccount.network || 'TRC20'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 12.5 }}>
+                    <span style={{ color: '#64748b' }}>Wallet Address:</span>
+                    <strong style={{ color: '#0f172a', wordBreak: 'break-all', fontSize: 11.5 }}>
+                      {usdtAccount.usdtAddress}
+                    </strong>
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Security Explanation */}
+            <div
+              style={{
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: 10,
+                padding: '10px 12px',
+                marginBottom: 16,
+                fontSize: 12,
+                color: '#1e40af',
+                lineHeight: 1.5,
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 8,
+              }}
+            >
+              <Lock size={16} color="#2563eb" style={{ flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <strong>Security Protection:</strong> For your financial protection, bound withdrawal methods cannot be modified directly by users. If you need to update or reset your {method === 'BANK' ? 'Bank Card' : method === 'UPI' ? 'UPI ID' : 'USDT Wallet'}, please contact our 24/7 Customer Support team with verification proof.
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                type="button"
                 style={{
                   width: '100%',
                   height: 42,
@@ -1002,14 +1298,44 @@ export default function WithdrawPage({
                   background: 'linear-gradient(90deg, #ff6054 0%, #f84545 100%)',
                   color: '#fff',
                   fontWeight: 700,
-                  fontSize: 14,
+                  fontSize: 13.5,
                   cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 8,
                   boxShadow: '0 4px 12px rgba(248, 69, 69, 0.3)',
                 }}
+                onClick={() => {
+                  sound.playTick?.()
+                  setLockedModalOpen(false)
+                  if (onOpenCustomerService) {
+                    onOpenCustomerService()
+                  }
+                }}
               >
-                Save {method === 'BANK' ? 'Bank Card' : method === 'USDT' ? 'USDT Address' : 'UPI ID'}
+                <Headphones size={18} />
+                Contact Customer Support to Change
               </button>
-            </form>
+
+              <button
+                type="button"
+                style={{
+                  width: '100%',
+                  height: 38,
+                  borderRadius: 999,
+                  border: '1px solid #e2e8f0',
+                  background: '#f8fafc',
+                  color: '#475569',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+                onClick={() => setLockedModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

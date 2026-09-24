@@ -9,6 +9,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') })
 dotenv.config({ path: path.resolve(__dirname, '.env') })
 dotenv.config()
 
+import zlib from 'node:zlib'
 import { isSupabaseConfigured } from './config/supabase.js'
 import { APP_DOMAIN, API_DOMAIN, FRONTEND_URL, API_URL, isOriginAllowed } from './config/domain.js'
 import authRoutes from './routes/authRoutes.js'
@@ -46,6 +47,60 @@ const corsOptions = {
 
 // Middleware
 app.use(cors(corsOptions))
+
+// Ultra-fast HTTP Compression Middleware (Native Zstandard 'zstd', Brotli 'br', and Gzip 'gzip')
+app.use((req, res, next) => {
+  const acceptEncoding = req.headers['accept-encoding'] || ''
+  const originalSend = res.send
+
+  res.send = function (body) {
+    if (res.headersSent || !body) {
+      return originalSend.call(this, body)
+    }
+
+    const contentType = res.getHeader('content-type') || ''
+    // Only compress text, json, html, javascript, and css responses larger than 512 bytes
+    const isCompressible = /json|text|javascript|css|xml/i.test(contentType)
+    const rawBuffer = Buffer.isBuffer(body)
+      ? body
+      : typeof body === 'string'
+      ? Buffer.from(body)
+      : Buffer.from(JSON.stringify(body))
+
+    if (!isCompressible || rawBuffer.length < 512) {
+      return originalSend.call(this, body)
+    }
+
+    try {
+      if (acceptEncoding.includes('zstd') && typeof zlib.zstdCompressSync === 'function') {
+        const compressed = zlib.zstdCompressSync(rawBuffer)
+        res.setHeader('Content-Encoding', 'zstd')
+        res.removeHeader('Content-Length')
+        res.setHeader('Vary', 'Accept-Encoding')
+        return originalSend.call(this, compressed)
+      } else if (acceptEncoding.includes('br') && typeof zlib.brotliCompressSync === 'function') {
+        const compressed = zlib.brotliCompressSync(rawBuffer)
+        res.setHeader('Content-Encoding', 'br')
+        res.removeHeader('Content-Length')
+        res.setHeader('Vary', 'Accept-Encoding')
+        return originalSend.call(this, compressed)
+      } else if (acceptEncoding.includes('gzip') && typeof zlib.gzipSync === 'function') {
+        const compressed = zlib.gzipSync(rawBuffer)
+        res.setHeader('Content-Encoding', 'gzip')
+        res.removeHeader('Content-Length')
+        res.setHeader('Vary', 'Accept-Encoding')
+        return originalSend.call(this, compressed)
+      }
+    } catch {
+      // Fallback safely to uncompressed body on any compression error
+    }
+
+    return originalSend.call(this, body)
+  }
+
+  next()
+})
+
 app.use(
   express.json({
     verify: (req, res, buf) => {

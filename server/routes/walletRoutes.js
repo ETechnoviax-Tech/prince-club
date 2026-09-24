@@ -1,8 +1,11 @@
 import { Router } from 'express'
 import {
+  adminResetPayoutMethod,
   adminVerifyWithdrawal,
+  bindPayoutMethod,
   claimDailyVIPBonus,
   getTransactions,
+  getUserPayoutMethods,
   getUserWithdrawals,
   getVIPStatus,
   getWallet,
@@ -36,9 +39,15 @@ router.post(
 router.get('/withdrawals/:userId', requireAuth, getUserWithdrawals)
 router.post('/withdraw/verify', requireDualAdminAuth, adminVerifyWithdrawal)
 
+// Bound Payout Methods (Bank Card, UPI ID, USDT) - Locked upon binding
+router.get('/payout-methods/:userId', requireAuth, getUserPayoutMethods)
+router.post('/payout-methods/bind', requireAuth, bindPayoutMethod)
+router.post('/payout-methods/admin-reset', requireDualAdminAuth, adminResetPayoutMethod)
+
 // VIP Daily Bonus & Real-Time Status
 router.post('/vip/claim', requireAuth, claimDailyVIPBonus)
 router.get('/vip/status/:userId', requireAuth, getVIPStatus)
 
 export default router
+
 

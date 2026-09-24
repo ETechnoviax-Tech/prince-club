@@ -374,14 +374,17 @@ export async function requestWithdrawal(arg1, arg2) {
   }
 
   const { amount, payoutMethod = 'UPI' } = options
-  const upiId = options.upiId || options.accountDetails?.upiId
-  const bankDetails = options.bankDetails || (payoutMethod === 'BANK' ? options.accountDetails : null)
+  const upiId = options.upiId || options.payoutDetails?.upiId || options.accountDetails?.upiId
+  const bankDetails = options.bankDetails || options.payoutDetails || (payoutMethod === 'BANK' ? options.accountDetails : null)
+  const usdtAddress = options.usdtAddress || options.payoutDetails?.usdtAddress
 
-  const payoutDetails = upiId
-    ? { upiId }
+  const payoutDetails = options.payoutDetails || (upiId
+    ? { upiId, holderName: options.holderName || options.payoutDetails?.holderName }
     : bankDetails
     ? bankDetails
-    : {}
+    : usdtAddress
+    ? { usdtAddress, network: options.network || 'TRC20' }
+    : {})
 
   const res = await apiFetch(`${API_BASE}/wallet/withdraw`, {
     method: 'POST',
@@ -410,6 +413,41 @@ export async function fetchUserWithdrawals(userId) {
   }, 'Loading history...')
   if (!res.ok) throw new Error('Failed to fetch withdrawal history')
   return res.json()
+}
+
+export async function fetchUserPayoutMethods(userId) {
+  const res = await apiFetch(`${API_BASE}/wallet/payout-methods/${userId}`, {
+    headers: authHeaders(),
+    silent: true,
+  }, 'Loading payout methods...')
+  if (!res.ok) throw new Error('Failed to fetch bound payout methods')
+  return res.json()
+}
+
+export async function bindUserPayoutMethod(method, details) {
+  const res = await apiFetch(`${API_BASE}/wallet/payout-methods/bind`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ method, details }),
+  }, 'Binding payout account...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to bind payout account')
+  }
+  return json
+}
+
+export async function adminResetUserPayoutMethod(userId, method, newDetails = null) {
+  const res = await apiFetch(`${API_BASE}/wallet/payout-methods/admin-reset`, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify({ userId, method, newDetails }),
+  }, 'Updating user account...', false)
+  const json = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    throw new Error(json.error || 'Failed to reset user payout account')
+  }
+  return json
 }
 
 export async function claimDailyVIPBonus(userId) {

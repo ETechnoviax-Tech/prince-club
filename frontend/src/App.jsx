@@ -65,6 +65,7 @@ import PromotionView from './components/PromotionView'
 import AccountView from './components/AccountView'
 import { AdminDashboard } from './components/admin/AdminDashboard'
 import GlobalLoadingSpinner from './components/GlobalLoadingSpinner'
+import GameLoadingTransition from './components/GameLoadingTransition'
 import GameHistoryPage from './components/GameHistoryPage'
 import { abortAllApiRequests, fetchProfileSettings } from './api/client.js'
 
@@ -221,11 +222,14 @@ export function App() {
   const [depositModalOpen, setDepositModalOpen] = useState(false)
   const [isMuted, setIsMuted] = useState(sound.isMuted)
   const [serverOnline, setServerOnline] = useState(false)
-  const [currentGame, setCurrentGame] = useState(() => localStorage.getItem('club69_current_game') || null) // null = lobby
+  const [currentGame, setCurrentGame] = useState(null) // always start from lobby on fresh load
+  const [loadingGame, setLoadingGame] = useState(null) // gameId being loaded with 2-3s transition
   const [activeNav, setActiveNav] = useState(() => localStorage.getItem('club69_active_nav') || 'home')
   const [returnGame, setReturnGame] = useState(null)
   const [fortuneWheelOpen, setFortuneWheelOpen] = useState(false)
   const [activeThirdPartyGame, setActiveThirdPartyGame] = useState(null)
+
+  // launchGameWithLoading is defined after syncWithBackend below (hook ordering)
 
   // User & Wallet (Mandatory Authentication)
   const [currentUser, setCurrentUser] = useState(() => {
@@ -852,6 +856,13 @@ export function App() {
     }
   }, [userId, currentUser])
 
+  // Launch any in-house casino/lottery game with a smooth 2.4s data & asset loading delay
+  const launchGameWithLoading = useCallback((gameId, modeId) => {
+    if (modeId) setSelectedMode(modeId)
+    setLoadingGame(gameId)
+    // Sync latest wallet & provider state in background during loading
+    syncWithBackend()
+  }, [syncWithBackend, setSelectedMode])
 
   // Verify existing session on boot
   useEffect(() => {
@@ -982,6 +993,18 @@ export function App() {
         {/* Universal Site Loading Spinner & Top Progress Bar */}
         <GlobalLoadingSpinner />
 
+        {/* 2-3s High-Fidelity Game Pre-loading Process */}
+        {loadingGame && (
+          <GameLoadingTransition
+            gameId={loadingGame}
+            durationMs={2400}
+            onLoaded={() => {
+              setCurrentGame(loadingGame)
+              setLoadingGame(null)
+            }}
+          />
+        )}
+
         {/* MAIN SCROLLABLE VIEWPORT */}
         <div ref={mainViewportRef} className="app-main-viewport">
           {/* 1. Aviator Game Arena */}
@@ -1075,8 +1098,7 @@ export function App() {
               sound.playTick()
             }}
             onSelectGame={(gameId, modeId) => {
-              if (modeId) setSelectedMode(modeId)
-              setCurrentGame(gameId)
+              launchGameWithLoading(gameId, modeId)
               sound.playTick()
             }}
             onLaunchThirdPartyGame={(game) => {
@@ -1345,6 +1367,10 @@ export function App() {
             }}
             onOpenHistory={() => {
               setActiveNav('withdraw-history')
+              sound.playTick()
+            }}
+            onOpenCustomerService={() => {
+              setActiveNav('customerservice')
               sound.playTick()
             }}
           />

@@ -3,9 +3,10 @@ import { isSupabaseConfigured, supabase } from '../config/supabase.js'
 import { memoryTransactions, memoryWallets } from '../db/store.js'
 import { memoryProfiles } from './authController.js'
 
-// In-memory store for withdrawals and daily bonuses
+// In-memory store for withdrawals, daily bonuses, and locked payout methods
 const memoryWithdrawals = new Map() // id -> record
 const memoryDailyBonus = new Map()  // userId -> lastTimestamp
+export const memoryPayoutMethods = new Map() // `${userId}_${method}` -> record
 
 export async function getWallet(req, res) {
   try {
@@ -152,9 +153,55 @@ export async function requestWithdrawal(req, res) {
       return res.status(400).json({ error: 'Valid userId and minimum amount ₹100 required' })
     }
 
-    const targetUpi = (payoutDetails.upiId || '').trim().toLowerCase()
-    const targetAccount = (payoutDetails.accountNumber || '').trim()
-    const targetCrypto = (payoutDetails.usdtAddress || '').trim().toLowerCase()
+    // 0. Authoritative Bound Account Resolution & Immutability Guarantee
+    let effectiveDetails = payoutDetails
+    if (isSupabaseConfigured) {
+      try {
+        const { data: boundMethod } = await supabase
+          .from('user_payout_methods')
+          .select('details')
+          .eq('user_id', userId)
+          .eq('method', payoutMethod)
+          .maybeSingle()
+
+        if (boundMethod?.details) {
+          // Always use the immutable bound details from the database
+          effectiveDetails = boundMethod.details
+        } else if (payoutDetails && Object.keys(payoutDetails).length > 0) {
+          // Auto-bind on first withdrawal to permanently lock
+          await supabase.from('user_payout_methods').insert({
+            user_id: userId,
+            method: payoutMethod,
+            details: payoutDetails,
+            is_locked: true,
+          })
+          memoryPayoutMethods.set(`${userId}_${payoutMethod}`, {
+            method: payoutMethod,
+            details: payoutDetails,
+            is_locked: true,
+            created_at: new Date().toISOString(),
+          })
+        }
+      } catch (bindErr) {
+        console.warn('[requestWithdrawal auto-bind note]:', bindErr.message)
+      }
+    } else {
+      const memKey = `${userId}_${payoutMethod}`
+      if (memoryPayoutMethods.has(memKey)) {
+        effectiveDetails = memoryPayoutMethods.get(memKey).details
+      } else if (payoutDetails && Object.keys(payoutDetails).length > 0) {
+        memoryPayoutMethods.set(memKey, {
+          method: payoutMethod,
+          details: payoutDetails,
+          is_locked: true,
+          created_at: new Date().toISOString(),
+        })
+      }
+    }
+
+    const targetUpi = (effectiveDetails.upiId || '').trim().toLowerCase()
+    const targetAccount = (effectiveDetails.accountNumber || '').trim()
+    const targetCrypto = (effectiveDetails.usdtAddress || '').trim().toLowerCase()
 
     // 1. Check if user already has an active pending withdrawal in memory
     for (const w of memoryWithdrawals.values()) {
@@ -238,7 +285,7 @@ export async function requestWithdrawal(req, res) {
           p_user_id: userId,
           p_amount: amount,
           p_method: payoutMethod,
-          p_details: payoutDetails || {}
+          p_details: effectiveDetails || {}
         })
 
         if (!rpcErr && rpcRes) {
@@ -251,7 +298,7 @@ export async function requestWithdrawal(req, res) {
             user_id: userId,
             amount,
             payout_method: payoutMethod,
-            payout_details: payoutDetails || {},
+            payout_details: effectiveDetails || {},
             status: 'PENDING',
             created_at: new Date().toISOString()
           }
@@ -304,7 +351,7 @@ export async function requestWithdrawal(req, res) {
         user_id: userId,
         amount,
         payout_method: payoutMethod,
-        payout_details: payoutDetails || {},
+        payout_details: effectiveDetails || {},
         status: 'PENDING',
         created_at: new Date().toISOString(),
       }
@@ -358,7 +405,7 @@ export async function requestWithdrawal(req, res) {
       user_id: userId,
       amount,
       payout_method: payoutMethod,
-      payout_details: payoutDetails || {},
+      payout_details: effectiveDetails || {},
       status: 'PENDING',
       created_at: new Date().toISOString(),
     }
@@ -833,4 +880,255 @@ export async function getVIPStatus(req, res) {
     return res.status(500).json({ error: 'Failed to retrieve VIP status' })
   }
 }
+
+// 8. Fetch User Bound Payout Methods (Bank, UPI, USDT)
+export async function getUserPayoutMethods(req, res) {
+  try {
+    const { userId } = req.params
+    if (!userId) return res.status(400).json({ error: 'User ID is required' })
+
+    if (req.user && req.user.role !== 'admin' && req.user.id !== userId) {
+      return res.status(403).json({ error: 'Access denied: Cannot view another user payout methods' })
+    }
+
+    const methodsMap = {}
+
+    if (isSupabaseConfigured) {
+      try {
+        const { data, error } = await supabase
+          .from('user_payout_methods')
+          .select('method, details, is_locked, created_at, updated_at')
+          .eq('user_id', userId)
+
+        if (!error && Array.isArray(data)) {
+          data.forEach((row) => {
+            methodsMap[row.method] = {
+              ...row.details,
+              is_locked: row.is_locked,
+              created_at: row.created_at,
+              updated_at: row.updated_at,
+            }
+          })
+          return res.json({ success: true, methods: methodsMap })
+        }
+      } catch (err) {
+        console.warn('[getUserPayoutMethods DB error]:', err.message)
+      }
+    }
+
+    // Memory fallback
+    for (const [key, val] of memoryPayoutMethods.entries()) {
+      if (key.startsWith(`${userId}_`)) {
+        methodsMap[val.method] = {
+          ...val.details,
+          is_locked: val.is_locked,
+          created_at: val.created_at,
+          updated_at: val.updated_at,
+        }
+      }
+    }
+
+    return res.json({ success: true, methods: methodsMap })
+  } catch (err) {
+    console.error('[getUserPayoutMethods Exception]:', err)
+    return res.status(500).json({ error: 'Failed to retrieve payout methods' })
+  }
+}
+
+// 9. Bind Payout Method (Permanently locked upon creation; change requires customer support)
+export async function bindPayoutMethod(req, res) {
+  try {
+    const authUserId = req.user?.id
+    if (!authUserId) {
+      return res.status(401).json({ error: 'Authentication required' })
+    }
+
+    const { method, details } = req.body
+    const cleanMethod = String(method || '').trim().toUpperCase()
+    if (!['BANK', 'UPI', 'USDT'].includes(cleanMethod)) {
+      return res.status(400).json({ error: 'Invalid payout method. Must be BANK, UPI, or USDT' })
+    }
+
+    if (!details || typeof details !== 'object') {
+      return res.status(400).json({ error: 'Payout details object is required' })
+    }
+
+    // 1. Strict validation per method
+    const cleanDetails = {}
+    if (cleanMethod === 'BANK') {
+      const { bankName, accountNumber, ifsc, holderName } = details
+      if (!bankName || typeof bankName !== 'string' || bankName.trim().length < 2) {
+        return res.status(400).json({ error: 'Bank name is required' })
+      }
+      const cleanAc = String(accountNumber || '').trim().replace(/\D/g, '')
+      if (!/^\d{9,18}$/.test(cleanAc)) {
+        return res.status(400).json({ error: 'Bank account number must be between 9 and 18 digits' })
+      }
+      const cleanIfsc = String(ifsc || '').trim().toUpperCase()
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(cleanIfsc)) {
+        return res.status(400).json({ error: 'Valid 11-character Indian IFSC code required (e.g. SBIN0001234)' })
+      }
+      if (!holderName || typeof holderName !== 'string' || holderName.trim().length < 2) {
+        return res.status(400).json({ error: 'Account holder name is required' })
+      }
+      cleanDetails.bankName = bankName.trim()
+      cleanDetails.accountNumber = cleanAc
+      cleanDetails.ifsc = cleanIfsc
+      cleanDetails.holderName = holderName.trim()
+    } else if (cleanMethod === 'UPI') {
+      const { upiId, holderName } = details
+      const cleanUpi = String(upiId || '').trim().toLowerCase()
+      if (!cleanUpi || !/^[\w.-]+@[\w.-]+$/.test(cleanUpi)) {
+        return res.status(400).json({ error: 'Valid UPI ID / VPA is required (e.g. 9876543210@upi)' })
+      }
+      cleanDetails.upiId = cleanUpi
+      cleanDetails.holderName = holderName ? String(holderName).trim() : ''
+    } else if (cleanMethod === 'USDT') {
+      const { usdtAddress, network } = details
+      const net = String(network || 'TRC20').trim().toUpperCase() === 'BEP20' ? 'BEP20' : 'TRC20'
+      const cleanAddr = String(usdtAddress || '').trim()
+      if (net === 'TRC20' && !/^T[a-km-zA-HJ-NP-Z1-9]{33}$/.test(cleanAddr)) {
+        return res.status(400).json({ error: 'Invalid TRC20 address: must start with T and be 34 characters' })
+      }
+      if (net === 'BEP20' && !/^0x[a-fA-F0-9]{40}$/.test(cleanAddr)) {
+        return res.status(400).json({ error: 'Invalid BEP20 address: must start with 0x and be 42 characters' })
+      }
+      cleanDetails.usdtAddress = cleanAddr
+      cleanDetails.network = net
+    }
+
+    // 2. IMMUTABILITY CHECK: Once bound, the user cannot change it!
+    if (isSupabaseConfigured) {
+      const { data: existing, error: fetchErr } = await supabase
+        .from('user_payout_methods')
+        .select('*')
+        .eq('user_id', authUserId)
+        .eq('method', cleanMethod)
+        .maybeSingle()
+
+      if (!fetchErr && existing) {
+        return res.status(403).json({
+          error: `Your ${cleanMethod === 'BANK' ? 'Bank Card' : cleanMethod} is already bound and permanently locked for security. To modify or reset your withdrawal details, please contact 24/7 Customer Support.`,
+          isLocked: true,
+          details: existing.details,
+        })
+      }
+
+      // 3. Insert and lock permanently
+      const { data: inserted, error: insErr } = await supabase
+        .from('user_payout_methods')
+        .insert({
+          user_id: authUserId,
+          method: cleanMethod,
+          details: cleanDetails,
+          is_locked: true,
+        })
+        .select()
+        .single()
+
+      if (insErr) {
+        if (insErr.code === '23505') {
+          return res.status(403).json({
+            error: `Your ${cleanMethod === 'BANK' ? 'Bank Card' : cleanMethod} is already bound and locked. Contact Customer Support to change.`,
+            isLocked: true,
+          })
+        }
+        return res.status(500).json({ error: 'Failed to bind payout method: ' + insErr.message })
+      }
+
+      memoryPayoutMethods.set(`${authUserId}_${cleanMethod}`, {
+        method: cleanMethod,
+        details: cleanDetails,
+        is_locked: true,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+
+      return res.status(201).json({
+        success: true,
+        message: `${cleanMethod === 'BANK' ? 'Bank Card' : cleanMethod} bound and locked successfully.`,
+        method: cleanMethod,
+        details: cleanDetails,
+        isLocked: true,
+      })
+    }
+
+    // In-memory fallback
+    const memKey = `${authUserId}_${cleanMethod}`
+    if (memoryPayoutMethods.has(memKey)) {
+      const cur = memoryPayoutMethods.get(memKey)
+      return res.status(403).json({
+        error: `Your ${cleanMethod === 'BANK' ? 'Bank Card' : cleanMethod} is already bound and locked. Contact Customer Support to change.`,
+        isLocked: true,
+        details: cur.details,
+      })
+    }
+
+    const record = {
+      method: cleanMethod,
+      details: cleanDetails,
+      is_locked: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }
+    memoryPayoutMethods.set(memKey, record)
+
+    return res.status(201).json({
+      success: true,
+      message: `${cleanMethod} bound and locked successfully`,
+      method: cleanMethod,
+      details: cleanDetails,
+      isLocked: true,
+    })
+  } catch (err) {
+    console.error('[bindPayoutMethod Exception]:', err)
+    return res.status(500).json({ error: 'Server error binding payout method' })
+  }
+}
+
+// 10. Admin Reset / Modify Payout Method (Called by Admin upon user customer support ticket)
+export async function adminResetPayoutMethod(req, res) {
+  try {
+    const { userId, method, newDetails } = req.body
+    if (!userId || !method) {
+      return res.status(400).json({ error: 'userId and method are required' })
+    }
+
+    const cleanMethod = String(method).trim().toUpperCase()
+
+    if (isSupabaseConfigured) {
+      if (newDetails && typeof newDetails === 'object') {
+        const { error } = await supabase
+          .from('user_payout_methods')
+          .update({ details: newDetails, updated_at: new Date().toISOString() })
+          .eq('user_id', userId)
+          .eq('method', cleanMethod)
+        if (error) return res.status(500).json({ error: error.message })
+      } else {
+        const { error } = await supabase
+          .from('user_payout_methods')
+          .delete()
+          .eq('user_id', userId)
+          .eq('method', cleanMethod)
+        if (error) return res.status(500).json({ error: error.message })
+      }
+    }
+
+    const memKey = `${userId}_${cleanMethod}`
+    if (newDetails) {
+      memoryPayoutMethods.set(memKey, { method: cleanMethod, details: newDetails, is_locked: true, updated_at: new Date().toISOString() })
+    } else {
+      memoryPayoutMethods.delete(memKey)
+    }
+
+    return res.json({
+      success: true,
+      message: `User payout method ${cleanMethod} has been successfully ${newDetails ? 'updated' : 'unbound/reset'} by Customer Support.`,
+    })
+  } catch (err) {
+    console.error('[adminResetPayoutMethod Exception]:', err)
+    return res.status(500).json({ error: 'Server error resetting payout method' })
+  }
+}
+
 

@@ -22,6 +22,10 @@ export default function CustomerServicePage({ onBack }) {
       a: 'Each round enters an 8-second lock window before settlement to process orders authoritative on the server. Bets placed before lock are securely recorded.',
     },
     {
+      q: 'How do I change my bound Bank Account or UPI ID?',
+      a: 'For anti-fraud security and balance protection, bound withdrawal methods are permanently locked once set. To update or reset your bound Bank Account or UPI ID, please connect with our 24/7 Live Agent or WhatsApp Support with your account ID and verification proof. Our admin support will reset it for you.',
+    },
+    {
       q: 'Is my data and wallet balance protected?',
       a: 'Yes. 69 Club utilizes bank-grade cryptographic hashing, anti-inspect client protection, and atomic database transactions.',
     },

@@ -18,6 +18,8 @@ import {
   Headphones,
   Volume2,
   VolumeX,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import {
   fetchVeerIssue,
@@ -199,6 +201,10 @@ export default function WingoGame({
   const [phase, setPhase] = useState('open')
   const [serverOnline, setServerOnline] = useState(false)
   const [history, setHistory] = useState([])
+  const [recordPage, setRecordPage] = useState(1)
+  const [cachedApiPages, setCachedApiPages] = useState({})
+  const [recordPageLoading, setRecordPageLoading] = useState(false)
+  const [myBetsPage, setMyBetsPage] = useState(1)
   const [tickerIndex, setTickerIndex] = useState(0)
   const [howToPlayOpen, setHowToPlayOpen] = useState(false)
   const [vipBonusLoading, setVipBonusLoading] = useState(false)
@@ -396,6 +402,56 @@ export default function WingoGame({
     localStorage.setItem('club69_selected_mode', selectedMode)
   }, [selectedMode])
 
+  // Reset pagination on mode change
+  useEffect(() => {
+    setRecordPage(1)
+    setCachedApiPages({})
+  }, [selectedMode])
+
+  useEffect(() => {
+    setMyBetsPage(1)
+  }, [wingoBetModeFilter])
+
+  const totalRecordPages = 10
+
+  const handleRecordPageChange = useCallback(async (newPage) => {
+    if (newPage < 1 || newPage > totalRecordPages || recordPageLoading) return
+    setRecordPage(newPage)
+
+    const apiPage = Math.ceil(newPage / 2)
+    if (!cachedApiPages[apiPage]) {
+      setRecordPageLoading(true)
+      try {
+        const currentMode = selectedModeRef.current || selectedMode
+        const typeId = currentMode === 'PARITY' ? 30 : currentMode === 'SAPRE' ? 1 : currentMode === 'BCONE' ? 2 : 3
+        const res = await fetchVeerHistory(typeId, apiPage)
+        if (Array.isArray(res?.list) && res.list.length > 0) {
+          const formatted = res.list.map((h) => ({
+            round: h.issueNumber,
+            digit: h.digit,
+            color: h.color,
+            rawColour: h.rawColour,
+            size: h.size,
+            premium: h.premium,
+            multiplier: h.color === 'violet' ? 4.5 : 2.0,
+          }))
+          setCachedApiPages((prev) => ({ ...prev, [apiPage]: formatted }))
+        }
+      } catch (err) {
+        console.warn('Failed to load history page:', err.message)
+      } finally {
+        setRecordPageLoading(false)
+      }
+    }
+  }, [totalRecordPages, recordPageLoading, cachedApiPages, selectedMode])
+
+  const displayedRecordRows = useMemo(() => {
+    const apiPage = Math.ceil(recordPage / 2)
+    const subOffset = ((recordPage - 1) % 2) * 10
+    const list = cachedApiPages[apiPage] || (apiPage === 1 ? history : [])
+    return list.slice(subOffset, subOffset + 10)
+  }, [recordPage, cachedApiPages, history])
+
   // Backend Sync
   const selectedModeRef = useRef(selectedMode)
   useEffect(() => {
@@ -436,6 +492,7 @@ export default function WingoGame({
           multiplier: h.color === 'violet' ? 4.5 : 2.0,
         }))
         setHistory(formatted)
+        setCachedApiPages((prev) => ({ ...prev, 1: formatted }))
 
         if (formatted[0]) {
           const latestRound = formatted[0]
@@ -1008,7 +1065,7 @@ export default function WingoGame({
                     </tr>
                   </thead>
                   <tbody>
-                    {history.slice(0, 10).map((h) => (
+                    {displayedRecordRows.map((h) => (
                       <tr key={h.round}>
                         <td className="mono">{formatPeriod(h.round)}</td>
                         <td className="records-digit-cell">
@@ -1033,6 +1090,33 @@ export default function WingoGame({
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* RECORD PAGINATION BAR */}
+              <div className="wingo-pagination-bar">
+                <button
+                  type="button"
+                  className="wingo-page-btn"
+                  disabled={recordPage <= 1 || recordPageLoading}
+                  onClick={() => handleRecordPageChange(recordPage - 1)}
+                  aria-label="Previous Page"
+                >
+                  <ChevronLeft size={16} /> Pre
+                </button>
+
+                <span className="wingo-page-indicator">
+                  {recordPage} / {totalRecordPages}
+                </span>
+
+                <button
+                  type="button"
+                  className="wingo-page-btn"
+                  disabled={recordPage >= totalRecordPages || recordPageLoading}
+                  onClick={() => handleRecordPageChange(recordPage + 1)}
+                  aria-label="Next Page"
+                >
+                  Next <ChevronRight size={16} />
+                </button>
               </div>
             </div>
           )}
@@ -1133,7 +1217,7 @@ export default function WingoGame({
                     </div>
                   ) : (
                     <div className="bets-list">
-                      {displayedWingoBets.map((b) => {
+                      {displayedWingoBets.slice((myBetsPage - 1) * 10, myBetsPage * 10).map((b) => {
                         const selStr = String(b.selection).toLowerCase()
                         const targetLabel =
                           b.type === 'color' || ['green', 'red', 'violet'].includes(selStr)
@@ -1193,6 +1277,34 @@ export default function WingoGame({
                           </div>
                         )
                       })}
+                    </div>
+                  )}
+
+                  {displayedWingoBets.length > 10 && (
+                    <div className="wingo-pagination-bar">
+                      <button
+                        type="button"
+                        className="wingo-page-btn"
+                        disabled={myBetsPage <= 1}
+                        onClick={() => setMyBetsPage((p) => Math.max(1, p - 1))}
+                        aria-label="Previous Bets Page"
+                      >
+                        <ChevronLeft size={16} /> Pre
+                      </button>
+
+                      <span className="wingo-page-indicator">
+                        {myBetsPage} / {Math.ceil(displayedWingoBets.length / 10)}
+                      </span>
+
+                      <button
+                        type="button"
+                        className="wingo-page-btn"
+                        disabled={myBetsPage >= Math.ceil(displayedWingoBets.length / 10)}
+                        onClick={() => setMyBetsPage((p) => p + 1)}
+                        aria-label="Next Bets Page"
+                      >
+                        Next <ChevronRight size={16} />
+                      </button>
                     </div>
                   )}
                 </>
