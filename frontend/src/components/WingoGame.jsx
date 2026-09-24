@@ -256,7 +256,8 @@ export default function WingoGame({
               : 'number',
             amount: Number(b.amount || 0),
             multiplier: Number(b.multiplier || b.mult || 1),
-            potentialReturn: Math.round(Number(b.amount || 0) * Number(b.multiplier || b.mult || 1)),
+            // potentialReturn uses effective stake (after 0.4% tax) × multiplier
+            potentialReturn: +((Number(b.amount || 0) * 0.996) * Number(b.multiplier || b.mult || 1)).toFixed(2),
             payout: Number(b.payout || 0),
             status: normalizedStatus,
             outcome: b.outcome || null,
@@ -455,49 +456,35 @@ export default function WingoGame({
               let totalPayout = 0
 
               for (const b of userBets) {
-                if (b.status === 'won' || Number(b.payout) > 0) {
+                // Prefer server-settled payout (already credited to wallet)
+                if (b.status === 'won' && Number(b.payout) > 0) {
                   isWon = true
-                  totalPayout += Number(b.payout || 0)
+                  totalPayout += Number(b.payout)
                 } else {
+                  // Client-side estimation for bets not yet reconciled from server
                   const sel = String(b.selection || '').toLowerCase().trim()
                   const digit = Number(latestRound.digit)
                   const size = digit >= 5 ? 'big' : 'small'
                   let betWon = false
                   let mult = 2
 
-                  if (sel === size) {
-                    betWon = true
-                    mult = 1.96
-                  } else if (sel === String(digit)) {
-                    betWon = true
-                    mult = 9
-                  } else if (sel === 'green') {
-                    if ([1, 3, 7, 9].includes(digit)) {
-                      betWon = true
-                      mult = 2
-                    } else if (digit === 5) {
-                      betWon = true
-                      mult = 1.5
-                    }
+                  if (sel === size) { betWon = true; mult = 1.96 }
+                  else if (sel === String(digit)) { betWon = true; mult = 9 }
+                  else if (sel === 'green') {
+                    if ([1, 3, 7, 9].includes(digit)) { betWon = true; mult = 2 }
+                    else if (digit === 5) { betWon = true; mult = 1.5 }
                   } else if (sel === 'red') {
-                    if ([2, 4, 6, 8].includes(digit)) {
-                      betWon = true
-                      mult = 2
-                    } else if (digit === 0) {
-                      betWon = true
-                      mult = 1.5
-                    }
+                    if ([2, 4, 6, 8].includes(digit)) { betWon = true; mult = 2 }
+                    else if (digit === 0) { betWon = true; mult = 1.5 }
                   } else if (sel === 'violet') {
-                    if (digit === 0 || digit === 5) {
-                      betWon = true
-                      mult = 4.5
-                    }
+                    if (digit === 0 || digit === 5) { betWon = true; mult = 4.5 }
                   }
 
                   if (betWon) {
                     isWon = true
-                    const effStake = Number(b.amount || 0) * (1 - 0.004)
-                    totalPayout += Number((effStake * mult).toFixed(2))
+                    // Apply 0.4% platform tax: effective stake = amount * 0.996
+                    const effStake = Number(b.amount || 0) * 0.996
+                    totalPayout += +((effStake * mult).toFixed(2))
                   }
                 }
               }
@@ -1168,6 +1155,12 @@ export default function WingoGame({
                             ? '#0ea5e9'
                             : '#64748b'
 
+                        // Compute display payout: prefer server payout, else calculate from effective stake
+                        const effectiveStake = b.amount * 0.996
+                        const displayPayout = b.payout > 0
+                          ? b.payout
+                          : +(effectiveStake * b.multiplier).toFixed(2)
+
                         return (
                           <div key={b.id} className={`bet-card-item status-${b.status}`}>
                             <div className="bet-card-header">
@@ -1179,7 +1172,7 @@ export default function WingoGame({
                               </div>
                               <span className={`bet-badge ${b.status}`}>
                                 {b.status === 'won'
-                                  ? `+₹${formatCredits(b.payout)}`
+                                  ? `+₹${formatCredits(displayPayout)}`
                                   : b.status === 'lost'
                                   ? 'Failed'
                                   : 'Waiting'}
@@ -1187,13 +1180,15 @@ export default function WingoGame({
                             </div>
                             <div className="bet-card-details">
                               <span>Amount: ₹{formatCredits(b.amount)}</span>
-                              <span>Multiplier: {b.multiplier}x</span>
-                              <span>{b.createdAt}</span>
-                              <span>
-                                {b.status === 'won'
-                                  ? `Won: ₹${formatCredits(b.payout)}`
-                                  : `Return: ₹${formatCredits(b.potentialReturn)}`}
-                              </span>
+                              {b.status === 'won' && (
+                                <span style={{ color: '#22c55e', fontWeight: 700 }}>Won: ₹{formatCredits(displayPayout)}</span>
+                              )}
+                              {b.status === 'lost' && (
+                                <span style={{ color: '#ef4444' }}>Lost: ₹{formatCredits(b.amount)}</span>
+                              )}
+                              {b.status === 'pending' && (
+                                <span style={{ color: '#f59e0b' }}>Expected: ₹{formatCredits(b.potentialReturn)}</span>
+                              )}
                             </div>
                           </div>
                         )
