@@ -4,13 +4,173 @@ import { fetchAviatorState, placeAviatorBet, cashoutAviator, cancelAviatorBet, f
 import { sound } from '../utils/audio'
 import './aviator.css'
 
-// 60 FPS authoritative multiplier calculation — must match server formula exactly
+// 60 FPS authoritative multiplier calculation — calibrated for authentic Aviator speed (~7.5s to 2.0x)
 function calculateClientMultiplier(elapsedMs) {
   if (elapsedMs <= 0) return 1.0
   const seconds = elapsedMs / 1000
-  // Matches server: further slowed for comfortable player reaction window
-  const mult = 1.0 + 0.020 * Math.pow(seconds, 1.30)
+  const mult = 1.0 + 0.06 * Math.pow(seconds, 1.40)
   return +mult.toFixed(2)
+}
+
+// High-fidelity Aerobatic Red Racer Monoplane matching official Spribe Aviator
+function drawAviatorPlane(ctx, x, y, angle, propAngle, isAfterburner = false) {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(angle)
+
+  // 1. Engine Exhaust & Pulsating Afterburner Flame
+  ctx.save()
+  ctx.translate(-22, 0)
+  const flameLen = isAfterburner ? 18 + Math.random() * 8 : 7 + Math.random() * 3
+  const flameWidth = isAfterburner ? 6.5 : 3.5
+  const flameGrad = ctx.createLinearGradient(0, 0, -flameLen, 0)
+  flameGrad.addColorStop(0, isAfterburner ? 'rgba(255, 68, 0, 0.95)' : 'rgba(255, 120, 20, 0.75)')
+  flameGrad.addColorStop(0.6, isAfterburner ? 'rgba(255, 190, 0, 0.65)' : 'rgba(255, 90, 0, 0.35)')
+  flameGrad.addColorStop(1, 'rgba(255, 0, 0, 0)')
+  ctx.fillStyle = flameGrad
+  ctx.beginPath()
+  ctx.ellipse(-flameLen / 2, 0, flameLen / 2, flameWidth, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Inner hot core
+  ctx.fillStyle = 'rgba(255, 255, 220, 0.9)'
+  ctx.beginPath()
+  ctx.ellipse(-flameLen * 0.25, 0, flameLen * 0.25, flameWidth * 0.45, 0, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+
+  // 2. Fuselage with 3D Linear Shading
+  const fuseGrad = ctx.createLinearGradient(0, -9, 0, 9)
+  fuseGrad.addColorStop(0, '#ff3b65') // bright crimson top
+  fuseGrad.addColorStop(0.4, '#ef4444') // signature red
+  fuseGrad.addColorStop(1, '#991b1b') // belly drop shadow
+
+  ctx.fillStyle = fuseGrad
+  ctx.shadowColor = 'rgba(239, 68, 68, 0.7)'
+  ctx.shadowBlur = 12
+  ctx.beginPath()
+  ctx.moveTo(22, 0)
+  ctx.quadraticCurveTo(12, -7, 2, -6)
+  ctx.quadraticCurveTo(-10, -5, -15, -3)
+  ctx.lineTo(-24, -14) // Top of tailfin
+  ctx.lineTo(-28, -14) // Trailing edge of tailfin
+  ctx.lineTo(-22, -1)  // Rudder base
+  ctx.quadraticCurveTo(-16, 5, 4, 5) // Belly
+  ctx.quadraticCurveTo(16, 4, 22, 0) // Up to nose cowl
+  ctx.closePath()
+  ctx.fill()
+  ctx.shadowBlur = 0
+
+  // 3. Sport White Racing Decal Stripes
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 1.3
+  ctx.lineCap = 'round'
+  ctx.beginPath()
+  ctx.moveTo(15, -1)
+  ctx.quadraticCurveTo(2, -2, -13, -1)
+  ctx.stroke()
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)'
+  ctx.lineWidth = 0.9
+  ctx.beginPath()
+  ctx.moveTo(11, 1)
+  ctx.lineTo(-9, 1)
+  ctx.stroke()
+
+  // Tailfin white racing tick
+  ctx.strokeStyle = '#ffffff'
+  ctx.lineWidth = 1.4
+  ctx.beginPath()
+  ctx.moveTo(-22, -11)
+  ctx.lineTo(-25, -6)
+  ctx.stroke()
+
+  // 4. Cockpit Canopy Glass with Glint
+  const glassGrad = ctx.createLinearGradient(0, -7, 0, -2)
+  glassGrad.addColorStop(0, '#7dd3fc')
+  glassGrad.addColorStop(0.5, '#0284c7')
+  glassGrad.addColorStop(1, '#0369a1')
+  ctx.fillStyle = glassGrad
+  ctx.beginPath()
+  ctx.ellipse(3, -4.5, 6, 2.6, -0.12, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Canopy Specular Highlight Glint
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)'
+  ctx.lineWidth = 1.1
+  ctx.beginPath()
+  ctx.arc(3, -5.1, 4.2, Math.PI * 1.1, Math.PI * 1.8)
+  ctx.stroke()
+
+  // 5. Main Swept Racing Wing
+  const wingGrad = ctx.createLinearGradient(0, 0, -6, 14)
+  wingGrad.addColorStop(0, '#dc2626')
+  wingGrad.addColorStop(1, '#7f1d1d')
+  ctx.fillStyle = wingGrad
+  ctx.beginPath()
+  ctx.moveTo(8, 1)
+  ctx.lineTo(-2, 13)
+  ctx.lineTo(-8, 12)
+  ctx.lineTo(-3, 1)
+  ctx.closePath()
+  ctx.fill()
+
+  // Wing Leading Edge Highlight
+  ctx.strokeStyle = '#ff6b8b'
+  ctx.lineWidth = 1.2
+  ctx.beginPath()
+  ctx.moveTo(8, 1)
+  ctx.lineTo(-2, 13)
+  ctx.stroke()
+
+  // 6. Horizontal Stabilizer (Tail wing)
+  ctx.fillStyle = '#b91c1c'
+  ctx.beginPath()
+  ctx.moveTo(-18, 0)
+  ctx.lineTo(-26, 4)
+  ctx.lineTo(-28, 2)
+  ctx.lineTo(-20, -1)
+  ctx.closePath()
+  ctx.fill()
+
+  // 7. Engine Cowl Nose Cone
+  ctx.fillStyle = '#7f1d1d'
+  ctx.beginPath()
+  ctx.ellipse(21, 0, 3, 5, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 8. Spinning Propeller & Motion Blur Disc
+  ctx.save()
+  ctx.translate(24, 0)
+  
+  // Motion blur disc
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.28)'
+  ctx.beginPath()
+  ctx.ellipse(0, 0, 2.5, 13, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Rotating blades
+  ctx.rotate(propAngle)
+  ctx.fillStyle = '#1e293b'
+  ctx.beginPath()
+  ctx.ellipse(0, 0, 1.8, 11, 0, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Chrome tips
+  ctx.fillStyle = '#ffffff'
+  ctx.beginPath()
+  ctx.arc(0, -9.5, 1.4, 0, Math.PI * 2)
+  ctx.arc(0, 9.5, 1.4, 0, Math.PI * 2)
+  ctx.fill()
+
+  // Propeller Center Chrome Cap
+  ctx.fillStyle = '#f8fafc'
+  ctx.beginPath()
+  ctx.arc(0, 0, 2.2, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+
+  ctx.restore()
 }
 
 export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby, onOpenAuth }) {
@@ -140,6 +300,15 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby, o
   const animationFrameRef = useRef(null)
   const localMultiplierRef = useRef(1.0)
   const autoBetTriggeredRef = useRef(false)
+  const lastFlightPosRef = useRef({ x: 42, y: 195, angle: -0.12 })
+  const sparksRef = useRef([])
+  const windStreaksRef = useRef([
+    { x: 50, y: 35, len: 45, speed: 4.2 },
+    { x: 190, y: 65, len: 35, speed: 5.1 },
+    { x: 130, y: 105, len: 55, speed: 3.9 },
+    { x: 260, y: 145, len: 40, speed: 4.6 },
+    { x: 80, y: 175, len: 32, speed: 3.6 },
+  ])
 
   // Sync state from authoritative server
   const syncState = useCallback(async () => {
@@ -407,7 +576,7 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby, o
     }
   }, [phase])
 
-  // 60 FPS Canvas Render: Authentic Radar with Red Propeller Airplane
+  // 60 FPS Canvas Render: Authentic Radar with Red Propeller Airplane & Dynamic Flight Dynamics
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -417,9 +586,9 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby, o
 
     const render = () => {
       ctx.clearRect(0, 0, width, height)
+      const now = Date.now()
 
       // 1. Draw Radar Coordinate Axis Dots (Left Y-Axis & Bottom X-Axis)
-      // Left Y-Axis Cyan Dots
       ctx.fillStyle = '#06b6d4'
       ctx.shadowColor = '#06b6d4'
       ctx.shadowBlur = 4
@@ -429,7 +598,6 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby, o
         ctx.fill()
       }
 
-      // Bottom X-Axis White/Gray Dots
       ctx.fillStyle = '#94a3b8'
       ctx.shadowColor = '#94a3b8'
       ctx.shadowBlur = 2
@@ -440,19 +608,60 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby, o
       }
       ctx.shadowBlur = 0
 
-      // 2. Multiplier & Flight Dynamics
+      // 2. High-Speed Atmospheric Wind Streaks (Active when Flying / Crashed)
+      if (phase === 'FLYING' || phase === 'CRASHED') {
+        ctx.save()
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'
+        ctx.lineWidth = 1.2
+        ctx.setLineDash([12, 18])
+        windStreaksRef.current.forEach((streak) => {
+          streak.x -= streak.speed
+          if (streak.x < -60) {
+            streak.x = width + 20 + Math.random() * 40
+            streak.y = 20 + Math.random() * (height - 60)
+          }
+          ctx.beginPath()
+          ctx.moveTo(streak.x, streak.y)
+          ctx.lineTo(streak.x - streak.len, streak.y)
+          ctx.stroke()
+        })
+        ctx.restore()
+      }
+
+      // 3. Multiplier & Flight Dynamics
       if (phase === 'FLYING') {
-        const now = Date.now()
         const elapsed = Math.max(0, now - serverStartTime)
         const currentM = calculateClientMultiplier(elapsed)
         localMultiplierRef.current = currentM
         setMultiplier(currentM)
 
-        // Trajectory progress
-        const progress = Math.min(0.92, (currentM - 1.0) / (currentM + 2.4))
-        const floatBob = Math.sin(now / 180) * 3.5
-        const planeX = 35 + progress * (width - 85)
-        const planeY = height - 35 - Math.pow(progress, 0.8) * (height - 80) + floatBob
+        // Realistic Takeoff & Cruising Trajectory:
+        // By ~1.85x, the plane completes its ascent to optimal cruising arena (70% width, 35% height)
+        const climbT = Math.min(1.0, (currentM - 1.0) / 0.85)
+        const climbProgress = 1 - Math.pow(1 - climbT, 2.6)
+
+        const startX = 42
+        const startY = height - 34
+        const targetX = width * 0.70
+        const targetY = height * 0.35
+
+        const baseX = startX + (targetX - startX) * climbProgress
+        const baseY = startY - (startY - targetY) * climbProgress
+
+        // Atmospheric turbulence & organic floating in air currents
+        const floatBob = (Math.sin(now / 320) * 4.6 + Math.sin(now / 190) * 2.4) * climbProgress
+        const floatDrift = (Math.cos(now / 420) * 3.2) * climbProgress
+        const planeX = baseX + floatDrift
+        const planeY = baseY + floatBob
+
+        // Dynamic pitch angle:
+        // Steeper climb angle (-0.38 rad, ~ -22°) during takeoff, smoothly leveling to aerodynamic cruise angle (-0.14 rad) with subtle pitch rocking
+        const climbAngle = -0.38 * (1 - climbProgress)
+        const cruiseAngle = (-0.14 + Math.sin(now / 340) * 0.045) * climbProgress
+        const planeAngle = climbAngle + cruiseAngle
+
+        // Save coordinate snapshot for seamless crash fly-away animation
+        lastFlightPosRef.current = { x: planeX, y: planeY, angle: planeAngle }
 
         // Glowing Blue Spotlight in Stage Center
         const spotGrad = ctx.createRadialGradient(width * 0.5, height * 0.45, 10, width * 0.5, height * 0.45, 120)
@@ -463,110 +672,91 @@ export function AviatorGame({ userId, balance, onBalanceUpdate, onBackToLobby, o
         ctx.arc(width * 0.5, height * 0.45, 120, 0, Math.PI * 2)
         ctx.fill()
 
-        // Red Flight Trail Curve
+        // Red Flight Trail Curve to the plane's tail
         ctx.save()
         ctx.beginPath()
-        ctx.moveTo(25, height - 25)
-        ctx.quadraticCurveTo(width * 0.35, height - 25, planeX, planeY)
-        ctx.strokeStyle = '#ef4444'
+        ctx.moveTo(22, height - 22)
+        const cpX = 22 + (planeX - 22) * 0.42
+        const cpY = height - 22
+        ctx.quadraticCurveTo(cpX, cpY, planeX - 18, planeY + 2)
+        ctx.strokeStyle = '#ff1744'
         ctx.lineWidth = 3.5
-        ctx.shadowColor = '#ef4444'
-        ctx.shadowBlur = 12
+        ctx.shadowColor = '#ff1744'
+        ctx.shadowBlur = 14
         ctx.stroke()
 
         // Vibrant Red Gradient Fill Under Curve
-        ctx.lineTo(planeX, height - 25)
-        ctx.lineTo(25, height - 25)
+        ctx.lineTo(planeX - 18, height - 22)
+        ctx.lineTo(22, height - 22)
         ctx.closePath()
-        const fillGrad = ctx.createLinearGradient(0, planeY, 0, height - 25)
-        fillGrad.addColorStop(0, 'rgba(239, 68, 68, 0.45)')
-        fillGrad.addColorStop(1, 'rgba(239, 68, 68, 0.0)')
+        const fillGrad = ctx.createLinearGradient(0, planeY, 0, height - 22)
+        fillGrad.addColorStop(0, 'rgba(255, 23, 68, 0.45)')
+        fillGrad.addColorStop(0.7, 'rgba(255, 23, 68, 0.12)')
+        fillGrad.addColorStop(1, 'rgba(255, 23, 68, 0.0)')
         ctx.fillStyle = fillGrad
         ctx.fill()
         ctx.restore()
 
-        // Draw Authentic Red Propeller Airplane
-        ctx.save()
-        ctx.translate(planeX, planeY)
-        ctx.rotate(-0.2 + Math.sin(now / 140) * 0.03)
+        // Emit and update subtle glowing engine exhaust sparks
+        if (Math.random() < 0.45) {
+          sparksRef.current.push({
+            x: planeX - 24,
+            y: planeY + 1,
+            vx: -2.5 - Math.random() * 2.0,
+            vy: (Math.random() - 0.5) * 1.6,
+            life: 1.0,
+            size: 1.6 + Math.random() * 1.4,
+          })
+        }
 
-        // Spinning Propeller Blades
         ctx.save()
-        ctx.translate(22, -1)
-        const propAngle = (now / 25) % (Math.PI * 2)
-        ctx.rotate(propAngle)
-        ctx.fillStyle = '#ef4444'
-        ctx.beginPath()
-        ctx.ellipse(0, 0, 2, 10, 0, 0, Math.PI * 2)
-        ctx.fill()
+        for (let i = sparksRef.current.length - 1; i >= 0; i--) {
+          const sp = sparksRef.current[i]
+          sp.x += sp.vx
+          sp.y += sp.vy
+          sp.life -= 0.045
+          if (sp.life <= 0) {
+            sparksRef.current.splice(i, 1)
+            continue
+          }
+          ctx.fillStyle = `rgba(255, ${Math.floor(100 * sp.life + 100)}, 50, ${sp.life * 0.8})`
+          ctx.beginPath()
+          ctx.arc(sp.x, sp.y, sp.size * sp.life, 0, Math.PI * 2)
+          ctx.fill()
+        }
         ctx.restore()
 
-        // Engine Cowling
-        ctx.fillStyle = '#b91c1c'
-        ctx.beginPath()
-        ctx.ellipse(19, -1, 3.5, 5, 0, 0, Math.PI * 2)
-        ctx.fill()
-
-        // Airplane Fuselage
-        ctx.fillStyle = '#ef4444'
-        ctx.beginPath()
-        ctx.moveTo(20, -1)
-        ctx.quadraticCurveTo(8, -8, -14, -4)
-        ctx.lineTo(-20, -12) // Tailfin top
-        ctx.lineTo(-24, -12)
-        ctx.lineTo(-21, -1)
-        ctx.quadraticCurveTo(-14, 5, 8, 4)
-        ctx.closePath()
-        ctx.shadowColor = 'rgba(239, 68, 68, 0.8)'
-        ctx.shadowBlur = 10
-        ctx.fill()
-
-        // Specular White Stripe
-        ctx.strokeStyle = '#ffffff'
-        ctx.lineWidth = 1.2
-        ctx.beginPath()
-        ctx.moveTo(14, -2)
-        ctx.lineTo(-12, -2)
-        ctx.stroke()
-
-        // Cockpit Canopy
-        ctx.fillStyle = '#38bdf8'
-        ctx.beginPath()
-        ctx.ellipse(4, -4.5, 5, 2.5, -0.15, 0, Math.PI * 2)
-        ctx.fill()
-
-        // Main Wing
-        ctx.fillStyle = '#dc2626'
-        ctx.beginPath()
-        ctx.moveTo(6, 0)
-        ctx.lineTo(-2, 11)
-        ctx.lineTo(-7, 10)
-        ctx.lineTo(-1, 0)
-        ctx.closePath()
-        ctx.fill()
-
-        ctx.restore()
+        // Draw Authentic Red Aerobatic Monoplane
+        const propAngle = (now / 18) % (Math.PI * 2)
+        drawAviatorPlane(ctx, planeX, planeY, planeAngle, propAngle, true)
       } else if (phase === 'CRASHED') {
         const crashElapsed = crashedAtTime ? Date.now() - crashedAtTime : 0
-        if (crashElapsed < 800) {
-          // Animated fly-away exit off top right
-          const flyProgress = crashElapsed / 800
-          const exitX = width * 0.8 + flyProgress * (width * 0.4)
-          const exitY = height * 0.3 - flyProgress * (height * 0.4)
+        if (crashElapsed < 900) {
+          // Authentic Spribe Fly-Away: Airplane accelerates with afterburner boost off into the sky
+          const flyProgress = Math.min(1.0, crashElapsed / 800)
+          const ease = Math.pow(flyProgress, 1.8)
+          const lastPos = lastFlightPosRef.current || { x: width * 0.7, y: height * 0.35, angle: -0.15 }
+          const exitX = lastPos.x + ease * (width * 0.65)
+          const exitY = lastPos.y - ease * (height * 0.75)
+          const exitAngle = lastPos.angle - 0.28 * flyProgress
+          const propAngle = (now / 12) % (Math.PI * 2)
 
-          ctx.save()
-          ctx.translate(exitX, exitY)
-          ctx.rotate(-0.4)
-          ctx.fillStyle = '#ef4444'
-          ctx.beginPath()
-          ctx.moveTo(20, 0)
-          ctx.lineTo(-12, -8)
-          ctx.lineTo(-8, 0)
-          ctx.lineTo(-12, 8)
-          ctx.closePath()
-          ctx.fill()
-          ctx.restore()
+          drawAviatorPlane(ctx, exitX, exitY, exitAngle, propAngle, true)
         }
+      } else if (phase === 'WAITING') {
+        // Pre-flight Runway / Takeoff position with idling propeller
+        const planeX = 42
+        const planeY = height - 34 + Math.sin(now / 160) * 0.6
+        const planeAngle = -0.07
+        const propAngle = (now / 45) % (Math.PI * 2)
+
+        // Starting runway marker
+        ctx.save()
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.18)'
+        ctx.fillRect(20, height - 24, 45, 2)
+        ctx.restore()
+
+        drawAviatorPlane(ctx, planeX, planeY, planeAngle, propAngle, false)
       }
 
       animationFrameRef.current = requestAnimationFrame(render)

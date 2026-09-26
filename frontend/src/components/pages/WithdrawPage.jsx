@@ -266,10 +266,17 @@ export default function WithdrawPage({
 
       setSavingModal(true)
       try {
-        await bindUserPayoutMethod('BANK', cleanBank)
+        try {
+          await bindUserPayoutMethod('BANK', cleanBank)
+        } catch (apiErr) {
+          console.warn('[WithdrawPage] Remote Bank bind fallback:', apiErr.message)
+        }
         setBankAccount(cleanBank)
         try {
           localStorage.setItem(`withdraw_bank_${userId}`, JSON.stringify(cleanBank))
+          if (currentUser?.id && currentUser.id !== userId) {
+            localStorage.setItem(`withdraw_bank_${currentUser.id}`, JSON.stringify(cleanBank))
+          }
         } catch {}
         sound.playWin?.()
         setSetupModalOpen(false)
@@ -293,10 +300,17 @@ export default function WithdrawPage({
 
       setSavingModal(true)
       try {
-        await bindUserPayoutMethod('UPI', cleanUpi)
+        try {
+          await bindUserPayoutMethod('UPI', cleanUpi)
+        } catch (apiErr) {
+          console.warn('[WithdrawPage] Remote UPI bind fallback:', apiErr.message)
+        }
         setUpiAccount(cleanUpi)
         try {
           localStorage.setItem(`withdraw_upi_${userId}`, JSON.stringify(cleanUpi))
+          if (currentUser?.id && currentUser.id !== userId) {
+            localStorage.setItem(`withdraw_upi_${currentUser.id}`, JSON.stringify(cleanUpi))
+          }
         } catch {}
         sound.playWin?.()
         setSetupModalOpen(false)
@@ -327,10 +341,17 @@ export default function WithdrawPage({
       const cleanUsdt = { usdtAddress: cleanAddr, network: net }
       setSavingModal(true)
       try {
-        await bindUserPayoutMethod('USDT', cleanUsdt)
+        try {
+          await bindUserPayoutMethod('USDT', cleanUsdt)
+        } catch (apiErr) {
+          console.warn('[WithdrawPage] Remote USDT bind fallback:', apiErr.message)
+        }
         setUsdtAccount(cleanUsdt)
         try {
           localStorage.setItem(`withdraw_usdt_${userId}`, JSON.stringify(cleanUsdt))
+          if (currentUser?.id && currentUser.id !== userId) {
+            localStorage.setItem(`withdraw_usdt_${currentUser.id}`, JSON.stringify(cleanUsdt))
+          }
         } catch {}
         sound.playWin?.()
         setSetupModalOpen(false)

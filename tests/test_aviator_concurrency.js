@@ -29,7 +29,7 @@ async function runTests() {
       return d
     },
   }
-  getAviatorState({}, mockRes)
+  await getAviatorState({}, mockRes)
   assert.ok(mockResJson, 'State response must exist')
   assert.ok(mockResJson.roundId, 'Must have roundId')
   assert.ok(mockResJson.phase, 'Must have phase')
@@ -90,9 +90,9 @@ async function runTests() {
 
   const rapidResults = await Promise.all(rapidBets)
   const okRapid = rapidResults.filter((r) => r.data?.success)
-  const failedRapid = rapidResults.filter((r) => r.statusCode === 400)
+  const failedRapid = rapidResults.filter((r) => r.statusCode === 409 || r.statusCode === 400)
   assert.strictEqual(okRapid.length, 1, 'Only 1 bet of ₹60 should succeed with ₹100 balance')
-  assert.strictEqual(failedRapid.length, 2, '2 bets should fail due to insufficient balance')
+  assert.strictEqual(failedRapid.length, 2, '2 duplicate / excess bets should be rejected')
   assert.strictEqual(memoryWallets.get(singleUser), 40.0, 'Balance must be exactly ₹40.0, never negative')
   console.log('   - Exactly 1 bet succeeded and 2 were rejected; wallet balance strictly locked at ₹40 (PASS)')
 

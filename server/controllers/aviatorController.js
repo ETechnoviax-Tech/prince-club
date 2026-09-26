@@ -175,20 +175,19 @@ async function finalizeRoundRecord() {
 }
 
 // Compute current multiplier from flight elapsed ms.
-// Further slowed coefficient (0.020) so plane feels much slower — players have more time.
+// Calibrated for authentic Aviator feel: snappy, realistic climb rate (~7.5s to 2.0x, ~12s to 3.0x, ~20s to 5.0x)
 export function calculateMultiplier(elapsedMs) {
   if (elapsedMs <= 0) return 1.0
   const seconds = elapsedMs / 1000
-  // Very slow exponential curve: comfortable react window
-  const mult = 1.0 + 0.020 * Math.pow(seconds, 1.30)
+  const mult = 1.0 + 0.06 * Math.pow(seconds, 1.40)
   return +mult.toFixed(2)
 }
 
-// Calculate how many ms it takes to reach a specific crash point (tuned to match new formula)
+// Calculate how many ms it takes to reach a specific crash point (tuned to match curve formula)
 export function durationForCrashPoint(crashPoint) {
   const diff = Math.max(0.01, crashPoint - 1.0)
-  // Inverse of: diff = 0.020 * seconds^1.30  →  seconds = (diff/0.020)^(1/1.30)
-  const seconds = Math.pow(diff / 0.020, 1 / 1.30)
+  // Inverse of: diff = 0.06 * seconds^1.40  →  seconds = (diff / 0.06)^(1 / 1.40)
+  const seconds = Math.pow(diff / 0.06, 1 / 1.40)
   return Math.round(seconds * 1000)
 }
 
@@ -450,7 +449,7 @@ export async function getAviatorState(req, res) {
   for (const b of state.bets.values()) totalPool += b.amount
 
   // Include user bets for authenticated requester
-  const authUserId = req.user?.id || req.query.userId
+  const authUserId = req.user?.id || req.query?.userId
   const userBets = []
   if (authUserId) {
     for (const b of state.bets.values()) {

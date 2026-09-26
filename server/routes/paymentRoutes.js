@@ -7,6 +7,11 @@ import {
   verifyDeposit,
   getFirstDepositEligibility,
 } from '../controllers/paymentController.js'
+import {
+  bindPayoutMethod,
+  getUserPayoutMethods,
+  adminResetPayoutMethod,
+} from '../controllers/walletController.js'
 import { handlePaymentWebhook } from '../controllers/webhookController.js'
 import { initiateRefund, listRefunds, listPaymentEvents } from '../controllers/refundController.js'
 import { requireAuth } from '../middleware/auth.js'
@@ -75,5 +80,10 @@ router.get('/events/:userId', requireDualAdminAuth, listPaymentEvents)
 router.get('/deposit/:id', requireAuth, getDeposit)
 router.get('/user/:userId', requireAuth, listUserDeposits)
 router.get('/first-deposit-eligibility/:userId', requireAuth, getFirstDepositEligibility)
+
+// 8. Payout Methods Route Aliases (Under /api/payments)
+router.get('/payout-methods/:userId', requireAuth, getUserPayoutMethods)
+router.post('/payout-methods/bind', requireAuth, bindPayoutMethod)
+router.post('/payout-methods/admin-reset', requireDualAdminAuth, adminResetPayoutMethod)
 
 export default router

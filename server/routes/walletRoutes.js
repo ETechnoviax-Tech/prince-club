@@ -21,10 +21,10 @@ import { paymentLockMiddleware } from '../middleware/paymentLock.js'
 
 const router = Router()
 
-// Wallet queries require verified user sessions with HMAC token
-router.get('/:userId', requireAuth, getWallet)
-router.get('/:userId/transactions', requireAuth, getTransactions)
-router.post('/reset', requireAuth, resetWallet)
+// Bound Payout Methods (Bank Card, UPI ID, USDT) - Locked upon binding
+router.get('/payout-methods/:userId', requireAuth, getUserPayoutMethods)
+router.post('/payout-methods/bind', requireAuth, bindPayoutMethod)
+router.post('/payout-methods/admin-reset', requireDualAdminAuth, adminResetPayoutMethod)
 
 // Financial Payouts & Withdrawals protected with Mutex Lock, Idempotency & Strict Auth
 router.post(
@@ -39,14 +39,14 @@ router.post(
 router.get('/withdrawals/:userId', requireAuth, getUserWithdrawals)
 router.post('/withdraw/verify', requireDualAdminAuth, adminVerifyWithdrawal)
 
-// Bound Payout Methods (Bank Card, UPI ID, USDT) - Locked upon binding
-router.get('/payout-methods/:userId', requireAuth, getUserPayoutMethods)
-router.post('/payout-methods/bind', requireAuth, bindPayoutMethod)
-router.post('/payout-methods/admin-reset', requireDualAdminAuth, adminResetPayoutMethod)
-
 // VIP Daily Bonus & Real-Time Status
 router.post('/vip/claim', requireAuth, claimDailyVIPBonus)
 router.get('/vip/status/:userId', requireAuth, getVIPStatus)
+
+// Wallet queries require verified user sessions with HMAC token
+router.post('/reset', requireAuth, resetWallet)
+router.get('/:userId/transactions', requireAuth, getTransactions)
+router.get('/:userId', requireAuth, getWallet)
 
 export default router
 
